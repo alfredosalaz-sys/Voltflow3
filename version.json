@@ -1,0 +1,26 @@
+{
+  "version": "2.4.0",
+  "date": "2026-05-19",
+  "changelog": [
+    {
+      "title": "Copiloto autonomo diario gratuito",
+      "desc": "Nuevo panel diario que crea una agenda comercial automaticamente con reglas locales, sin backend ni coste adicional."
+    },
+    {
+      "title": "Priorizacion de acciones",
+      "desc": "Detecta seguimientos vencidos, leads calientes, oportunidades en riesgo, busquedas antiguas y empresas nuevas de radar."
+    },
+    {
+      "title": "IA opcional con las claves existentes",
+      "desc": "El briefing diario puede mejorarse usando Gemini, Groq u OpenRouter si ya estan configurados en la herramienta."
+    },
+    {
+      "title": "Continuidad entre sesiones",
+      "desc": "El copiloto se regenera al abrir la app una vez al dia y guarda la agenda en la memoria local del navegador."
+    },
+    {
+      "title": "Acciones directas",
+      "desc": "Desde cada recomendacion puedes abrir el lead, generar plan de ataque, enviar email, cargar busquedas guardadas o lanzar el radar."
+    }
+  ]
+}
