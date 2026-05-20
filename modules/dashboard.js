@@ -626,6 +626,24 @@ function saveCampaign() {
   showToast('Campaña creada ✓');
 }
 
+function getCampaignLeadList(c) {
+  if (Array.isArray(c.leadIds) && c.leadIds.length) {
+    const ids = new Set(c.leadIds.map(String));
+    return leads.filter(l => ids.has(String(l.id)));
+  }
+  return c.segment === 'Todos' ? leads : leads.filter(l => l.segment === c.segment);
+}
+
+function getCampaignSentCount(c) {
+  const campLeads = getCampaignLeadList(c);
+  if (Array.isArray(c.leadIds) && c.leadIds.length) {
+    const ids = new Set(c.leadIds.map(String));
+    const emails = new Set(campLeads.map(l => l.email).filter(Boolean));
+    return emailHistory.filter(e => ids.has(String(e.leadId)) || emails.has(e.email)).length;
+  }
+  return emailHistory.filter(e => c.segment === 'Todos' || e.segment === c.segment).length;
+}
+
 function renderCampaigns() {
   const container = document.getElementById('campaigns-list');
   const empty = document.getElementById('campaigns-empty');
@@ -641,8 +659,8 @@ function renderCampaigns() {
     if (cSearch && !c.name.toLowerCase().includes(cSearch) && !(c.desc||'').toLowerCase().includes(cSearch)) return false;
     if (cSeg && c.segment !== cSeg) return false;
     if (cStatus) {
-      const sent = emailHistory.filter(e => c.segment === 'Todos' || e.segment === c.segment).length;
-      const total = c.segment === 'Todos' ? leads.length : leads.filter(l => l.segment === c.segment).length;
+      const sent = getCampaignSentCount(c);
+      const total = getCampaignLeadList(c).length;
       const pct = total ? Math.min(Math.round(sent/total*100), 100) : 0;
       if (cStatus === 'active' && sent === 0) return false;
       if (cStatus === 'empty' && sent > 0) return false;
@@ -655,15 +673,15 @@ function renderCampaigns() {
     if (cSort === 'date_desc') return (b.id||0) - (a.id||0);
     if (cSort === 'name') return a.name.localeCompare(b.name);
     if (cSort === 'progress_desc') {
-      const sentA = emailHistory.filter(e => a.segment === 'Todos' || e.segment === a.segment).length;
-      const sentB = emailHistory.filter(e => b.segment === 'Todos' || e.segment === b.segment).length;
-      const totA  = a.segment === 'Todos' ? leads.length : leads.filter(l => l.segment === a.segment).length;
-      const totB  = b.segment === 'Todos' ? leads.length : leads.filter(l => l.segment === b.segment).length;
+      const sentA = getCampaignSentCount(a);
+      const sentB = getCampaignSentCount(b);
+      const totA  = getCampaignLeadList(a).length;
+      const totB  = getCampaignLeadList(b).length;
       return (totB ? sentB/totB : 0) - (totA ? sentA/totA : 0);
     }
     if (cSort === 'leads_desc') {
-      const tA = a.segment === 'Todos' ? leads.length : leads.filter(l => l.segment === a.segment).length;
-      const tB = b.segment === 'Todos' ? leads.length : leads.filter(l => l.segment === b.segment).length;
+      const tA = getCampaignLeadList(a).length;
+      const tB = getCampaignLeadList(b).length;
       return tB - tA;
     }
     return 0;
@@ -680,8 +698,8 @@ function renderCampaigns() {
   container.style.display = 'grid';
   container.innerHTML = list.map(c => {
     // Calculate real sent from emailHistory matching segment
-    const realSent = emailHistory.filter(e => c.segment === 'Todos' || e.segment === c.segment).length;
-    const totalLeads = c.segment === 'Todos' ? leads.length : leads.filter(l => l.segment === c.segment).length;
+    const realSent = getCampaignSentCount(c);
+    const totalLeads = getCampaignLeadList(c).length;
     const pct = totalLeads ? Math.min(Math.round(realSent/totalLeads*100), 100) : 0;
     return `
       <div class="campaign-card">
