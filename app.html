@@ -1,4 +1,5 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
+<!-- encoding fix -->
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -1664,6 +1665,8 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
         <button class="btn-outline" onclick="exportTracking()">Exportar historial (CSV)</button>
         <button class="btn-outline" onclick="exportFullBackup()">💾 Backup completo (JSON)</button>
         <button class="btn-outline" onclick="exportPortableData()" title="Genera un archivo que puedes importar en cualquier versión de Voltflow2">📦 Exportar datos portátiles</button>
+        <button class="btn-outline" onclick="openSafetySnapshotsModal()" title="Ver puntos de recuperación automáticos antes de importaciones, restauraciones y sincronizaciones">🛡️ Snapshots de seguridad</button>
+        <button class="btn-outline" onclick="createSafetySnapshot('manual', { download: true })" title="Crea un snapshot ahora y descarga una copia fuera del navegador">⬇ Snapshot manual</button>
         <input type="file" id="import-portable-file" accept=".json" style="display:none" onchange="restoreBackup(event)">
         <button class="btn-primary" onclick="openImportFromLocalStorage()" title="Lee los datos de Voltflow2 guardados en este navegador" style="display:flex;align-items:center;gap:.4rem">📥 Importar desde versión anterior</button>
         <button class="btn-outline" onclick="document.getElementById('restore-file').click()">📂 Restaurar backup</button>
@@ -1922,7 +1925,25 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
     <button class="chat-sug" onclick="sendManualAlert('overdue')">📧 Alertar vencidos</button>
   </div>
 
+  <div id="chat-command-panel" style="display:none;padding:.65rem .75rem;border-top:1px solid var(--glass-border);background:rgba(255,255,255,.025)">
+    <div id="chat-context-actions" style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem"></div>
+    <div id="chat-diagnostic-panel" style="display:none;margin-bottom:.5rem"></div>
+    <div id="chat-history-panel" style="display:none;margin-bottom:.5rem"></div>
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+      <button class="chat-sug" onclick="chatRunCommand('diagnostics')">Diagnostico</button>
+      <button class="chat-sug" onclick="chatRunCommand('history')">Historial</button>
+      <button class="chat-sug" onclick="chatRunCommand('search')">Buscar</button>
+      <button class="chat-sug" onclick="chatRunCommand('email')">Email IA</button>
+      <button class="chat-sug" onclick="chatRunCommand('funnel')">Embudo</button>
+      <button class="chat-sug" onclick="chatRunCommand('clean')">Limpiar DB</button>
+    </div>
+  </div>
+
   <div class="chat-input-row">
+    <button id="chat-command-btn" onclick="chatToggleCommands()" title="Acciones del asistente"
+      style="width:34px;height:34px;border-radius:8px;flex-shrink:0;background:var(--glass);
+      border:1px solid var(--glass-border);cursor:pointer;display:flex;align-items:center;
+      justify-content:center;font-size:.9rem;transition:all .2s;color:var(--text-muted)">/</button>
     <button id="chat-mic-btn" onclick="toggleChatVoice()" title="Hablar con el asistente"
       style="width:34px;height:34px;border-radius:8px;flex-shrink:0;background:var(--glass);
       border:1px solid var(--glass-border);cursor:pointer;display:flex;align-items:center;
@@ -1993,127 +2014,6 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
     </div>
   </div>
 </div>
-
-
-<!-- SIDEBAR -->
-<!-- ── MÓVIL: overlay del sidebar ── -->
-<div id="sidebar-overlay" onclick="closeMobileSidebar()"></div>
-
-<!-- ── MÓVIL: botón hamburguesa ── -->
-<button id="mobile-menu-btn" onclick="openMobileSidebar()" aria-label="Menú">☰</button>
-
-<!-- ── MÓVIL: barra de navegación inferior ── -->
-<nav id="mobile-bottom-nav" style="display:none">
-  <button class="mob-nav-btn active" onclick="showView('dashboard');setMobileNav(this)" data-view="dashboard">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-    Dashboard
-  </button>
-  <button class="mob-nav-btn" onclick="showView('leads');setMobileNav(this)" data-view="leads">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    Leads
-  </button>
-  <button class="mob-nav-btn" onclick="showView('planner');setMobileNav(this)" data-view="planner">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    Buscar
-  </button>
-  <button class="mob-nav-btn" onclick="showView('kanban');setMobileNav(this)" data-view="kanban">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="5" height="18"/><rect x="10" y="3" width="5" height="12"/><rect x="17" y="3" width="5" height="8"/></svg>
-    Kanban
-  </button>
-  <button class="mob-nav-btn" onclick="openMobileSidebar()" data-view="more">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
-    Más
-  </button>
-</nav>
-
-
-
-
-<!-- ══ CHAT DE AYUDA — Voltflow2 ASSISTANT ══ -->
-<button id="chat-bubble" onclick="toggleChat()" title="Ayuda con Voltflow2">
-  🤖
-  <div class="chat-notif" id="chat-notif"></div>
-</button>
-
-<div id="chat-window">
-  <div class="chat-header">
-    <div class="chat-avatar">🤖</div>
-    <div class="chat-header-info">
-      <strong>Voltflow2 Assistant</strong>
-      <span>● Online — Listo para ayudarte</span>
-    </div>
-    <button onclick="toggleChat()">✕</button>
-  </div>
-
-  <div id="chat-messages"></div>
-
-  <div class="chat-suggestions" id="chat-suggestions">
-    <button class="chat-sug" onclick="chatAsk('Dame el briefing del día')">📅 Briefing hoy</button>
-    <button class="chat-sug" onclick="chatExecute('topLeads')">🔥 Leads prioritarios</button>
-    <button class="chat-sug" onclick="generateWeeklyPlan()">🗓️ Plan semanal</button>
-    <button class="chat-sug" onclick="toggleAgentMode()">🤖 Modo agente</button>
-    <button class="chat-sug" onclick="runAutoMaintenance(false)">🧹 Limpiar DB</button>
-    <button class="chat-sug" onclick="sendManualAlert('overdue')">📧 Alertar vencidos</button>
-  </div>
-
-  <div class="chat-input-row">
-    <textarea id="chat-input" placeholder="Pregunta, habla o di qué mejorar..." rows="1"
-      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatSend()}"></textarea>
-    <button id="chat-send" onclick="chatSend()">➤</button>
-  </div>
-</div>
-
-<div id="map-helper" style="display:none"></div>
-
-<!-- UNDO TOAST -->
-<div id="undo-toast">
-  <span id="undo-msg">Lead eliminado</span>
-  <button onclick="undoDelete()">Deshacer</button>
-</div>
-
-<!-- OBJECTIVES MODAL -->
-<div id="objectives-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeObjectivesModal()">
-  <div class="modal-box" style="max-width:420px">
-    <div class="modal-header">
-      <h3>🎯 Objetivos Semanales</h3>
-      <button class="btn-icon" onclick="closeObjectivesModal()">✕</button>
-    </div>
-    <div style="padding:1.5rem;display:grid;gap:1rem">
-      <div class="input-group">
-        <label>Leads nuevos por semana</label>
-        <input type="number" id="obj-leads" min="0" placeholder="Ej: 20">
-      </div>
-      <div class="input-group">
-        <label>Emails enviados por semana</label>
-        <input type="number" id="obj-emails" min="0" placeholder="Ej: 10">
-      </div>
-      <div class="input-group">
-        <label>Respuestas objetivo por semana</label>
-        <input type="number" id="obj-replies" min="0" placeholder="Ej: 3">
-      </div>
-      <div style="display:flex;gap:.75rem">
-        <button class="btn-primary" onclick="saveObjectives()">Guardar</button>
-        <button class="btn-outline" onclick="closeObjectivesModal()">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- TUTORIAL OVERLAY -->
-<div id="tutorial-overlay" style="display:none">
-  <div class="tutorial-card">
-    <div id="tutorial-icon" style="font-size:3rem;margin-bottom:1rem">⚡</div>
-    <h2 id="tutorial-title" style="margin-bottom:.5rem">Bienvenido a Voltflow2</h2>
-    <p id="tutorial-body" style="color:var(--text-muted);font-size:.88rem;line-height:1.6;margin-bottom:1.25rem"></p>
-    <div class="tutorial-steps-dots" id="tutorial-dots"></div>
-    <div style="display:flex;gap:.75rem;justify-content:center">
-      <button class="btn-outline" onclick="prevTutorial()" id="tutorial-prev" style="display:none">← Anterior</button>
-      <button class="btn-primary" onclick="nextTutorial()" id="tutorial-next">Siguiente →</button>
-      <button class="btn-outline" onclick="closeTutorial()" id="tutorial-skip" style="font-size:.78rem">Saltar tutorial</button>
-    </div>
-  </div>
-</div>
-</script>
 
 <!-- MODAL IMPORTACIÓN MANUAL ENTRE VERSIONES -->
 <div id="import-modal-overlay" onclick="if(event.target===this)closeImportModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:200;align-items:center;justify-content:center;padding:1rem">
@@ -2355,20 +2255,20 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
      MÓDULOS JS — orden de dependencia
      v2.1.1 (Production Ready)
 ═══════════════════════════════════════════════════════ -->
-<script src="modules/state.js"></script>
-<script src="modules/email-templates.js"></script>
-<script src="modules/scoring.js"></script>
-<script src="modules/init.js"></script>
-<script src="modules/search.js"></script>
-<script src="modules/leads.js"></script>
-<script src="modules/dashboard.js"></script>
-<script src="modules/ai-email.js"></script>
-<script src="modules/chat.js"></script>
-<script src="modules/ui.js"></script>
-<script src="modules/inbox.js"></script>
-<script src="modules/ai-router.js"></script>
-<script src="modules/misc.js"></script>
-<script src="modules/smart-import.js"></script>
+<script src="modules/state.js?v=2" charset="UTF-8"></script>
+<script src="modules/email-templates.js?v=2" charset="UTF-8"></script>
+<script src="modules/scoring.js?v=2" charset="UTF-8"></script>
+<script src="modules/init.js?v=3" charset="UTF-8"></script>
+<script src="modules/search.js?v=2" charset="UTF-8"></script>
+<script src="modules/leads.js?v=2" charset="UTF-8"></script>
+<script src="modules/dashboard.js?v=3" charset="UTF-8"></script>
+<script src="modules/ai-email.js?v=2" charset="UTF-8"></script>
+<script src="modules/chat.js?v=4" charset="UTF-8"></script>
+<script src="modules/ui.js?v=5" charset="UTF-8"></script>
+<script src="modules/inbox.js?v=2" charset="UTF-8"></script>
+<script src="modules/ai-router.js?v=2" charset="UTF-8"></script>
+<script src="modules/misc.js?v=2" charset="UTF-8"></script>
+<script src="modules/smart-import.js?v=3" charset="UTF-8"></script>
 
 </body>
 </html>

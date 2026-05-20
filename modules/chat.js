@@ -1,4 +1,4 @@
-// VOLTFLOW ASSISTANT â€” Chat de ayuda con IA (Gemini)
+﻿// VOLTFLOW ASSISTANT â€” Chat de ayuda con IA (Gemini)
 // Conoce la app completa y puede guiar al usuario paso a paso
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
@@ -534,6 +534,8 @@ async function generateWeeklyPlan() {
   const claudeKey = getGeminiKey();
   if (!claudeKey) {
     chatAddMessage('bot', 'âš ï¸ Necesitas la API key de Gemini para generar el plan semanal.');
+    chatToggleCommands(true);
+    renderChatDiagnostics();
     return;
   }
 
@@ -1805,18 +1807,24 @@ async function githubPull(showFeedback) {
     const data = await res.json();
     const snapshot = data?.voltflow;
     if (!snapshot) throw new Error('Datos no encontrados');
+    const snapshotValidation = typeof validateDataSnapshot === 'function'
+      ? validateDataSnapshot(snapshot, typeof getCurrentDataSummary === 'function' ? getCurrentDataSummary() : null)
+      : { ok: true, warnings: [] };
+    if (!snapshotValidation.ok) throw new Error(snapshotValidation.errors.join(' '));
 
     // Confirm if cloud has different lead count
     const cloudLeads = (() => { try { return JSON.parse(snapshot['gordi_leads'] || '[]').length; } catch { return 0; } })();
     const localLeads = leads.length;
 
     if (showFeedback && cloudLeads !== localLeads) {
-      if (!confirm(`Â¿Descargar datos de GitHub?\n\nNube: ${cloudLeads} leads\nLocal: ${localLeads} leads`)) {
+      const warnings = snapshotValidation.warnings && snapshotValidation.warnings.length ? `\n\nAvisos:\n- ${snapshotValidation.warnings.join('\n- ')}` : '';
+      if (!confirm(`Â¿Descargar datos de GitHub?\n\nNube: ${cloudLeads} leads\nLocal: ${localLeads} leads${warnings}\n\nSe creara un snapshot de seguridad antes de reemplazar tus datos locales.`)) {
         setGithubStatus('Descarga cancelada', 'var(--text-dim)'); return false;
       }
     }
+    if (!showFeedback && snapshotValidation.warnings && snapshotValidation.warnings.length && cloudLeads < localLeads) return false;
 
-    importDataSnapshot(snapshot, true);
+    importDataSnapshot(snapshot, true, { reason: 'before_github_pull' });
     try { leads = JSON.parse(localStorage.getItem('gordi_leads') || '[]'); } catch { leads = []; }
     try { emailHistory = JSON.parse(localStorage.getItem('gordi_email_history') || '[]'); } catch { emailHistory = []; }
     try { campaigns = JSON.parse(localStorage.getItem('gordi_campaigns') || '[]'); } catch { campaigns = []; }
@@ -2003,11 +2011,184 @@ function saveChatMemory() {
   localStorage.setItem('gordi_chat_memory', JSON.stringify(chatMemory));
 }
 
+function getChatStoredMessages() {
+  try { return JSON.parse(localStorage.getItem('gordi_chat_history') || '[]'); } catch { return []; }
+}
+
+function saveChatStoredMessages(items) {
+  localStorage.setItem('gordi_chat_history', JSON.stringify(items.slice(-40)));
+}
+
+function persistChatMessage(role, html) {
+  if (!role || !html) return;
+  const text = String(html).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!text || text === 'Analizando...') return;
+  const items = getChatStoredMessages();
+  items.push({ role, html: String(html).slice(0, 5000), text: text.slice(0, 600), date: new Date().toISOString() });
+  saveChatStoredMessages(items);
+}
+
+function getCurrentViewName() {
+  const active = document.querySelector('.view.active');
+  return active?.id ? active.id.replace(/-view$/, '') : 'dashboard';
+}
+
+function chatButton(label, action) {
+  return `<button class="chat-sug" onclick="${action}">${label}</button>`;
+}
+
+function getChatContextActions() {
+  const view = getCurrentViewName();
+  if (view === 'planner') return [
+    ['Explicar resultados', "chatAsk('Explicame como interpretar los resultados de busqueda y que leads importar primero')"],
+    ['Buscar similares', "chatAsk('Ayudame a encontrar empresas similares a los mejores resultados de esta busqueda')"],
+    ['Importar seleccionados', "importSelectedSearch()"]
+  ];
+  if (view === 'leads') return [
+    ['Priorizar leads', "chatExecute('topLeads')"],
+    ['Crear email IA', "chatRunCommand('email')"],
+    ['Ver vencidos', "chatExecute('overdueLeads')"]
+  ];
+  if (view === 'kanban') return [
+    ['Analizar pipeline', "chatAsk('Analiza mi pipeline y dime donde se atascan los leads')"],
+    ['Ver vencidos', "chatExecute('overdueLeads')"],
+    ['Modo enfoque', "openFocusMode()"]
+  ];
+  if (view === 'settings') return [
+    ['Diagnostico', "chatRunCommand('diagnostics')"],
+    ['Ir a API keys', "chatAsk('Que API keys tengo que configurar para que funcione todo?')"],
+    ['Sync nube', "chatAsk('Revisa la configuracion de sincronizacion y dime si falta algo')"]
+  ];
+  if (view === 'inbox') return [
+    ['Responder emails', "chatAsk('Ayudame a responder los emails pendientes de la bandeja')"],
+    ['Ver vencidos', "chatExecute('overdueLeads')"],
+    ['Resumen semanal', "sendManualAlert('summary')"]
+  ];
+  return [
+    ['Briefing hoy', "chatAsk('Dame el briefing del dia')"],
+    ['Leads prioritarios', "chatExecute('topLeads')"],
+    ['Analizar embudo', "chatExecute('funnelAnalysis')"]
+  ];
+}
+
+function renderChatContextActions() {
+  const wrap = document.getElementById('chat-context-actions');
+  if (!wrap) return;
+  wrap.innerHTML = getChatContextActions().map(([label, action]) => chatButton(label, action)).join('');
+}
+
+function renderChatSuggestions() {
+  const el = document.getElementById('chat-suggestions');
+  if (!el) return;
+  const base = getChatContextActions();
+  const common = [
+    ['Plan semanal', 'generateWeeklyPlan()'],
+    ['Modo agente', 'toggleAgentMode()'],
+    ['Diagnostico', "chatRunCommand('diagnostics')"]
+  ];
+  el.innerHTML = [...base, ...common].slice(0, 6).map(([label, action]) => chatButton(label, action)).join('');
+  renderChatContextActions();
+}
+
+function chatToggleCommands(force) {
+  const panel = document.getElementById('chat-command-panel');
+  if (!panel) return;
+  const open = typeof force === 'boolean' ? force : panel.style.display === 'none' || panel.style.display === '';
+  panel.style.display = open ? 'block' : 'none';
+  if (open) renderChatContextActions();
+}
+
+function chatRunCommand(command) {
+  chatToggleCommands(true);
+  if (command === 'diagnostics') { renderChatDiagnostics(); return; }
+  if (command === 'history') { renderChatHistoryPanel(); return; }
+  if (command === 'search') { showView('planner'); chatAsk('Ayudame a lanzar una busqueda de empresas con buena probabilidad de contacto'); return; }
+  if (command === 'email') {
+    const lead = leads.find(l => !l.archived && l.email && l.status !== 'Cerrado') || leads.find(l => !l.archived && l.email);
+    if (lead) openAiEmailModal(lead.id);
+    else chatAddMessage('bot', 'No encuentro leads con email disponible. Importa o enriquece algun lead primero.');
+    return;
+  }
+  if (command === 'funnel') { chatExecute('funnelAnalysis'); return; }
+  if (command === 'clean') { runAutoMaintenance(false); return; }
+}
+
+function renderChatDiagnostics() {
+  const el = document.getElementById('chat-diagnostic-panel');
+  if (!el) return;
+  const checks = [
+    ['Google Places', !!localStorage.getItem('gordi_api_key'), 'Necesario para buscar empresas'],
+    ['Gemini', !!getGeminiKey(), 'Necesario para el asistente y emails IA'],
+    ['Hunter', !!localStorage.getItem('gordi_hunter_key'), 'Opcional: mejora emails corporativos'],
+    ['Apollo', !!localStorage.getItem('gordi_apollo_key'), 'Opcional: mejora decisores'],
+    ['Proxy CORS', !!localStorage.getItem('gordi_custom_proxy'), 'Opcional: estabiliza scraping si los proxies publicos fallan']
+  ];
+  const rows = checks.map(([name, ok, note]) => `
+    <div style="display:flex;justify-content:space-between;gap:.75rem;padding:.35rem 0;border-bottom:1px solid var(--glass-border)">
+      <div><strong style="font-size:.76rem">${name}</strong><div style="font-size:.68rem;color:var(--text-dim)">${note}</div></div>
+      <span style="font-size:.72rem;color:${ok ? 'var(--success)' : 'var(--warning)'}">${ok ? 'OK' : 'Revisar'}</span>
+    </div>`).join('');
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div style="padding:.65rem .75rem;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,.03)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.35rem">
+        <strong style="font-size:.78rem">Diagnostico de herramienta</strong>
+        <button class="chat-sug" onclick="showView('settings')">Abrir ajustes</button>
+      </div>
+      ${rows}
+    </div>`;
+}
+
+function renderChatHistoryPanel() {
+  const el = document.getElementById('chat-history-panel');
+  if (!el) return;
+  const all = getChatStoredMessages();
+  const items = all.map((m, i) => ({ ...m, index: i })).slice(-8).reverse();
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div style="padding:.65rem .75rem;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,.03)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+        <strong style="font-size:.78rem">Historial reciente</strong>
+        <button class="chat-sug" onclick="localStorage.removeItem('gordi_chat_history');renderChatHistoryPanel()">Limpiar</button>
+      </div>
+      ${items.length ? items.map(m => `<div style="font-size:.72rem;color:var(--text-muted);padding:.4rem 0;border-bottom:1px solid var(--glass-border)">
+        <div><strong>${m.role === 'user' ? 'Tu' : 'Bot'}:</strong> ${m.text}</div>
+        <div style="display:flex;gap:.35rem;margin-top:.3rem;flex-wrap:wrap">
+          <button class="chat-sug" onclick="copyChatHistoryItem(${m.index})">Copiar</button>
+          <button class="chat-sug" onclick="saveChatHistoryItemAsNote(${m.index})">Guardar nota</button>
+        </div>
+      </div>`).join('') : '<div style="font-size:.72rem;color:var(--text-dim)">Sin historial guardado.</div>'}
+    </div>`;
+}
+
+function copyChatHistoryItem(index) {
+  const item = getChatStoredMessages()[index];
+  if (!item) return;
+  copyToClipboard(item.text || item.html || '', 'Respuesta del chat copiada');
+}
+
+function saveChatHistoryItemAsNote(index) {
+  const item = getChatStoredMessages()[index];
+  if (!item) return;
+  const leadId = typeof aiCurrentLeadId !== 'undefined' && aiCurrentLeadId
+    ? aiCurrentLeadId
+    : (leads.find(l => !l.archived && l.status !== 'Cerrado') || leads.find(l => !l.archived))?.id;
+  const lead = leads.find(l => l.id == leadId);
+  if (!lead) { showToast('No hay lead disponible para guardar la nota'); return; }
+  const stamp = new Date().toLocaleDateString('es-ES');
+  lead.notes = `${lead.notes || ''}\n[${stamp}] Nota del asistente: ${item.text || ''}`.trim();
+  addActivityLog(lead.id, 'Nota guardada desde el chat');
+  saveLeads();
+  renderAll();
+  showToast('Nota del chat guardada en ' + lead.company);
+}
+
 function toggleChat() {
   chatOpen = !chatOpen;
   const win = document.getElementById('chat-window');
   win.classList.toggle('open', chatOpen);
   document.getElementById('chat-notif').style.display = 'none';
+  renderChatSuggestions();
   if (chatOpen && !chatInitialized) {
     chatInitialized = true;
     if (shouldShowWeeklyPlan()) {
@@ -2030,6 +2211,7 @@ function chatAddMessage(role, html, extra) {
   if (extra) div.appendChild(extra);
   el.appendChild(div);
   el.scrollTop = el.scrollHeight;
+  persistChatMessage(role, html);
   // ðŸ—£ï¸ TTS: speak bot replies
   if (role === 'bot') debouncedRender('tts', () => speakText(html), 100);
   return div;
@@ -2282,6 +2464,8 @@ async function chatSend() {
   const geminiKey = getGeminiKey();
   if (!geminiKey) {
     chatAddMessage('bot', 'âš ï¸ Necesitas configurar tu <strong>API Key de Gemini</strong> en ConfiguraciÃ³n para usar el asistente.<br><br>Es gratuita: <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--primary)">aistudio.google.com/apikey</a>');
+    chatToggleCommands(true);
+    renderChatDiagnostics();
     return;
   }
 
@@ -2426,11 +2610,24 @@ async function chatSend() {
   } catch(e) {
     chatRemoveTyping();
     chatAddMessage('bot', 'âŒ Error: ' + e.message + '. Verifica tu API key de Gemini en ConfiguraciÃ³n.');
+    chatToggleCommands(true);
+    renderChatDiagnostics();
   }
 }
 
 // Auto-resize textarea del chat + AI editor word count
 document.addEventListener('DOMContentLoaded', () => {
+  renderChatSuggestions();
+  if (typeof showView === 'function' && !showView._chatWrapped) {
+    const originalShowView = showView;
+    showView = function(view) {
+      const result = originalShowView.apply(this, arguments);
+      setTimeout(renderChatSuggestions, 0);
+      return result;
+    };
+    showView._chatWrapped = true;
+  }
+
   const input = document.getElementById('chat-input');
   if (input) {
     input.addEventListener('input', function() {

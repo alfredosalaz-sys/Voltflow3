@@ -610,6 +610,8 @@ function importSelectedLeads() {
 
   if (!indices.length) { showToast('⚠️ Selecciona al menos un lead'); return; }
 
+  if (typeof createSafetySnapshot === 'function') createSafetySnapshot('before_smart_import');
+
   let imported = 0;
   let skippedDup = 0;
   const now = new Date().toISOString();

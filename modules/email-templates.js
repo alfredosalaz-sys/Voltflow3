@@ -1,4 +1,4 @@
-// ============ PLANTILLAS EMAIL — VOLTIUM MADRID ============
+﻿// ============ PLANTILLAS EMAIL — VOLTIUM MADRID ============
 // Copywriting profesional: estructura PAS + prueba social + CTA de baja fricción
 // Personalización por sector usando datos reales de la empresa contactada
 const defaultTemplates = {

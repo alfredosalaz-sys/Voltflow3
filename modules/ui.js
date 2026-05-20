@@ -1,4 +1,4 @@
-// ============ TOAST ============
+﻿// ============ TOAST ============
 function showToast(msg) {
   const t = document.createElement('div');
   t.style.cssText = `position:fixed;bottom:2rem;right:2rem;background:var(--bg2);border:1px solid var(--glass-border);color:var(--text);padding:.75rem 1.25rem;border-radius:10px;font-size:.83rem;z-index:9999;animation:fadeIn .3s ease;box-shadow:0 8px 24px rgba(0,0,0,.4)`;
@@ -722,6 +722,13 @@ function executeLocalImport(mode) {
   const histData   = (() => { try { return JSON.parse(localStorage.getItem('gordi_email_history') || '[]'); } catch { return []; } })();
   const campsData  = (() => { try { return JSON.parse(localStorage.getItem('gordi_campaigns') || '[]'); } catch { return []; } })();
 
+  const safety = typeof createSafetySnapshot === 'function'
+    ? createSafetySnapshot(`before_local_import_${mode}`)
+    : null;
+  if (mode === 'replace' && !confirm(`Vas a reemplazar los datos actuales por los datos del storage.\n\nSnapshot de seguridad: ${safety ? 'creado' : 'no disponible'}.\n\nContinuar?`)) {
+    return;
+  }
+
   if (mode === 'merge') {
     const merged = [...leads];
     let added = 0;
@@ -771,6 +778,55 @@ function executeLocalImport(mode) {
 
 function closeImportModal() {
   document.getElementById('import-modal-overlay').style.display = 'none';
+}
+
+function buildSnapshotFromFullBackup(data) {
+  return {
+    _voltflow_version: data.version || VOLTFLOW_VERSION || 'backup',
+    _exported: data.date || new Date().toISOString(),
+    gordi_leads: JSON.stringify(data.leads || []),
+    gordi_email_history: JSON.stringify(data.emailHistory || []),
+    gordi_campaigns: JSON.stringify(data.campaigns || []),
+    gordi_objectives: JSON.stringify(data.objectives || {}),
+    gordi_templates: JSON.stringify(data.templates || {})
+  };
+}
+
+function openSafetySnapshotsModal() {
+  const items = typeof listSafetySnapshots === 'function' ? listSafetySnapshots() : [];
+  const rows = items.length ? items.map(item => {
+    const date = new Date(item.date).toLocaleString('es-ES');
+    const reason = (item.reason || 'manual').replace(/_/g, ' ');
+    const summary = item.summary || {};
+    return `
+      <div style="display:grid;grid-template-columns:1fr auto;gap:.75rem;align-items:center;padding:.85rem;border:1px solid var(--glass-border);border-radius:10px;background:var(--bg3)">
+        <div>
+          <div style="font-weight:700;color:var(--text);font-size:.9rem">${date}</div>
+          <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px">${reason} · ${summary.leads || 0} leads · ${summary.keys || 0} claves</div>
+        </div>
+        <button class="btn btn-small secondary" onclick="restoreSafetySnapshot('${item.id}')">Restaurar</button>
+      </div>`;
+  }).join('') : `
+    <div style="padding:1rem;border:1px solid var(--glass-border);border-radius:10px;background:var(--bg3);color:var(--text-muted);font-size:.85rem">
+      Todavia no hay snapshots automaticos. Se crean antes de importar, restaurar, sincronizar o abrir una version nueva.
+    </div>`;
+
+  document.getElementById('import-modal-overlay').style.display = 'flex';
+  document.getElementById('import-modal-content').innerHTML = `
+    <div style="padding:1.5rem;display:grid;gap:1rem">
+      <div style="display:flex;justify-content:space-between;gap:1rem;align-items:center">
+        <div>
+          <h3 style="margin:0;color:var(--text)">Snapshots de seguridad</h3>
+          <p style="margin:.25rem 0 0;color:var(--text-muted);font-size:.82rem">Ultimos ${items.length} puntos de recuperacion guardados en este navegador.</p>
+        </div>
+        <button onclick="closeImportModal()" class="btn btn-small ghost">Cerrar</button>
+      </div>
+      <div style="display:grid;gap:.65rem;max-height:420px;overflow:auto">${rows}</div>
+      <div style="display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap">
+        <button onclick="createSafetySnapshot('manual', { download: true }); openSafetySnapshotsModal();" class="btn secondary">Crear y exportar ahora</button>
+        <button onclick="exportLatestSafetySnapshot()" class="btn primary">Exportar ultimo snapshot</button>
+      </div>
+    </div>`;
 }
 
 // Banner de bienvenida tras migraciÃ³n automÃ¡tica en primer arranque
@@ -836,10 +892,16 @@ function showMigrationBanner(log) {
 }
 
 function exportFullBackup() {
+  const portableSnapshot = typeof exportDataSnapshot === 'function' ? exportDataSnapshot() : null;
+  const integrity = portableSnapshot && typeof validateDataSnapshot === 'function'
+    ? validateDataSnapshot(portableSnapshot).summary
+    : null;
   const data = {
     version: '2.0', date: new Date().toISOString(),
     leads, emailHistory, campaigns, objectives,
-    templates: emailTemplates
+    templates: emailTemplates,
+    portableSnapshot,
+    integrity
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -859,10 +921,26 @@ function restoreBackup(event) {
       // â”€â”€ Formato A: backup completo  { leads:[...], emailHistory:[...], ... }
       // Generado por "Backup completo (JSON)" en Voltflow2 / app.html
       if (data.leads && Array.isArray(data.leads)) {
+        const backupSnapshot = data.portableSnapshot || buildSnapshotFromFullBackup(data);
+        const validation = typeof validateDataSnapshot === 'function'
+          ? validateDataSnapshot(backupSnapshot, typeof getCurrentDataSummary === 'function' ? getCurrentDataSummary() : null)
+          : { ok: true, warnings: [] };
+        if (!validation.ok) {
+          alert('Backup corrupto o incompatible:\n- ' + validation.errors.join('\n- '));
+          return;
+        }
         const dateStr = data.date
           ? new Date(data.date).toLocaleDateString('es-ES')
           : 'fecha desconocida';
-        if (!confirm(`Restaurar backup del ${dateStr}?\nSe cargarÃ¡n ${data.leads.length} leads.\nLos datos actuales en memoria serÃ¡n reemplazados.`)) return;
+        const warnings = validation.warnings && validation.warnings.length ? `\n\nAvisos:\n- ${validation.warnings.join('\n- ')}` : '';
+        if (!confirm(`Restaurar backup del ${dateStr}?\nSe cargaran ${data.leads.length} leads.\nSe creara un snapshot de seguridad antes de reemplazar los datos actuales.${warnings}`)) return;
+        if (data.portableSnapshot && typeof importDataSnapshot === 'function') {
+          importDataSnapshot(data.portableSnapshot, true, { reason: 'before_restore_full_backup' });
+          if (typeof reloadDataFromStorage === 'function') reloadDataFromStorage();
+          showToast(`âœ… Backup completo restaurado: ${validation.summary.leads} leads`);
+          return;
+        }
+        if (typeof createSafetySnapshot === 'function') createSafetySnapshot('before_restore_legacy_backup');
 
         leads        = data.leads        || [];
         emailHistory = data.emailHistory || [];
@@ -889,18 +967,27 @@ function restoreBackup(event) {
       // Generado por "Exportar datos portÃ¡tiles" â€” estructura:
       // { _voltflow_version:"x", _exported:"...", gordi_leads:"[...]", ... }
       if (data.gordi_leads !== undefined || data._voltflow_version || data._exported) {
+        const validation = typeof validateDataSnapshot === 'function'
+          ? validateDataSnapshot(data, typeof getCurrentDataSummary === 'function' ? getCurrentDataSummary() : null)
+          : { ok: true, warnings: [] };
+        if (!validation.ok) {
+          alert('Archivo corrupto o incompatible:\n- ' + validation.errors.join('\n- '));
+          return;
+        }
         let parsedLeads = [];
         try { parsedLeads = JSON.parse(data.gordi_leads || '[]'); } catch {}
         const dateStr = data._exported
           ? new Date(data._exported).toLocaleDateString('es-ES')
           : 'fecha desconocida';
-        if (!confirm(`Restaurar datos portÃ¡tiles del ${dateStr}?\nSe cargarÃ¡n ${parsedLeads.length} leads.\nLos datos actuales serÃ¡n reemplazados.`)) return;
+        const warnings = validation.warnings && validation.warnings.length ? `\n\nAvisos:\n- ${validation.warnings.join('\n- ')}` : '';
+        if (!confirm(`Restaurar datos portatiles del ${dateStr}?\nSe cargaran ${parsedLeads.length} leads.\nSe creara un snapshot de seguridad antes de reemplazar los datos actuales.${warnings}`)) return;
+        if (typeof createSafetySnapshot === 'function') createSafetySnapshot('before_restore_portable_snapshot');
 
         // Volcar todas las claves gordi_* al localStorage
         let restored = 0;
         for (const [key, val] of Object.entries(data)) {
           if (key.startsWith('_')) continue;
-          if (typeof val === 'string') { localStorage.setItem(key, val); restored++; }
+          if (typeof val === 'string' && !(typeof VOLTFLOW_SNAPSHOT_EXCLUDED_KEYS !== 'undefined' && VOLTFLOW_SNAPSHOT_EXCLUDED_KEYS.has(key))) { localStorage.setItem(key, val); restored++; }
         }
 
         // Recargar estado en memoria desde el localStorage reciÃ©n poblado
@@ -938,8 +1025,17 @@ function autoWeeklyBackup() {
   if (!last || now - parseInt(last) > 7 * 86400000) {
     localStorage.setItem('gordi_last_backup', now.toString());
     if (leads.length > 0) {
-      const data = { version:'2.0', date:new Date().toISOString(), leads, emailHistory, campaigns };
-      localStorage.setItem('gordi_auto_backup', JSON.stringify(data));
+      if (typeof createSafetySnapshot === 'function') {
+        const item = createSafetySnapshot('auto_weekly');
+        if (item) localStorage.setItem('gordi_auto_backup', JSON.stringify({ version:'2.0', date:item.date, snapshotId:item.id, summary:item.summary }));
+      } else {
+        const data = { version:'2.0', date:new Date().toISOString(), leads, emailHistory, campaigns };
+        localStorage.setItem('gordi_auto_backup', JSON.stringify(data));
+      }
+      if (!localStorage.getItem('gordi_backup_export_reminded')) {
+        localStorage.setItem('gordi_backup_export_reminded', now.toString());
+        setTimeout(() => showToast('Consejo: exporta un backup JSON para conservar una copia fuera del navegador'), 1200);
+      }
     }
   }
 }
@@ -1042,6 +1138,7 @@ function renderDashboardCharts() {
   renderApiLog();
   updateStorageInfo();
   renderDailyStats();
+  sanitizeDashboardMarkup();
 }
 
 function renderDailyStats() {
@@ -1177,4 +1274,186 @@ document.addEventListener('DOMContentLoaded', () => {
   setTimeout(ensureGoogleMapsLoaded, 500);
 });
 
+function cleanVisibleText(value) {
+  const text = String(value ?? '');
+  try {
+    return decodeURIComponent(escape(text));
+  } catch {
+    return text;
+  }
+}
 
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;bottom:2rem;right:2rem;background:var(--bg2);border:1px solid var(--glass-border);color:var(--text);padding:.75rem 1.25rem;border-radius:10px;font-size:.83rem;z-index:9999;animation:fadeIn .3s ease;box-shadow:0 8px 24px rgba(0,0,0,.4)`;
+  t.innerText = cleanVisibleText(msg);
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2800);
+}
+
+async function copyToClipboard(text, message = 'Copiado al portapapeles') {
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast(`Copy: ${cleanVisibleText(message)}`);
+  } catch (err) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      showToast(`Copy: ${cleanVisibleText(message)}`);
+    } catch (copyErr) {
+      console.error('Error al copiar:', copyErr);
+    }
+    document.body.removeChild(textArea);
+  }
+}
+
+function toggleLightMode() {
+  const isLight = document.body.classList.toggle('light-mode');
+  localStorage.setItem('gordi_light_mode', isLight ? '1' : '0');
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = isLight ? 'Claro' : 'Oscuro';
+}
+
+function applyLightMode(on) {
+  if (on) document.body.classList.add('light-mode');
+  else document.body.classList.remove('light-mode');
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = on ? 'Claro' : 'Oscuro';
+}
+
+function cleanVisibleText(value) {
+  let text = String(value ?? '');
+  for (let i = 0; i < 3; i++) {
+    if (!/[ÃÂðâÅ]/.test(text)) break;
+    try {
+      const next = decodeURIComponent(escape(text));
+      if (next === text) break;
+      text = next;
+    } catch {
+      break;
+    }
+  }
+  return text;
+}
+
+function normalizeVisibleTextNodes(root = document.body) {
+  if (!root || !root.querySelectorAll) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let node;
+  while ((node = walker.nextNode())) {
+    const parent = node.parentElement;
+    if (!parent) continue;
+    if (['SCRIPT','STYLE','TEXTAREA','INPUT','CODE','PRE'].includes(parent.tagName)) continue;
+    const cleaned = cleanVisibleText(node.nodeValue);
+    if (cleaned !== node.nodeValue) node.nodeValue = cleaned;
+  }
+
+  const attrSelector = '[title], [aria-label], [placeholder], [alt], [data-tooltip]';
+  root.querySelectorAll(attrSelector).forEach(el => {
+    ['title', 'aria-label', 'placeholder', 'alt', 'data-tooltip'].forEach(attr => {
+      if (!el.hasAttribute(attr)) return;
+      const value = el.getAttribute(attr);
+      const cleaned = cleanVisibleText(value);
+      if (cleaned !== value) el.setAttribute(attr, cleaned);
+    });
+  });
+}
+
+let _textNormalizeTimer = null;
+function scheduleVisibleTextNormalization() {
+  clearTimeout(_textNormalizeTimer);
+  _textNormalizeTimer = setTimeout(() => {
+    normalizeVisibleTextNodes(document.body);
+  }, 50);
+}
+
+function initVisibleTextNormalization() {
+  scheduleVisibleTextNormalization();
+  if (typeof MutationObserver === 'function') {
+    const observer = new MutationObserver(() => scheduleVisibleTextNormalization());
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+  }
+}
+
+function sanitizeDashboardMarkup() {
+  const ids = [
+    'segment-chart',
+    'top-leads-list',
+    'conversion-metrics',
+    'sector-performance',
+    'intel-content',
+    'smart-alert',
+    'funnel-chart',
+    'pipeline-value',
+    'pipeline-value-panel',
+    'streak-panel',
+    'heatmap-panel',
+    'objectives-panel',
+    'today-content',
+    'api-log',
+    'storage-info',
+    'daily-stats-panel',
+    'recent-activity'
+  ];
+
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || typeof el.innerHTML !== 'string') return;
+    const cleaned = cleanVisibleText(el.innerHTML);
+    if (cleaned !== el.innerHTML) el.innerHTML = cleaned;
+  });
+
+  scheduleVisibleTextNormalization();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(ensureGoogleMapsLoaded, 500);
+  initVisibleTextNormalization();
+});
+
+function cleanVisibleText(value) {
+  let text = String(value ?? '');
+  const hasMojibake = str => /[\u00c3\u00c2\u00e2\u00f0\u00c5\u0192]/.test(str);
+  const cp1252Bytes = {
+    '\u20ac': 0x80, '\u201a': 0x82, '\u0192': 0x83, '\u201e': 0x84,
+    '\u2026': 0x85, '\u2020': 0x86, '\u2021': 0x87, '\u02c6': 0x88,
+    '\u2030': 0x89, '\u0160': 0x8a, '\u2039': 0x8b, '\u0152': 0x8c,
+    '\u017d': 0x8e, '\u2018': 0x91, '\u2019': 0x92, '\u201c': 0x93,
+    '\u201d': 0x94, '\u2022': 0x95, '\u2013': 0x96, '\u2014': 0x97,
+    '\u02dc': 0x98, '\u2122': 0x99, '\u0161': 0x9a, '\u203a': 0x9b,
+    '\u0153': 0x9c, '\u017e': 0x9e, '\u0178': 0x9f
+  };
+  const decoder = typeof TextDecoder !== 'undefined'
+    ? new TextDecoder('utf-8', { fatal: false })
+    : null;
+
+  const decodeChunk = chunk => {
+    let decoded = chunk;
+    for (let i = 0; i < 4 && hasMojibake(decoded); i++) {
+      const bytes = [];
+      let encodable = true;
+      for (const ch of decoded) {
+        const code = ch.charCodeAt(0);
+        if (code <= 0xff) bytes.push(code);
+        else if (Object.prototype.hasOwnProperty.call(cp1252Bytes, ch)) bytes.push(cp1252Bytes[ch]);
+        else { encodable = false; break; }
+      }
+      if (!encodable || !decoder) break;
+      const next = decoder.decode(new Uint8Array(bytes));
+      if (!next || next === decoded) break;
+      decoded = next;
+    }
+    return decoded;
+  };
+
+  for (let i = 0; i < 3 && hasMojibake(text); i++) {
+    const next = text.replace(/[\u00c3\u00c2\u00e2\u00f0\u00c5][^\s<>"'=()]*/g, decodeChunk);
+    if (next === text) break;
+    text = next;
+  }
+  return text;
+}
