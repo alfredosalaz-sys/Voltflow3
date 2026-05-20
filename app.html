@@ -675,6 +675,23 @@
           </button>
         </div>
       </div>
+      <div id="multi-sector-toolbar" style="margin-top:.9rem;padding:.8rem .9rem;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,.03)">
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;color:var(--text);cursor:pointer">
+          <input type="checkbox" id="plan-multi-toggle" onchange="toggleMultiSectorSearch(this.checked)" style="accent-color:var(--primary)">
+          Buscar varios sectores en el mismo CP/zona
+        </label>
+        <div id="multi-sector-panel" style="display:none;margin-top:.75rem">
+          <div style="display:flex;justify-content:space-between;gap:.75rem;align-items:center;flex-wrap:wrap;margin-bottom:.55rem">
+            <div style="font-size:.72rem;color:var(--text-muted)">Marca los sectores que quieres lanzar contra la misma ciudad, zona o codigo postal.</div>
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+              <button class="btn-outline btn-sm" onclick="setAllMultiSectors(true)">Todos</button>
+              <button class="btn-outline btn-sm" onclick="setAllMultiSectors(false)">Limpiar</button>
+            </div>
+          </div>
+          <div id="multi-sector-list" style="display:flex;gap:.4rem;flex-wrap:wrap"></div>
+          <div id="multi-sector-summary" style="margin-top:.65rem;font-size:.75rem;color:var(--text-muted)"></div>
+        </div>
+      </div>
       <!-- MEJORA 5: Búsquedas guardadas -->
       <div id="saved-searches-panel" style="margin-top:.75rem;display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem">
@@ -2261,12 +2278,12 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
 <script src="modules/email-templates.js?v=2" charset="UTF-8"></script>
 <script src="modules/scoring.js?v=2" charset="UTF-8"></script>
 <script src="modules/init.js?v=3" charset="UTF-8"></script>
-<script src="modules/search.js?v=3" charset="UTF-8"></script>
+<script src="modules/search.js?v=4" charset="UTF-8"></script>
 <script src="modules/leads.js?v=2" charset="UTF-8"></script>
-<script src="modules/dashboard.js?v=3" charset="UTF-8"></script>
+<script src="modules/dashboard.js?v=4" charset="UTF-8"></script>
 <script src="modules/ai-email.js?v=2" charset="UTF-8"></script>
 <script src="modules/chat.js?v=4" charset="UTF-8"></script>
-<script src="modules/ui.js?v=5" charset="UTF-8"></script>
+<script src="modules/ui.js?v=6" charset="UTF-8"></script>
 <script src="modules/inbox.js?v=2" charset="UTF-8"></script>
 <script src="modules/ai-router.js?v=2" charset="UTF-8"></script>
 <script src="modules/misc.js?v=2" charset="UTF-8"></script>

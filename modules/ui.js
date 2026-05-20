@@ -1243,6 +1243,7 @@ function populateSegmentDropdowns() {
     planSel.innerHTML = segments.map(seg => `<option value="${seg}">${SEGMENT_LABELS[seg]}</option>`).join('');
     if (cur && segments.includes(cur)) planSel.value = cur;
   }
+  if (typeof renderMultiSectorPicker === 'function') renderMultiSectorPicker();
 
   // 4. Selector en creaciÃ³n de campaÃ±a
   const campSel = document.getElementById('camp-segment');

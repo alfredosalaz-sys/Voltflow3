@@ -41,6 +41,178 @@ const PERF = {
   uiYieldMs: 0,
 };
 
+let multiSectorSearchState = null;
+let currentMultiSectorFilter = 'all';
+
+function getSegmentLabel(seg) {
+  return (typeof SEGMENT_LABELS !== 'undefined' && SEGMENT_LABELS[seg]) || seg;
+}
+
+function getMultiSectorSelection() {
+  return [...document.querySelectorAll('.multi-sector-check:checked')].map(el => el.value);
+}
+
+function saveMultiSectorSelection() {
+  try { localStorage.setItem('gordi_multi_sector_selection', JSON.stringify(getMultiSectorSelection())); } catch {}
+  updateMultiSectorSummary();
+}
+
+function renderMultiSectorPicker() {
+  const list = document.getElementById('multi-sector-list');
+  if (!list || typeof SEGMENT_LABELS === 'undefined') return;
+  let saved = [];
+  try { saved = JSON.parse(localStorage.getItem('gordi_multi_sector_selection') || '[]'); } catch {}
+  const current = document.getElementById('plan-segment')?.value;
+  if (!saved.length && current) saved = [current];
+  const segments = Object.keys(SEGMENT_LABELS);
+  list.innerHTML = segments.map(seg => `
+    <label style="display:inline-flex;align-items:center;gap:.35rem;border:1px solid var(--glass-border);background:rgba(255,255,255,.035);border-radius:999px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">
+      <input class="multi-sector-check" type="checkbox" value="${seg}" ${saved.includes(seg) ? 'checked' : ''} onchange="saveMultiSectorSelection()" style="accent-color:var(--primary)">
+      <span>${getSegmentLabel(seg)}</span>
+    </label>`).join('');
+  updateMultiSectorSummary();
+}
+
+function toggleMultiSectorSearch(enabled) {
+  const panel = document.getElementById('multi-sector-panel');
+  if (panel) panel.style.display = enabled ? 'block' : 'none';
+  updateMultiSectorSummary();
+}
+
+function setAllMultiSectors(checked) {
+  document.querySelectorAll('.multi-sector-check').forEach(el => { el.checked = checked; });
+  saveMultiSectorSelection();
+}
+
+function updateMultiSectorSummary() {
+  const el = document.getElementById('multi-sector-summary');
+  if (!el) return;
+  const selected = getMultiSectorSelection();
+  el.textContent = selected.length
+    ? `${selected.length} sectores seleccionados: ${selected.map(getSegmentLabel).join(', ')}`
+    : 'Selecciona al menos un sector para activar la busqueda multi-sector.';
+}
+
+function ensureMultiSectorProgressPanel(sectors) {
+  let el = document.getElementById('multi-sector-progress');
+  const host = document.getElementById('enrich-pipeline') || document.getElementById('search-results-panel');
+  if (!host) return null;
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'multi-sector-progress';
+    el.style.cssText = 'margin-top:1rem;padding:1rem;border:1px solid var(--glass-border);border-radius:12px;background:rgba(255,255,255,.035)';
+    host.appendChild(el);
+  }
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;gap:1rem;align-items:center;margin-bottom:.75rem">
+      <div>
+        <div style="font-weight:800;color:var(--text)">Busqueda multi-sector</div>
+        <div style="font-size:.78rem;color:var(--text-muted)">Mismo CP/zona, varios sectores, resultados deduplicados.</div>
+      </div>
+      <div id="multi-sector-progress-total" style="font-size:.78rem;color:var(--text-muted)">0/${sectors.length}</div>
+    </div>
+    <div id="multi-sector-progress-rows" style="display:grid;gap:.45rem">
+      ${sectors.map(seg => `
+        <div data-ms-row="${seg}" style="display:grid;grid-template-columns:minmax(110px,1fr) 2fr auto;gap:.6rem;align-items:center;font-size:.78rem">
+          <strong style="color:var(--text)">${getSegmentLabel(seg)}</strong>
+          <div style="height:7px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden"><div data-ms-fill="${seg}" style="width:0%;height:100%;background:var(--primary);transition:width .25s"></div></div>
+          <span data-ms-status="${seg}" style="color:var(--text-muted)">pendiente</span>
+        </div>`).join('')}
+    </div>`;
+  return el;
+}
+
+function setMultiSectorProgress(seg, status, pct, done, total) {
+  const statusEl = document.querySelector(`[data-ms-status="${seg}"]`);
+  const fillEl = document.querySelector(`[data-ms-fill="${seg}"]`);
+  if (statusEl) statusEl.textContent = status;
+  if (fillEl) fillEl.style.width = Math.max(0, Math.min(100, pct || 0)) + '%';
+  const totalEl = document.getElementById('multi-sector-progress-total');
+  if (totalEl && total) totalEl.textContent = `${done}/${total}`;
+}
+
+function mergeMultiSectorResults(items) {
+  const merged = [];
+  for (const item of items) {
+    const sectors = item.matchedSectors || [item.sourceSector].filter(Boolean);
+    const existing = merged.find(x => isSameBusiness(item, x));
+    if (existing) {
+      Object.assign(existing, { ...existing, ...item });
+      existing.matchedSectors = [...new Set([...(existing.matchedSectors || []), ...sectors])];
+      existing.sourceSector = existing.matchedSectors[0] || existing.sourceSector || item.sourceSector;
+    } else {
+      merged.push({ ...item, matchedSectors: [...new Set(sectors)] });
+    }
+  }
+  return deduplicateResults(merged);
+}
+
+function getMultiSectorStats(results = tempSearchResults) {
+  const stats = {};
+  (results || []).forEach(c => (c.matchedSectors || [c.sourceSector || c.segment || 'Otros']).forEach(seg => {
+    if (!stats[seg]) stats[seg] = { total: 0, email: 0, ready: 0, pain: 0, score: 0 };
+    stats[seg].total++;
+    stats[seg].email += c.email ? 1 : 0;
+    stats[seg].ready += getLeadUXStatus(c).key === 'ready' ? 1 : 0;
+    stats[seg].pain += (c.scrapeSignals || []).length ? 1 : 0;
+    stats[seg].score += c.opportunityScore || 0;
+  }));
+  Object.values(stats).forEach(s => { s.avg = s.total ? Math.round(s.score / s.total) : 0; });
+  return stats;
+}
+
+function renderMultiSectorResultsPanel() {
+  const panel = document.getElementById('search-results-panel');
+  if (!panel || !multiSectorSearchState) return;
+  let el = document.getElementById('multi-sector-results-panel');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'multi-sector-results-panel';
+    el.style.cssText = 'margin-bottom:1rem;padding:1rem 1.1rem;border-radius:12px;border:1px solid rgba(10,132,255,.22);background:rgba(10,132,255,.06)';
+    panel.insertBefore(el, panel.firstChild);
+  }
+  const stats = getMultiSectorStats();
+  const sectors = Object.keys(stats).sort((a, b) => stats[b].total - stats[a].total);
+  const totalRaw = multiSectorSearchState.rawCount || tempSearchResults.length;
+  const duplicates = Math.max(0, totalRaw - tempSearchResults.length);
+  const newCount = tempSearchResults.filter(c => !leads.some(l => !l.archived && isSameBusiness({ ...c, company: c.name }, l))).length;
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;flex-wrap:wrap">
+      <div>
+        <div style="font-weight:800;color:var(--text)">CP/zona ${multiSectorSearchState.location}</div>
+        <div style="font-size:.8rem;color:var(--text-muted);margin-top:.2rem">${sectors.length} sectores · ${tempSearchResults.length} empresas unicas · ${newCount} nuevas · ${duplicates} duplicados fusionados</div>
+      </div>
+      <div style="display:flex;gap:.45rem;flex-wrap:wrap">
+        <button class="btn-primary btn-sm" onclick="currentMultiSectorFilter='all';createProspectingCampaignFromSearch()">Campana multi-sector</button>
+        <button class="btn-outline btn-sm" onclick="filterMultiSectorResults('all')">Ver todos</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.85rem">
+      <button class="rfilt ${currentMultiSectorFilter === 'all' ? 'active' : ''}" onclick="filterMultiSectorResults('all')">Todos <span style="opacity:.7">${tempSearchResults.length}</span></button>
+      ${sectors.map(seg => {
+        const s = stats[seg];
+        return `<button class="rfilt ${currentMultiSectorFilter === seg ? 'active' : ''}" onclick="filterMultiSectorResults('${seg}')">${getSegmentLabel(seg)} <span style="opacity:.7">${s.total}</span></button>`;
+      }).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:.5rem;margin-top:.85rem">
+      ${sectors.map(seg => {
+        const s = stats[seg];
+        return `<div style="padding:.65rem;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,.035)">
+          <div style="font-weight:700;font-size:.82rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${getSegmentLabel(seg)}</div>
+          <div style="font-size:.7rem;color:var(--text-muted);margin-top:.25rem">${s.email} email · ${s.ready} listos · ${s.pain} dolores · score ${s.avg}</div>
+          <button class="btn-outline btn-sm" style="margin-top:.45rem;width:100%" onclick="filterMultiSectorResults('${seg}');createProspectingCampaignFromSearch()">Campana sector</button>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function filterMultiSectorResults(seg) {
+  currentMultiSectorFilter = seg || 'all';
+  renderMultiSectorResultsPanel();
+  applyAdvancedFilters();
+}
+
 function yieldToUI() {
   return new Promise(resolve => {
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => resolve());
@@ -2908,6 +3080,65 @@ function saveSheetsConfig() {
 
 // â”€â”€â”€ MOTOR PRINCIPAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function searchBusinesses() {
+  const multiEnabled = document.getElementById('plan-multi-toggle')?.checked;
+  if (!multiEnabled) {
+    multiSectorSearchState = null;
+    currentMultiSectorFilter = 'all';
+    const msPanel = document.getElementById('multi-sector-results-panel');
+    if (msPanel) msPanel.remove();
+    return searchBusinessesSingle();
+  }
+
+  const sectors = getMultiSectorSelection();
+  const location = document.getElementById('plan-location')?.value?.trim() || '';
+  if (!location) { alert('Introduce una ciudad, zona o codigo postal.'); return; }
+  if (sectors.length < 2) { alert('Selecciona al menos 2 sectores para busqueda multi-sector.'); return; }
+
+  const originalSegment = document.getElementById('plan-segment')?.value;
+  const btn = document.getElementById('btn-search');
+  const allResults = [];
+  const perSector = {};
+  multiSectorSearchState = { location, sectors, rawCount: 0, perSector };
+  currentMultiSectorFilter = 'all';
+  ensureMultiSectorProgressPanel(sectors);
+  if (btn) { btn.disabled = true; btn.textContent = `Buscando ${sectors.length} sectores...`; }
+
+  for (let i = 0; i < sectors.length; i++) {
+    const seg = sectors[i];
+    const planSel = document.getElementById('plan-segment');
+    if (planSel) planSel.value = seg;
+    setMultiSectorProgress(seg, 'buscando', 12, i, sectors.length);
+    await searchBusinessesSingle({ multiChild: true, sectorOverride: seg });
+    const sectorResults = (tempSearchResults || []).map(c => ({
+      ...c,
+      sourceSector: seg,
+      matchedSectors: [...new Set([...(c.matchedSectors || []), seg])],
+    }));
+    perSector[seg] = { total: sectorResults.length, label: getSegmentLabel(seg) };
+    allResults.push(...sectorResults);
+    setMultiSectorProgress(seg, `${sectorResults.length} resultados`, 100, i + 1, sectors.length);
+    await yieldToUI();
+  }
+
+  if (originalSegment && document.getElementById('plan-segment')) document.getElementById('plan-segment').value = originalSegment;
+  multiSectorSearchState.rawCount = allResults.length;
+  tempSearchResults = mergeMultiSectorResults(allResults);
+  tempSearchResults.forEach(c => {
+    c.segment = c.sourceSector || c.segment;
+    decorateOpportunity(c);
+  });
+  sortSearchResultsLive();
+  renderSearchCards();
+  showResultsPanel();
+  document.getElementById('result-filters').style.display = 'flex';
+  const sfb = document.getElementById('search-sf-wrap'); if (sfb) sfb.style.display = 'block';
+  updateEnrichStats();
+  renderMultiSectorResultsPanel();
+  logEnrich(`Multi-sector completado: ${allResults.length} resultados brutos, ${tempSearchResults.length} empresas unicas`, 'ok');
+  if (btn) { btn.disabled = false; btn.textContent = 'Buscar y Enriquecer'; }
+}
+
+async function searchBusinessesSingle(options = {}) {
   const segment  = document.getElementById('plan-segment').value;
   const location = document.getElementById('plan-location').value.trim();
   const maxRes   = parseInt(document.getElementById('plan-max').value);
@@ -3790,6 +4021,9 @@ function buildCardHTML(c, i) {
   const memoryBadge = c.memorySummary
     ? `<span style="font-size:.65rem;background:rgba(10,132,255,.12);color:var(--primary);padding:2px 8px;border-radius:10px;border:1px solid rgba(10,132,255,.25)">Memoria: ${c.memorySummary}</span>`
     : '';
+  const sectorBadge = (c.matchedSectors || []).length
+    ? `<span style="font-size:.65rem;background:rgba(94,92,230,.12);color:var(--secondary);padding:2px 8px;border-radius:10px;border:1px solid rgba(94,92,230,.25)" title="${c.matchedSectors.map(getSegmentLabel).join(' | ')}">${c.matchedSectors.length > 1 ? c.matchedSectors.length + ' sectores' : getSegmentLabel(c.matchedSectors[0])}</span>`
+    : '';
 
   const socials = [
     c.instagram ? `<a href="${c.instagram}" target="_blank" class="sc-social-badge instagram">ðŸ“¸ IG</a>` : '',
@@ -3831,7 +4065,7 @@ function buildCardHTML(c, i) {
 
   return `<div class="search-card" id="sc-${i}" data-idx="${i}" data-index="${i}" ${alreadyIn ? 'style="opacity:.65"' : ''} onclick="if(!event.target.closest('button') && !event.target.closest('a') && !event.target.closest('input')) openSidePanel(${i})">
     <input type="checkbox" class="search-check sc-check search-card-check" data-index="${i}" ${alreadyIn ? '' : 'checked'}>
-    ${alreadyBadge || oppBadge || chainBadge || llBadge || tempBadge ? `<div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.4rem">${alreadyBadge}${uxStatusBadge}${tempBadge}${opportunityBadge}${memoryBadge}${oppBadge}${chainBadge}${llBadge}</div>` : ''}
+    ${alreadyBadge || oppBadge || chainBadge || llBadge || tempBadge || sectorBadge ? `<div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.4rem">${alreadyBadge}${sectorBadge}${uxStatusBadge}${tempBadge}${opportunityBadge}${memoryBadge}${oppBadge}${chainBadge}${llBadge}</div>` : ''}
     <div class="sc-header">
       <div class="sc-avatar" style="${c.logo ? 'padding:0;overflow:hidden' : ''}">
         ${c.logo
@@ -4009,6 +4243,9 @@ function applyAdvancedFilters() {
     if (show && currentUXStatusFilter && currentUXStatusFilter !== 'all') {
       show = getLeadUXStatus(c).key === currentUXStatusFilter;
     }
+    if (show && currentMultiSectorFilter && currentMultiSectorFilter !== 'all') {
+      show = (c.matchedSectors || [c.sourceSector || c.segment]).includes(currentMultiSectorFilter);
+    }
 
     card.style.display = show ? 'block' : 'none';
     if (show) visibleCount++;
@@ -4105,7 +4342,7 @@ async function importSelectedSearch() {
       company: c.name,
       email: c.email || '',
       phone: c.phone || '',
-      segment, website: c.website || '',
+      segment: c.sourceSector || segment, website: c.website || '',
       signal: signal || `Encontrado en ${location}`,
       score: calculateScore(c.decision_maker ? 'manager' : 'otros', 'mediano', signal, { rating: c.rating, ratingCount: c.ratingCount, email: c.email, phone: c.phone, signals: c.signals || [], enrichSource: c.enrichSource || [], segment }),
       status: 'Pendiente',
@@ -4202,6 +4439,7 @@ function createProspectingCampaignFromSearch() {
     || `${segment} - ${location} - ${new Date().toLocaleDateString('es-ES')}`;
   decorateAllOpportunities();
   const candidates = tempSearchResults
+    .filter(c => currentMultiSectorFilter === 'all' || !currentMultiSectorFilter || (c.matchedSectors || [c.sourceSector || c.segment]).includes(currentMultiSectorFilter))
     .filter(c => (c.opportunityScore || 0) >= minScore)
     .filter(c => !leads.some(l => !l.archived && isSameBusiness({ ...c, company: c.name }, l)))
     .sort((a, b) => getLayerPriority(b) - getLayerPriority(a))
@@ -4214,13 +4452,16 @@ function createProspectingCampaignFromSearch() {
   if (!confirm(`Crear campana con ${candidates.length} leads nuevos?\nFiltro: score scraping >= ${minScore}\n\nSe guardaran en Leads y se creara una campana lista para trabajar.`)) return;
   if (typeof createSafetySnapshot === 'function') createSafetySnapshot('before_scraping_campaign');
 
-  const newLeads = candidates.map(c => buildLeadFromSearchCompany(c, segment, location, baseName));
+  const campaignSegment = multiSectorSearchState
+    ? (currentMultiSectorFilter && currentMultiSectorFilter !== 'all' ? currentMultiSectorFilter : 'Todos')
+    : segment;
+  const newLeads = candidates.map(c => buildLeadFromSearchCompany(c, c.sourceSector || campaignSegment || segment, location, baseName));
   leads = [...newLeads, ...leads];
   const leadIds = newLeads.map(l => l.id);
   campaigns.push({
     id: Date.now(),
     name: baseName,
-    segment,
+    segment: campaignSegment,
     sequence: 'cold',
     desc: `Campana creada desde scraping: ${location}. Score minimo ${minScore}. Angulos: ${[...new Set(candidates.map(c => c.opportunityAngle).filter(Boolean))].slice(0, 4).join(', ') || 'contacto consultivo'}.`,
     leadCount: leadIds.length,
@@ -4243,7 +4484,7 @@ function quickImportOne(idx) {
   const c = tempSearchResults[idx];
   if (!c) return;
   if (leads.some(l => !l.archived && isSameBusiness({ ...c, company: c.name }, l))) { showToast(`${c.name} ya estÃ¡ en Leads`); return; }
-  const segment = document.getElementById('plan-segment').value;
+  const segment = c.sourceSector || document.getElementById('plan-segment').value;
   const location = document.getElementById('plan-location').value.trim();
 
   // Construir seÃ±al con toda la info disponible
