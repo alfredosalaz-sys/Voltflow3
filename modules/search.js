@@ -567,9 +567,9 @@ async function testAllProxies() {
   return results;
 }
 
-async function fetchWithProxy(targetUrl, timeoutMs = 9000) {
+async function fetchWithProxy(targetUrl, timeoutMs = 9000, options = {}) {
   // FIX-SCRAPING 2026: DetecciÃ³n activa de proxies saturados (429/503)
-  const sortedProxies = _getSortedProxies();
+  const sortedProxies = _getSortedProxies().slice(0, options.proxyLimit || CORS_PROXIES.length + 1);
 
   for (const proxy of sortedProxies) {
     const t0 = Date.now();
@@ -1401,11 +1401,17 @@ function buildDeepScrapePlan(company, html = '', domain = '', memory = {}) {
 }
 
 // â”€â”€â”€ CAPA 2: Web Scraping PRO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-async function enrichFromWeb(company) {
+async function enrichFromWeb(company, options = {}) {
   if (!company.website) {
     company.scrapeDiagnostics = ['sin-web'];
     return company;
   }
+  const quickMode = !!options.quickMode;
+  const proxyLimit = options.proxyLimit || (quickMode ? 3 : CORS_PROXIES.length + 1);
+  const mainTimeoutMs = options.timeoutMs || (quickMode ? 5500 : 10000);
+  const deepTimeoutMs = options.deepTimeoutMs || (quickMode ? 3500 : 6500);
+  const sitemapTimeoutMs = options.sitemapTimeoutMs || (quickMode ? 3500 : 7000);
+  const maxDeepPages = options.maxDeepPages ?? (quickMode ? 2 : 6);
 
   // â”€â”€ Comprobar cachÃ© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const domainKey = extractDomain(company.website) || company.website;
@@ -1435,7 +1441,7 @@ async function enrichFromWeb(company) {
   // Ahora medimos el tiempo del fetch que ya necesitamos hacer de todas formas.
   const t0Fetch = Date.now();
   try {
-    html = await fetchWithProxy(company.website, 10000); // 10s: proxy aÃ±ade ~2-4s de latencia extra
+    html = await fetchWithProxy(company.website, mainTimeoutMs, { proxyLimit }); // proxy aÃ±ade ~2-4s de latencia extra
   } catch (err) {
     const reason = diagnoseScrapeFailure({ url: company.website, error: err?.message, ms: Date.now() - t0Fetch });
     company.scrapeDiagnostics = [reason];
@@ -1749,7 +1755,7 @@ async function enrichFromWeb(company) {
   // â”€â”€â”€ 8b. Tech Stack Detection (Idea 5) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // 8c. Scraping profundo inteligente: usa enlaces reales + memoria local por dominio.
   if (!company.email || !company.decision_maker) {
-    const deepUrls = buildDeepScrapePlan(company, html, domain, scrapeMemory);
+    const deepUrls = buildDeepScrapePlan(company, html, domain, scrapeMemory).slice(0, maxDeepPages);
     try {
       for (const deepUrl of deepUrls) {
         if (company.email && company.decision_maker) break;
@@ -1757,7 +1763,7 @@ async function enrichFromWeb(company) {
         let pageHtml = '';
         let reason = '';
         try {
-          pageHtml = await fetchWithProxy(deepUrl, 6500);
+          pageHtml = await fetchWithProxy(deepUrl, deepTimeoutMs, { proxyLimit });
         } catch (e) {
           reason = diagnoseScrapeFailure({ url: deepUrl, error: e?.message, ms: Date.now() - t0Deep });
         }
@@ -1868,7 +1874,7 @@ async function enrichFromWeb(company) {
     if (_skipSitemap) { /* early-exit: datos completos, no merece el fetch */ }
     else {
     const sitemapUrl = company.website.replace(/\/$/, '') + '/sitemap.xml';
-    const sitemapHtml = await fetchWithProxy(sitemapUrl, 7000); // sitemap puede tardar mÃ¡s via proxy
+    const sitemapHtml = await fetchWithProxy(sitemapUrl, sitemapTimeoutMs, { proxyLimit }); // sitemap puede tardar mÃ¡s via proxy
     if (sitemapHtml && /<loc>/i.test(sitemapHtml)) {
       company.hasSitemap = true;
       const urls = [...sitemapHtml.matchAll(/<loc>([^<]+)<\/loc>/gi)].map(m => m[1].trim());
@@ -1882,7 +1888,7 @@ async function enrichFromWeb(company) {
       // Scraping de pÃ¡gina de equipo desde sitemap
       if (teamUrl && !company.decision_maker) {
         try {
-          const teamHtml = await fetchWithProxy(teamUrl, 7000);
+          const teamHtml = await fetchWithProxy(teamUrl, sitemapTimeoutMs, { proxyLimit });
           if (teamHtml) {
             const roleStr = getRoleRegexSource();
             const namePattern = /([A-ZÃÃ‰ÃÃ“ÃšÃ‘][a-zÃ¡Ã©Ã­Ã³ÃºÃ±]{1,20}\s+(?:[A-ZÃÃ‰ÃÃ“ÃšÃ‘][a-zÃ¡Ã©Ã­Ã³ÃºÃ±]{1,20}\s+)?[A-ZÃÃ‰ÃÃ“ÃšÃ‘][a-zÃ¡Ã©Ã­Ã³ÃºÃ±]{1,25})/;
@@ -3103,46 +3109,57 @@ async function searchBusinesses() {
   ensureMultiSectorProgressPanel(sectors);
   if (btn) { btn.disabled = true; btn.textContent = `Buscando ${sectors.length} sectores...`; }
 
-  for (let i = 0; i < sectors.length; i++) {
-    const seg = sectors[i];
-    const planSel = document.getElementById('plan-segment');
-    if (planSel) planSel.value = seg;
-    setMultiSectorProgress(seg, 'buscando', 12, i, sectors.length);
-    await searchBusinessesSingle({ multiChild: true, sectorOverride: seg });
-    const sectorResults = (tempSearchResults || []).map(c => ({
-      ...c,
-      sourceSector: seg,
-      matchedSectors: [...new Set([...(c.matchedSectors || []), seg])],
-    }));
-    perSector[seg] = { total: sectorResults.length, label: getSegmentLabel(seg) };
-    allResults.push(...sectorResults);
-    setMultiSectorProgress(seg, `${sectorResults.length} resultados`, 100, i + 1, sectors.length);
-    await yieldToUI();
-  }
+  try {
+    for (let i = 0; i < sectors.length; i++) {
+      const seg = sectors[i];
+      const planSel = document.getElementById('plan-segment');
+      if (planSel) planSel.value = seg;
+      setMultiSectorProgress(seg, 'buscando', 12, i, sectors.length);
+      try {
+        await searchBusinessesSingle({ multiChild: true, sectorOverride: seg });
+        const sectorResults = (tempSearchResults || []).map(c => ({
+          ...c,
+          sourceSector: seg,
+          matchedSectors: [...new Set([...(c.matchedSectors || []), seg])],
+        }));
+        perSector[seg] = { total: sectorResults.length, label: getSegmentLabel(seg) };
+        allResults.push(...sectorResults);
+        setMultiSectorProgress(seg, `${sectorResults.length} resultados`, 100, i + 1, sectors.length);
+      } catch (err) {
+        perSector[seg] = { total: 0, label: getSegmentLabel(seg), error: err?.message || 'error' };
+        setMultiSectorProgress(seg, 'error, saltando', 100, i + 1, sectors.length);
+        logEnrich(`Multi-sector: ${getSegmentLabel(seg)} falló y se continúa con el siguiente sector`, 'warn');
+      }
+      await yieldToUI();
+    }
 
-  if (originalSegment && document.getElementById('plan-segment')) document.getElementById('plan-segment').value = originalSegment;
-  multiSectorSearchState.rawCount = allResults.length;
-  tempSearchResults = mergeMultiSectorResults(allResults);
-  tempSearchResults.forEach(c => {
-    c.segment = c.sourceSector || c.segment;
-    decorateOpportunity(c);
-  });
-  sortSearchResultsLive();
-  renderSearchCards();
-  showResultsPanel();
-  document.getElementById('result-filters').style.display = 'flex';
-  const sfb = document.getElementById('search-sf-wrap'); if (sfb) sfb.style.display = 'block';
-  updateEnrichStats();
-  renderMultiSectorResultsPanel();
-  logEnrich(`Multi-sector completado: ${allResults.length} resultados brutos, ${tempSearchResults.length} empresas unicas`, 'ok');
-  if (btn) { btn.disabled = false; btn.textContent = 'Buscar y Enriquecer'; }
+    multiSectorSearchState.rawCount = allResults.length;
+    tempSearchResults = mergeMultiSectorResults(allResults);
+    tempSearchResults.forEach(c => {
+      c.segment = c.sourceSector || c.segment;
+      decorateOpportunity(c);
+    });
+    sortSearchResultsLive();
+    renderSearchCards();
+    showResultsPanel();
+    document.getElementById('result-filters').style.display = 'flex';
+    const sfb = document.getElementById('search-sf-wrap'); if (sfb) sfb.style.display = 'block';
+    updateEnrichStats();
+    renderMultiSectorResultsPanel();
+    logEnrich(`Multi-sector completado: ${allResults.length} resultados brutos, ${tempSearchResults.length} empresas unicas`, 'ok');
+  } finally {
+    if (originalSegment && document.getElementById('plan-segment')) document.getElementById('plan-segment').value = originalSegment;
+    if (btn) { btn.disabled = false; btn.textContent = 'Buscar y Enriquecer'; }
+  }
 }
 
 async function searchBusinessesSingle(options = {}) {
-  const segment  = document.getElementById('plan-segment').value;
+  const isMultiChild = !!options.multiChild;
+  const segment  = options.sectorOverride || document.getElementById('plan-segment').value;
   const location = document.getElementById('plan-location').value.trim();
   const maxRes   = parseInt(document.getElementById('plan-max').value);
-  const enrichMode = document.getElementById('plan-enrich').value;
+  const selectedEnrichMode = document.getElementById('plan-enrich').value;
+  const enrichMode = isMultiChild && selectedEnrichMode === 'all' ? 'web' : selectedEnrichMode;
 
   if (!location) { alert('Introduce una ciudad o zona.'); return; }
 
@@ -3153,7 +3170,7 @@ async function searchBusinessesSingle(options = {}) {
       await waitForGoogleMaps(5000); // 5 segundos max
     } catch (err) {
       alert('Error al inicializar Google Maps. Revisa tu API Key en ConfiguraciÃ³n.\n' + err.message);
-      document.getElementById('btn-search').textContent = 'ðŸ” Buscar y Enriquecer';
+      if (!isMultiChild) document.getElementById('btn-search').textContent = 'ðŸ” Buscar y Enriquecer';
       return;
     }
   }
@@ -3203,14 +3220,14 @@ async function searchBusinessesSingle(options = {}) {
   } catch (err) {
     setStep('places','error','Error');
     logEnrich('âŒ ' + err.message, 'err');
-    resetSearchBtn();
+    if (!isMultiChild) resetSearchBtn();
     return;
   }
 
   if (!places.length) {
     setStep('places','done','0 resultados');
     logEnrich('âš ï¸ Sin resultados. Prueba otra zona.', 'warn');
-    resetSearchBtn();
+    if (!isMultiChild) resetSearchBtn();
     return;
   }
 
@@ -3261,13 +3278,14 @@ async function searchBusinessesSingle(options = {}) {
     recordLeadMemoryBulk(tempSearchResults, 'turbo_result', c => ({ segment, location, score: c.opportunityScore || 0 }));
     renderSearchCards();
     updateEnrichStats();
-    resetSearchBtn();
+    if (!isMultiChild) resetSearchBtn();
     return;
   }
 
   // â”€â”€ Capa 2: Web Scraping (paralelo, batches de 8 con retry) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (enrichMode === 'all' || enrichMode === 'web') {
     setStep('web','active','Procesando...');
+    if (isMultiChild) setMultiSectorProgress(segment, 'web scraping', 35);
     logEnrich('ðŸŒ Web scraping: extrayendo datos de ' + places.length + ' webs...');
     let done = 0;
     // FIX-SCRAPING: BATCH_SIZE reducido a 3 para no saturar los proxies CORS gratuitos.
@@ -3293,10 +3311,18 @@ async function searchBusinessesSingle(options = {}) {
         const company = tempSearchResults[i];
         if (!company.website) { done++; return; }
         try {
-          tempSearchResults[i] = await enrichFromWeb(company);
+          tempSearchResults[i] = await enrichFromWeb(company, isMultiChild ? {
+            quickMode: true,
+            timeoutMs: 5500,
+            deepTimeoutMs: 3500,
+            sitemapTimeoutMs: 3500,
+            maxDeepPages: 2,
+            proxyLimit: 3
+          } : {});
         } catch (e1) {
           // Retry automÃ¡tico con proxy alternativo tras pausa corta
           try {
+            if (isMultiChild) throw e1;
             await sleep(1500); 
             tempSearchResults[i] = await enrichFromWeb(company);
           } catch (e2) {
@@ -3318,6 +3344,7 @@ async function searchBusinessesSingle(options = {}) {
 
       setProgress(20 + Math.round(done / tempSearchResults.length * 40));
       setStep('web','active', `${done}/${tempSearchResults.length}`);
+      if (isMultiChild) setMultiSectorProgress(segment, `web ${done}/${tempSearchResults.length}`, 35 + Math.round(done / tempSearchResults.length * 55));
       renderSearchCards();
       applyAdvancedFilters();
       scheduleEnrichStats();
@@ -3533,7 +3560,7 @@ async function searchBusinessesSingle(options = {}) {
   // â”€â”€ Guardar todo en cache (Final) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   _enrichCache.setMany(tempSearchResults.filter(c => !c.fromCache));
 
-  resetSearchBtn();
+  if (!isMultiChild) resetSearchBtn();
 
   // â”€â”€ Inteligencia de sesiÃ³n (asÃ­ncrona, no bloquea el pipeline) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   generateSessionIntel(tempSearchResults, segment, location);
