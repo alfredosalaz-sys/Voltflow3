@@ -969,6 +969,24 @@ function normalizePlaceResult(p) {
   };
 }
 
+function normalizeSearchCompany(c = {}) {
+  c.signals = Array.isArray(c.signals) ? c.signals : [];
+  c.enrichSource = Array.isArray(c.enrichSource) ? c.enrichSource : [];
+  c.emails = Array.isArray(c.emails) ? c.emails : [];
+  c.techStack = Array.isArray(c.techStack) ? c.techStack : [];
+  c.scrapeDiagnostics = Array.isArray(c.scrapeDiagnostics) ? c.scrapeDiagnostics : [];
+  c.scrapeSignals = Array.isArray(c.scrapeSignals) ? c.scrapeSignals : [];
+  return c;
+}
+
+function cloneSectorResults(seg) {
+  return (tempSearchResults || []).map(c => ({
+    ...normalizeSearchCompany(c),
+    sourceSector: seg,
+    matchedSectors: [...new Set([...(c.matchedSectors || []), seg])],
+  }));
+}
+
 async function fetchPlaces(segment, location, maxResults) {
   const apiKey = localStorage.getItem('gordi_api_key');
   if (!apiKey) throw new Error('API Key de Google no configurada. Ve a ConfiguraciÃ³n.');
@@ -1402,6 +1420,7 @@ function buildDeepScrapePlan(company, html = '', domain = '', memory = {}) {
 
 // â”€â”€â”€ CAPA 2: Web Scraping PRO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function enrichFromWeb(company, options = {}) {
+  company = normalizeSearchCompany(company);
   if (!company.website) {
     company.scrapeDiagnostics = ['sin-web'];
     return company;
@@ -3117,18 +3136,22 @@ async function searchBusinesses() {
       setMultiSectorProgress(seg, 'buscando', 12, i, sectors.length);
       try {
         await searchBusinessesSingle({ multiChild: true, sectorOverride: seg });
-        const sectorResults = (tempSearchResults || []).map(c => ({
-          ...c,
-          sourceSector: seg,
-          matchedSectors: [...new Set([...(c.matchedSectors || []), seg])],
-        }));
+        const sectorResults = cloneSectorResults(seg);
         perSector[seg] = { total: sectorResults.length, label: getSegmentLabel(seg) };
         allResults.push(...sectorResults);
         setMultiSectorProgress(seg, `${sectorResults.length} resultados`, 100, i + 1, sectors.length);
       } catch (err) {
-        perSector[seg] = { total: 0, label: getSegmentLabel(seg), error: err?.message || 'error' };
-        setMultiSectorProgress(seg, 'error, saltando', 100, i + 1, sectors.length);
-        logEnrich(`Multi-sector: ${getSegmentLabel(seg)} falló y se continúa con el siguiente sector`, 'warn');
+        const partialResults = cloneSectorResults(seg);
+        if (partialResults.length) {
+          perSector[seg] = { total: partialResults.length, label: getSegmentLabel(seg), warning: err?.message || 'error' };
+          allResults.push(...partialResults);
+          setMultiSectorProgress(seg, `${partialResults.length} parciales`, 100, i + 1, sectors.length);
+          logEnrich(`Multi-sector: ${getSegmentLabel(seg)} tuvo un fallo tras Places (${err?.message || 'error'}), se conservan ${partialResults.length} resultados`, 'warn');
+        } else {
+          perSector[seg] = { total: 0, label: getSegmentLabel(seg), error: err?.message || 'error' };
+          setMultiSectorProgress(seg, 'error, saltando', 100, i + 1, sectors.length);
+          logEnrich(`Multi-sector: ${getSegmentLabel(seg)} falló (${err?.message || 'error'}) y se continúa con el siguiente sector`, 'warn');
+        }
       }
       await yieldToUI();
     }
@@ -3247,6 +3270,7 @@ async function searchBusinessesSingle(options = {}) {
   }
 
   tempSearchResults = places;
+  tempSearchResults.forEach(normalizeSearchCompany);
   recordLeadMemoryBulk(tempSearchResults, 'seen_in_search', () => ({ segment, location }));
 
   // Renderizar resultado rÃ¡pido de Places mientras enriquecemos
