@@ -263,17 +263,118 @@ function scheduleSearchTableRender() {
 let currentUXStatusFilter = 'all';
 
 function getDataTrust(c) {
+  decorateContactQuality(c);
   const items = [];
   if (c.email) {
-    const src = c.emailCandidates?.[0]?.reason || (c.emailQuality ? `calidad ${c.emailQuality}` : 'email validado');
-    items.push({ label: 'Email', value: c.email, confidence: c.emailQuality === 'alta' ? 92 : c.emailQuality === 'media' ? 72 : 55, source: src });
+    const src = c.contactEmailRole ? `${c.contactEmailRole} · ${c.contactEmailReason || 'email validado'}` : (c.emailCandidates?.[0]?.reason || (c.emailQuality ? `calidad ${c.emailQuality}` : 'email validado'));
+    items.push({ label: 'Email', value: c.email, confidence: c.contactEmailScore || (c.emailQuality === 'alta' ? 92 : c.emailQuality === 'media' ? 72 : 55), source: src });
   }
   if (c.decision_maker) {
     items.push({ label: 'Decisor', value: c.decision_maker, confidence: c.decision_maker_confidence || 55, source: c.decision_maker_source || 'web/scraping' });
   }
-  if (c.phone) items.push({ label: 'Telefono', value: c.phone, confidence: 78, source: c.whatsapp ? 'telefono + WhatsApp' : 'Places/web' });
+  if (c.phone) items.push({ label: 'Telefono', value: c.phone, confidence: c.contactPhoneScore || 78, source: c.contactPhoneType || (c.whatsapp ? 'telefono + WhatsApp' : 'Places/web') });
   if ((c.scrapeDiagnostics || []).length) items.push({ label: 'Scraping', value: (c.scrapeDiagnostics || [])[0], confidence: 35, source: 'diagnostico tecnico' });
   return items;
+}
+
+function getEmailContactRole(email = '') {
+  const local = String(email || '').toLowerCase().split('@')[0] || '';
+  if (/^(direccion|director|directora|gerencia|gerente|ceo|fundador|fundadora|owner|propietario|administrador|administradora)$/.test(local)) return 'directivo';
+  if (/^(comercial|ventas|sales|business|presupuestos|clientes)$/.test(local)) return 'comercial';
+  if (/^(soporte|support|help|ayuda|atencion|cliente|clientes|recepcion|reservas|citas)$/.test(local)) return 'soporte';
+  if (/^(info|contacto|hola|hello|administracion|admin|office)$/.test(local)) return 'generico operativo';
+  if (/^(noreply|no-reply|donotreply|legal|privacy|privacidad|rgpd|abuse|postmaster|webmaster)$/.test(local)) return 'no comercial';
+  if (/^[a-z]+[._-][a-z]+$/.test(local) || /^[a-z]\.?[a-z]{3,}$/.test(local)) return 'personal';
+  return 'generico';
+}
+
+function classifyPhoneContact(phone = '', whatsapp = '') {
+  const normalized = normalizeLeadPhone(phone || whatsapp || '');
+  if (!normalized) return { type: '', score: 0, reason: '' };
+  const isMobile = /^[67]/.test(normalized);
+  const type = whatsapp ? 'WhatsApp directo' : isMobile ? 'movil' : /^[89]/.test(normalized) ? 'fijo' : 'telefono';
+  const score = whatsapp ? 90 : isMobile ? 82 : 70;
+  return { type, score, reason: whatsapp ? 'permite contacto por WhatsApp' : isMobile ? 'telefono movil' : 'telefono fijo/local' };
+}
+
+function decorateContactQuality(c = {}) {
+  if (!c) return c;
+  const reasons = [];
+  const domain = extractDomain(c.website || '') || '';
+  let score = 0;
+
+  if (c.email) {
+    const emailInfo = classifyEmail(c.email, domain);
+    const role = getEmailContactRole(c.email);
+    let emailScore = emailInfo.score || 0;
+    if (role === 'directivo') emailScore += 12;
+    if (role === 'comercial') emailScore += 9;
+    if (role === 'personal') emailScore += 8;
+    if (role === 'soporte') emailScore += 3;
+    if (role === 'no comercial') emailScore -= 35;
+    emailScore = Math.max(0, Math.min(100, emailScore));
+    c.emailQuality = c.emailQuality || emailInfo.quality;
+    c.contactEmailRole = role;
+    c.contactEmailScore = emailScore;
+    c.contactEmailReason = emailInfo.reason;
+    score += Math.round(emailScore * 0.48);
+    reasons.push(`email ${role} (${emailScore}/100)`);
+  } else {
+    reasons.push('sin email');
+  }
+
+  const phoneInfo = classifyPhoneContact(c.phone, c.whatsapp);
+  if (phoneInfo.score) {
+    c.contactPhoneType = phoneInfo.type;
+    c.contactPhoneScore = phoneInfo.score;
+    score += Math.round(phoneInfo.score * 0.18);
+    reasons.push(phoneInfo.reason);
+  }
+
+  if (c.decision_maker) {
+    const dmScore = Math.max(45, Math.min(100, c.decision_maker_confidence || 65));
+    c.contactProfileType = /director|gerente|ceo|fundador|propiet/i.test(c.decision_maker) ? 'perfil directivo' : 'perfil probable';
+    c.contactProfileScore = dmScore;
+    score += Math.round(dmScore * 0.24);
+    reasons.push(`${c.contactProfileType} (${dmScore}/100)`);
+  }
+
+  if (c.linkedin || c.instagram || c.facebook) {
+    score += 6;
+    reasons.push('perfil social localizado');
+  }
+  if (c.website) score += 4;
+  if ((c.scrapeDiagnostics || []).length) score -= 8;
+
+  score = Math.max(0, Math.min(100, score));
+  c.contactQualityScore = score;
+  c.contactQuality = score >= 76 ? 'alta' : score >= 52 ? 'media' : score >= 25 ? 'baja' : 'pendiente';
+  c.contactBucket = c.email && score >= 52 ? 'ready' : (!c.email && (c.phone || c.whatsapp) ? 'call_first' : 'enrich_later');
+  c.contactQualityReasons = reasons.slice(0, 5);
+  return c;
+}
+
+function buildResultExplanation(c = {}) {
+  decorateContactQuality(c);
+  const items = [];
+  const sector = (c.matchedSectors || [c.sourceSector || c.segment]).filter(Boolean);
+  if (sector.length) items.push({ label: 'Sector', value: sector.map(getSegmentLabel).join(', '), ok: true });
+  if (c.querySource) items.push({ label: 'Query', value: c.querySource, ok: true });
+  if (c.searchPoint || c.radiusUsed) items.push({ label: 'Zona', value: [c.searchPoint, c.radiusUsed ? `${c.radiusUsed}km` : ''].filter(Boolean).join(' · '), ok: true });
+  if (c.distKm !== null && c.distKm !== undefined) items.push({ label: 'Distancia', value: `${c.distKm}km`, ok: c.distKm <= 10 });
+  items.push({ label: 'Fuente', value: (c.enrichSource || []).length ? c.enrichSource.join(', ') : (c.foundBy || 'Google Places'), ok: true });
+  items.push({ label: 'Web', value: c.website ? 'web valida' : 'sin web', ok: !!c.website });
+  items.push({ label: 'Email', value: c.email ? `${c.contactEmailRole || 'email'} · ${c.contactQuality}` : 'sin email', ok: !!c.email });
+  if (c.decision_maker) items.push({ label: 'Decisor', value: c.decision_maker, ok: true });
+  if (c.duplicateCount) items.push({ label: 'Duplicados', value: `${c.duplicateCount} fusionados${c.duplicateReasons?.length ? ': ' + c.duplicateReasons.join(', ') : ''}`, ok: true });
+  if ((c.scrapeDiagnostics || []).length) items.push({ label: 'Diagnostico', value: c.scrapeDiagnostics.join(', '), ok: false });
+  items.push({ label: 'Confianza contacto', value: `${c.contactQualityScore || 0}/100`, ok: (c.contactQualityScore || 0) >= 52 });
+  return items;
+}
+
+function decorateResultExplanation(c = {}) {
+  c.resultExplanation = buildResultExplanation(c);
+  return c;
 }
 
 function getLeadUXStatus(c) {
@@ -970,6 +1071,92 @@ function buildSearchGrid(centerLat, centerLng, radiusKm, gridSize) {
   return points;
 }
 
+function getLocationKind(locationStr = '') {
+  const loc = String(locationStr || '').trim();
+  if (/^\d{5}$/.test(loc)) return 'cp';
+  if (/\b(calle|avenida|avda|plaza|barrio|zona|poligono|poligono industrial)\b/i.test(loc)) return 'zona';
+  if (loc.includes(',')) return 'zona';
+  return 'ciudad';
+}
+
+function uniqueList(items = []) {
+  return [...new Set(items.map(x => String(x || '').trim()).filter(Boolean))];
+}
+
+async function buildSearchPlan(segment, location, maxResults, opts = {}) {
+  const requestedRadiusKm = Math.max(1, parseInt(document.getElementById('plan-radius')?.value || 10, 10));
+  const exhaustive = maxResults >= 9999;
+  const effectiveMax = exhaustive ? 500 : maxResults;
+  const kind = getLocationKind(location);
+  const isMulti = !!opts.multiSector || !!document.getElementById('plan-multi-toggle')?.checked;
+  let allQueries = uniqueList(getSegmentQueries(segment));
+  try {
+    const stats = JSON.parse(localStorage.getItem(`gordi_query_stats_${segment}`) || '{}');
+    allQueries = allQueries.sort((a, b) => {
+      const sa = stats[a] ? (stats[a].hits || 0) / Math.max(1, stats[a].runs || 1) : 0;
+      const sb = stats[b] ? (stats[b].hits || 0) / Math.max(1, stats[b].runs || 1) : 0;
+      return sb - sa;
+    });
+  } catch {}
+  const coreSize = Math.max(2, Math.min(allQueries.length, isMulti ? 4 : kind === 'cp' ? 5 : 7));
+  const queryBatches = [
+    { name: 'core', queries: allQueries.slice(0, coreSize), expansion: false },
+  ];
+  const longTail = allQueries.slice(coreSize);
+  if (longTail.length) queryBatches.push({ name: 'long-tail', queries: longTail, expansion: true });
+
+  let center = null;
+  let gridSize = 1;
+  if (kind === 'ciudad') {
+    if (effectiveMax > 20)  gridSize = 2;
+    if (effectiveMax > 100) gridSize = 3;
+    if (effectiveMax > 200) gridSize = 4;
+  } else if (kind === 'zona' && effectiveMax > 60) {
+    gridSize = 2;
+  }
+
+  const points = [];
+  try {
+    center = await geocodeSearch(location);
+    if (kind === 'cp') {
+      const firstRadius = Math.min(requestedRadiusKm, 3);
+      const radii = uniqueList([firstRadius, effectiveMax > 20 ? 5 : '', effectiveMax > 80 ? Math.min(requestedRadiusKm, 10) : ''])
+        .map(Number)
+        .filter(n => Number.isFinite(n) && n > 0);
+      radii.forEach(radiusKm => points.push({ ...center, label: location, radiusKm, source: 'cp-radio' }));
+    } else if (gridSize === 1) {
+      points.push({ ...center, label: location, radiusKm: requestedRadiusKm, source: kind });
+    } else {
+      buildSearchGrid(center.lat, center.lng, requestedRadiusKm, gridSize)
+        .forEach((pt, i) => points.push({ ...pt, label: `${location} #${i + 1}`, radiusKm: Math.max(1, Math.round((requestedRadiusKm / gridSize) * 10) / 10), source: 'grid' }));
+    }
+
+    const districts = kind === 'ciudad' ? getCityDistricts(location) : [];
+    if (districts.length && effectiveMax > 50 && !isMulti) {
+      districts.forEach(d => points.push({ lat: null, lng: null, label: d, radiusKm: requestedRadiusKm, source: 'distrito' }));
+    }
+  } catch (e) {
+    logEnrich(`  Geocoding fallo, usando busqueda por texto: ${e.message}`, 'warn');
+    points.push({ lat: null, lng: null, label: location, radiusKm: requestedRadiusKm, source: 'texto' });
+  }
+
+  const targetBeforeExpansion = Math.max(5, Math.ceil(effectiveMax * 0.6));
+  return {
+    segment,
+    location,
+    kind,
+    requestedRadiusKm,
+    effectiveMax,
+    exhaustive,
+    gridSize,
+    center,
+    points,
+    queryBatches,
+    targetBeforeExpansion,
+    summary: `${kind} · ${points.length} zonas · ${allQueries.length} queries${isMulti ? ' · multi-sector' : ''}`,
+  };
+}
+
 // Convierte un resultado de Place API a objeto empresa normalizado
 function normalizePlaceResult(p) {
   return {
@@ -998,6 +1185,11 @@ function normalizePlaceResult(p) {
     instagram: '', facebook: '', linkedin: '', twitter: '', youtube: '',
     distKm:        null,
     enriched: false, enrichSource: [],
+    foundBy: 'Google Places',
+    querySource: '',
+    searchPoint: '',
+    radiusUsed: null,
+    searchPlanKind: '',
   };
 }
 
@@ -1008,6 +1200,8 @@ function normalizeSearchCompany(c = {}) {
   c.techStack = Array.isArray(c.techStack) ? c.techStack : [];
   c.scrapeDiagnostics = Array.isArray(c.scrapeDiagnostics) ? c.scrapeDiagnostics : [];
   c.scrapeSignals = Array.isArray(c.scrapeSignals) ? c.scrapeSignals : [];
+  decorateContactQuality(c);
+  decorateResultExplanation(c);
   return c;
 }
 
@@ -1017,125 +1211,113 @@ async function fetchPlaces(segment, location, maxResults) {
 
   await waitForGoogleMaps();
   const { Place } = await google.maps.importLibrary('places');
-  const queries = getSegmentQueries(segment);
   const seenIds = new Set();
   const allPlaces = [];
-  const exhaustive = maxResults >= 9999;
-  const effectiveMax = exhaustive ? 500 : maxResults; // Cap a 500 en modo exhaustivo
-
-  // Determinar radio de bÃºsqueda del usuario
-  const radiusKm = parseInt(document.getElementById('plan-radius')?.value || 10);
-
-  // Decidir estrategia segÃºn maxResults
-  // â‰¤20 â†’ bÃºsqueda simple (1 punto central)
-  // â‰¤100 â†’ grid 2Ã—2 (4 puntos)
-  // â‰¤200 â†’ grid 3Ã—3 (9 puntos)
-  // â‰¤500 / exhaustivo â†’ grid 4Ã—4 (16 puntos)
-  let gridSize = 1;
-  if (effectiveMax > 20)  gridSize = 2;
-  if (effectiveMax > 100) gridSize = 3;
-  if (effectiveMax > 200) gridSize = 4;
-
-  // Geocodificar el centro de bÃºsqueda
-  let searchPoints = [{ lat: null, lng: null, label: location }];
-  try {
-    const center = await geocodeSearch(location);
-    if (gridSize === 1) {
-      searchPoints = [{ ...center, label: location }];
-    } else {
-      const grid = buildSearchGrid(center.lat, center.lng, radiusKm, gridSize);
-      searchPoints = grid.map((pt, i) => ({ ...pt, label: location }));
-      logEnrich(`  â†’ Grid ${gridSize}Ã—${gridSize}: ${grid.length} subzonas sobre ${radiusKm}km de radio`);
-    }
-
-    // FIX 5: AÃ±adir distritos reales de la ciudad si estÃ¡n disponibles
-    // Un grid cuadrado cubre mal ciudades irregulares (Madrid, Barcelona...)
-    // Los distritos garantizan cobertura real donde estÃ¡n los negocios
-    const districts = getCityDistricts(location);
-    if (districts.length && effectiveMax > 50) {
-      const districtPoints = districts.map(d => ({ lat: null, lng: null, label: d }));
-      searchPoints = [...searchPoints, ...districtPoints];
-      logEnrich(`  â†’ ${districts.length} distritos de ${location} aÃ±adidos como puntos de bÃºsqueda extra`);
-    }
-  } catch(e) {
-    // Si falla el geocoding, usar bÃºsqueda simple por nombre
-    logEnrich(`  âš ï¸ Geocoding fallÃ³, usando bÃºsqueda central: ${e.message}`);
-    searchPoints = [{ lat: null, lng: null, label: location }];
-  }
+  const plan = await buildSearchPlan(segment, location, maxResults);
+  const exhaustive = plan.exhaustive;
+  const effectiveMax = plan.effectiveMax;
+  logEnrich(`  Plan inteligente: ${plan.summary}`, 'ok');
 
   // Iterar sobre puntos del grid Ã— queries del segmento
   let queryAttempts = 0;
   let failedQueries = 0;
   let lastQueryError = '';
-  for (const point of searchPoints) {
-    if (!exhaustive && allPlaces.length >= effectiveMax) break;
-
-    for (const query of queries) {
-      if (!exhaustive && allPlaces.length >= effectiveMax) break;
-      queryAttempts++;
-      try {
-        const request = {
-          textQuery: point.lat
-            ? `${query} en ${point.label || location}`   // Incluir ubicaciÃ³n siempre, aunque haya locationBias
-            : `${query} en ${location}`,
-          fields: [
-            'displayName','formattedAddress','rating','websiteURI','id',
-            'nationalPhoneNumber','internationalPhoneNumber',
-            'regularOpeningHours','types','userRatingCount','businessStatus',
-            'editorialSummary','priceLevel','parkingOptions','accessibilityOptions','location',
-          ],
-          language: 'es',
-          maxResultCount: 20, // MÃ¡ximo que permite la API por llamada
-        };
-
-        // AÃ±adir bias geogrÃ¡fico â€” usar SIEMPRE buildLocationBias(), nunca construir aquÃ­
-        if (point.lat) {
-          const cellRadiusM = Math.max(500, (radiusKm * 1000) / gridSize);
-          request.locationBias = buildLocationBias(point.lat, point.lng, cellRadiusM);
-        }
-
-        const { places } = await Place.searchByText(request);
-        if (!places?.length) continue;
-
-        // â”€â”€ FILTRO DE EXCLUSIÃ“N: tipos de negocio no deseados â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        // Se aplica ANTES de aÃ±adir al resultado para no contaminar el pool.
-        const EXCLUDED_TYPES = new Set([
-          'car_repair','car_dealer','car_wash','auto_parts_store',
-          'car_rental','taxi_service','moving_company','storage',
-          'gas_station','parking','vehicle_registration','driving_school',
-          'motorcycle_dealer','bicycle_store',
-        ]);
-        const EXCLUDED_NAME_PATTERNS = /taller\s*(mecÃ¡nico|mecanico|auto|automovil|automÃ³vil|coches?|vehiculos?|motor)|mecÃ¡nico|mecanico\s+auto|chapa\s*y\s*pintura|automociÃ³n|autoservice|car\s*service|garaje\s*(mecÃ¡n|taller)|talleres?\s+\w+\s+(s\.?l\.?|s\.?a\.?)/i;
-
-        let newInThisQuery = 0;
-        for (const p of places) {
-          if (seenIds.has(p.id)) continue;
-          if (p.businessStatus === 'CLOSED_PERMANENTLY') continue;
-          // Excluir tipos de negocio no deseados
-          const pTypes = (p.types || []);
-          if (pTypes.some(t => EXCLUDED_TYPES.has(t))) continue;
-          // Excluir por nombre si coincide con patrÃ³n de taller mecÃ¡nico
-          const pName = (p.displayName || '').toLowerCase();
-          if (EXCLUDED_NAME_PATTERNS.test(pName)) continue;
-          seenIds.add(p.id);
-          allPlaces.push(normalizePlaceResult(p));
-          newInThisQuery++;
-          if (!exhaustive && allPlaces.length >= effectiveMax) break;
-        }
-
-        // Log de progreso en modo exhaustivo
-        if (exhaustive || effectiveMax > 100) {
-          logEnrich(`  â†’ ${allPlaces.length} empresas Ãºnicas encontradas...`);
-        }
-
-        await sleep(250); // Pausa entre llamadas API
-      } catch(e) {
-        failedQueries++;
-        lastQueryError = e?.message || String(e);
-        console.warn('Query fallida:', query, e.message);
-      }
+  for (const batch of plan.queryBatches) {
+    if (batch.expansion && !exhaustive && allPlaces.length >= plan.targetBeforeExpansion) {
+      logEnrich(`  Expansion omitida: ${allPlaces.length}/${effectiveMax} resultados con queries core`);
+      break;
     }
-    if (gridSize > 1) await sleep(100); // Pausa entre puntos del grid
+    if (batch.expansion) logEnrich(`  Expansion long-tail: ${batch.queries.length} queries extra`);
+    for (const point of plan.points) {
+      if (!exhaustive && allPlaces.length >= effectiveMax) break;
+
+      for (const query of batch.queries) {
+        if (!exhaustive && allPlaces.length >= effectiveMax) break;
+        queryAttempts++;
+        try {
+          const request = {
+            textQuery: point.lat
+              ? `${query} en ${point.label || location}`   // Incluir ubicaciÃ³n siempre, aunque haya locationBias
+              : `${query} en ${point.label || location}`,
+            fields: [
+              'displayName','formattedAddress','rating','websiteURI','id',
+              'nationalPhoneNumber','internationalPhoneNumber',
+              'regularOpeningHours','types','userRatingCount','businessStatus',
+              'editorialSummary','priceLevel','parkingOptions','accessibilityOptions','location',
+            ],
+            language: 'es',
+            maxResultCount: 20, // MÃ¡ximo que permite la API por llamada
+          };
+
+          // AÃ±adir bias geogrÃ¡fico â€” usar SIEMPRE buildLocationBias(), nunca construir aquÃ­
+          if (point.lat) {
+            const cellRadiusM = Math.max(500, (point.radiusKm || plan.requestedRadiusKm || 10) * 1000);
+            request.locationBias = buildLocationBias(point.lat, point.lng, cellRadiusM);
+          }
+
+          const { places } = await Place.searchByText(request);
+          if (!places?.length) continue;
+
+          // â”€â”€ FILTRO DE EXCLUSIÃ“N: tipos de negocio no deseados â”€â”€â”€â”€â”€â”€â”€â”€â”€
+          // Se aplica ANTES de aÃ±adir al resultado para no contaminar el pool.
+          const EXCLUDED_TYPES = new Set([
+            'car_repair','car_dealer','car_wash','auto_parts_store',
+            'car_rental','taxi_service','moving_company','storage',
+            'gas_station','parking','vehicle_registration','driving_school',
+            'motorcycle_dealer','bicycle_store',
+          ]);
+          const EXCLUDED_NAME_PATTERNS = /taller\s*(mecÃ¡nico|mecanico|auto|automovil|automÃ³vil|coches?|vehiculos?|motor)|mecÃ¡nico|mecanico\s+auto|chapa\s*y\s*pintura|automociÃ³n|autoservice|car\s*service|garaje\s*(mecÃ¡n|taller)|talleres?\s+\w+\s+(s\.?l\.?|s\.?a\.?)/i;
+
+          let newInThisQuery = 0;
+          for (const p of places) {
+            if (seenIds.has(p.id)) continue;
+            if (p.businessStatus === 'CLOSED_PERMANENTLY') continue;
+            // Excluir tipos de negocio no deseados
+            const pTypes = (p.types || []);
+            if (pTypes.some(t => EXCLUDED_TYPES.has(t))) continue;
+            // Excluir por nombre si coincide con patrÃ³n de taller mecÃ¡nico
+            const pName = (p.displayName || '').toLowerCase();
+            if (EXCLUDED_NAME_PATTERNS.test(pName)) continue;
+            seenIds.add(p.id);
+            const normalized = normalizePlaceResult(p);
+            normalized.querySource = query;
+            normalized.queryBatch = batch.name;
+            normalized.searchPoint = point.label || location;
+            normalized.searchPointSource = point.source || '';
+            normalized.radiusUsed = point.radiusKm || plan.requestedRadiusKm;
+            normalized.searchPlanKind = plan.kind;
+            normalized.searchPlanSummary = plan.summary;
+            allPlaces.push(normalizeSearchCompany(normalized));
+            newInThisQuery++;
+            if (!exhaustive && allPlaces.length >= effectiveMax) break;
+          }
+
+          if (newInThisQuery) {
+            try {
+              const statsKey = `gordi_query_stats_${segment}`;
+              const stats = JSON.parse(localStorage.getItem(statsKey) || '{}');
+              const stat = stats[query] || { hits: 0, runs: 0 };
+              stat.hits += newInThisQuery;
+              stat.runs += 1;
+              stats[query] = stat;
+              localStorage.setItem(statsKey, JSON.stringify(stats));
+            } catch {}
+          }
+
+          // Log de progreso en modo exhaustivo
+          if (exhaustive || effectiveMax > 100) {
+            logEnrich(`  â†’ ${allPlaces.length} empresas Ãºnicas encontradas...`);
+          }
+
+          await sleep(250); // Pausa entre llamadas API
+        } catch(e) {
+          failedQueries++;
+          lastQueryError = e?.message || String(e);
+          console.warn('Query fallida:', query, e.message);
+        }
+      }
+      if (plan.gridSize > 1) await sleep(100); // Pausa entre puntos del grid
+    }
   }
 
   if (!allPlaces.length && failedQueries && failedQueries === queryAttempts) {
@@ -2315,6 +2497,38 @@ function deduplicateResults(results) {
   const seen = new Map();
   const deduped = [];
 
+  const getReasons = (a, b) => {
+    const ia = getBusinessIdentity(a);
+    const ib = getBusinessIdentity(b);
+    return [
+      ia.placeId && ib.placeId && ia.placeId === ib.placeId ? 'placeId' : '',
+      ia.domain && ib.domain && ia.domain === ib.domain ? 'dominio' : '',
+      ia.phone && ib.phone && ia.phone === ib.phone ? 'telefono' : '',
+      ia.emailDomain && ib.emailDomain && ia.emailDomain === ib.emailDomain ? 'dominio email' : '',
+      ia.address && ib.address && ia.address === ib.address ? 'direccion' : '',
+      similarityRatio(ia.name, ib.name) >= 0.86 ? 'nombre similar' : '',
+    ].filter(Boolean);
+  };
+
+  const mergeCompany = (existing, incoming) => {
+    const best = getLeadUsefulnessScore(incoming) > getLeadUsefulnessScore(existing) ? incoming : existing;
+    const other = best === incoming ? existing : incoming;
+    const merged = { ...other, ...best };
+    merged.emails = uniqueList([...(existing.emails || []), existing.email, ...(incoming.emails || []), incoming.email]).slice(0, 8);
+    merged.phones = uniqueList([...(existing.phones || []), existing.phone, ...(incoming.phones || []), incoming.phone]).slice(0, 6);
+    merged.enrichSource = uniqueList([...(existing.enrichSource || []), ...(incoming.enrichSource || [])]);
+    merged.signals = uniqueList([...(existing.signals || []), ...(incoming.signals || [])]);
+    merged.scrapeDiagnostics = uniqueList([...(existing.scrapeDiagnostics || []), ...(incoming.scrapeDiagnostics || [])]);
+    merged.scrapeSignals = [...(existing.scrapeSignals || []), ...(incoming.scrapeSignals || [])]
+      .reduce((acc, s) => acc.some(x => x.key === s.key || x.label === s.label) ? acc : [...acc, s], []);
+    merged.matchedSectors = uniqueList([...(existing.matchedSectors || []), existing.sourceSector, existing.segment, ...(incoming.matchedSectors || []), incoming.sourceSector, incoming.segment]);
+    merged.duplicateCount = (existing.duplicateCount || 0) + (incoming.duplicateCount || 0) + 1;
+    merged.duplicateReasons = uniqueList([...(existing.duplicateReasons || []), ...(incoming.duplicateReasons || []), ...getReasons(existing, incoming)]);
+    decorateContactQuality(merged);
+    decorateResultExplanation(merged);
+    return merged;
+  };
+
   for (const company of results) {
     const identity = getBusinessIdentity(company);
     const keys = [
@@ -2330,7 +2544,8 @@ function deduplicateResults(results) {
       if (!seen.has(key)) continue;
       const seenIdx = seen.get(key);
       const existing = deduped[seenIdx];
-      if (getLeadUsefulnessScore(company) > getLeadUsefulnessScore(existing)) deduped[seenIdx] = { ...existing, ...company };
+      deduped[seenIdx] = mergeCompany(existing, company);
+      keys.forEach(k => seen.set(k, seenIdx));
       isDuplicate = true;
       break;
     }
@@ -2338,9 +2553,8 @@ function deduplicateResults(results) {
     if (!isDuplicate) {
       for (let idx = 0; idx < deduped.length; idx++) {
         if (isSameBusiness(company, deduped[idx])) {
-          if (getLeadUsefulnessScore(company) > getLeadUsefulnessScore(deduped[idx])) {
-            deduped[idx] = { ...deduped[idx], ...company };
-          }
+          deduped[idx] = mergeCompany(deduped[idx], company);
+          keys.forEach(k => seen.set(k, idx));
           isDuplicate = true;
           break;
         }
@@ -3866,9 +4080,12 @@ function detectOpportunitySignals(c) {
   const add = (points, text) => { score += points; reasons.push(text); };
   const text = `${c.name || ''} ${c.description || ''} ${(c.signals || []).join(' ')} ${c.reviewSummary || ''} ${c.fachadaAnalysis || ''}`.toLowerCase();
 
-  if (c.email) add(18, 'email directo');
+  decorateContactQuality(c);
+  if (c.email) add(18, `email ${c.contactEmailRole || 'directo'}`);
   if (c.phone || c.whatsapp) add(8, 'telefono disponible');
   if (c.decision_maker) add(18, 'decisor detectado');
+  if ((c.contactQualityScore || 0) >= 76) add(12, 'contacto de alta confianza');
+  else if ((c.contactQualityScore || 0) >= 52) add(6, 'contacto de confianza media');
   if (c.website) add(8, 'web localizada');
   if (!c.website) add(12, 'sin web visible');
   if ((c.rating || 0) >= 4.4 && (c.ratingCount || 0) >= 20) add(12, 'buena reputacion');
@@ -3895,11 +4112,12 @@ function detectOpportunitySignals(c) {
 
 function decorateOpportunity(c) {
   if (!c) return c;
+  decorateContactQuality(c);
   const sig = [
     c.email, c.phone, c.whatsapp, c.decision_maker, c.website,
     c.rating, c.ratingCount, c.domainAge, c.webLoadMs,
     (c.signals || []).length, (c.scrapeSignals || []).map(s => s.key).join(','), c.description, c.reviewSummary, c.fachadaAnalysis,
-    c.fromCache
+    c.fromCache, c.contactQualityScore
   ].join('|');
   if (c._oppSig === sig) return c;
   const opp = detectOpportunitySignals(c);
@@ -3910,6 +4128,7 @@ function decorateOpportunity(c) {
   const mem = getLeadMemory(c);
   c.memorySummary = mem ? `${mem.events?.length || 0} eventos previos` : '';
   c._oppSig = sig;
+  decorateResultExplanation(c);
   return c;
 }
 
@@ -3939,6 +4158,7 @@ function getScrapingQualitySnapshot() {
     cache: pct(r.filter(c => c.fromCache).length),
     proxyFail: r.filter(c => (c.enrichSource || []).includes('Proxy-fallo')).length,
     highEmail: pct(r.filter(c => c.emailQuality === 'alta').length),
+    highContact: pct(r.filter(c => (c.contactQualityScore || 0) >= 76).length),
     memory: pct(r.filter(c => c.scrapeMemoryUsed).length),
     diagnostics: topDiag,
     avgOpp: r.length ? Math.round(r.reduce((sum, c) => sum + (c.opportunityScore || 0), 0) / r.length) : 0
@@ -3964,7 +4184,7 @@ function renderScrapingQualityPanel(forceShow = true) {
         ['Web', s.website + '%'], ['Email', s.email + '%'], ['Telefono', s.phone + '%'],
         ['Redes', s.social + '%'], ['Decisor', s.decision + '%'], ['Senales', s.signals + '%'],
         ['Cache', s.cache + '%'], ['Memoria', s.memory + '%'], ['Email alta', s.highEmail + '%'],
-        ['Fallos proxy', s.proxyFail], ['Score medio', s.avgOpp]
+        ['Contacto alto', s.highContact + '%'], ['Fallos proxy', s.proxyFail], ['Score medio', s.avgOpp]
       ].map(([k,v]) => `<div style="padding:.6rem;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,.03)"><div style="font-size:1rem;font-weight:700">${v}</div><div style="font-size:.68rem;color:var(--text-dim)">${k}</div></div>`).join('')}
     </div>
     ${s.diagnostics.length ? `<div style="margin-top:.65rem;font-size:.74rem;color:var(--text-muted)">Diagnosticos: ${s.diagnostics.map(([k,v]) => `${k} (${v})`).join(' Â· ')}</div>` : ''}`;
@@ -4031,6 +4251,12 @@ function buildCommercialAudit(c) {
   decorateOpportunity(c);
   const memory = getLeadMemory(c);
   const reasons = (c.opportunityReasons || []).map(r => `<li>${r}</li>`).join('') || '<li>Sin senales fuertes todavia.</li>';
+  const contactReasons = (c.contactQualityReasons || []).map(r => `<li>${r}</li>`).join('') || '<li>Sin contacto verificado.</li>';
+  const whyRows = (c.resultExplanation || buildResultExplanation(c)).map(x => `
+    <div style="display:flex;justify-content:space-between;gap:.7rem;padding:.45rem .55rem;border:1px solid var(--glass-border);border-radius:8px;background:rgba(255,255,255,.025)">
+      <span style="font-size:.78rem;color:${x.ok ? 'var(--text-muted)' : 'var(--danger)'}">${x.label}</span>
+      <strong style="font-size:.78rem;text-align:right;color:${x.ok ? 'var(--text)' : 'var(--danger)'}">${x.value}</strong>
+    </div>`).join('');
   return `
     <div style="display:grid;gap:1rem">
       <div style="display:flex;justify-content:space-between;gap:1rem;align-items:center">
@@ -4043,6 +4269,14 @@ function buildCommercialAudit(c) {
       <div style="padding:.8rem;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,.03)">
         <strong>Angulo recomendado:</strong> ${c.opportunityAngle || 'contacto consultivo'}
         <ul style="margin:.55rem 0 0 1rem;color:var(--text-muted);font-size:.85rem">${reasons}</ul>
+      </div>
+      <div style="padding:.8rem;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,.03)">
+        <strong>Calidad de contacto:</strong> ${c.contactQuality || 'pendiente'} (${c.contactQualityScore || 0}/100)
+        <ul style="margin:.55rem 0 0 1rem;color:var(--text-muted);font-size:.85rem">${contactReasons}</ul>
+      </div>
+      <div style="padding:.8rem;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,.03)">
+        <strong>Por que aparece:</strong>
+        <div style="display:grid;gap:.4rem;margin-top:.55rem">${whyRows}</div>
       </div>
       <div style="padding:.8rem;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,.03)">
         <strong>Auditoria visual/web:</strong>
@@ -4155,6 +4389,8 @@ function buildCardHTML(c, i) {
   decorateOpportunity(c);
   const oppColor = (c.opportunityScore || 0) >= 75 ? 'var(--success)' : (c.opportunityScore || 0) >= 50 ? 'var(--warning)' : 'var(--text-muted)';
   const opportunityBadge = `<span style="font-size:.65rem;background:rgba(255,255,255,.05);color:${oppColor};padding:2px 8px;border-radius:10px;border:1px solid ${oppColor}55" title="${(c.opportunityReasons || []).join(' | ')}">Score ${c.opportunityScore || 0} - ${c.opportunityLevel || 'Baja'}</span>`;
+  const contactColor = (c.contactQualityScore || 0) >= 76 ? 'var(--success)' : (c.contactQualityScore || 0) >= 52 ? 'var(--warning)' : 'var(--text-muted)';
+  const contactQualityBadge = `<span style="font-size:.65rem;background:rgba(255,255,255,.05);color:${contactColor};padding:2px 8px;border-radius:10px;border:1px solid ${contactColor}55" title="${(c.contactQualityReasons || []).join(' | ')}">Contacto ${c.contactQuality || 'pendiente'} ${c.contactQualityScore || 0}/100</span>`;
   const memoryBadge = c.memorySummary
     ? `<span style="font-size:.65rem;background:rgba(10,132,255,.12);color:var(--primary);padding:2px 8px;border-radius:10px;border:1px solid rgba(10,132,255,.25)">Memoria: ${c.memorySummary}</span>`
     : '';
@@ -4199,10 +4435,16 @@ function buildCardHTML(c, i) {
     ? '<span style="font-size:.62rem;background:rgba(16,217,124,.12);color:var(--success);padding:1px 6px;border-radius:8px">cambios nuevos</span>'
     : (c.scrapeStable ? '<span style="font-size:.62rem;background:rgba(255,255,255,.06);color:var(--text-muted);padding:1px 6px;border-radius:8px">sin cambios</span>' : '');
   const scrapeBadges = [emailQualityBadge, decisionBadge, c.scrapeMemoryUsed ? '<span style="font-size:.62rem;background:rgba(255,255,255,.06);color:var(--text-muted);padding:1px 6px;border-radius:8px">memoria scraping</span>' : '', incrementalBadge, commercialPainBadge, scrapeDiagBadge].filter(Boolean).join('');
+  const whyPreview = (c.resultExplanation || buildResultExplanation(c)).slice(0, 4);
+  const whyLine = whyPreview.length
+    ? `<div style="display:flex;gap:.25rem;flex-wrap:wrap;margin:.45rem 0 .1rem">${whyPreview.map(x =>
+        `<span style="font-size:.61rem;background:${x.ok ? 'rgba(10,132,255,.08)' : 'rgba(239,68,68,.08)'};color:${x.ok ? 'var(--primary)' : 'var(--danger)'};padding:1px 6px;border-radius:8px;border:1px solid ${x.ok ? 'rgba(10,132,255,.18)' : 'rgba(239,68,68,.18)'}" title="${x.value}">${x.label}: ${String(x.value || '').slice(0, 34)}</span>`
+      ).join('')}</div>`
+    : '';
 
   return `<div class="search-card" id="sc-${i}" data-idx="${i}" data-index="${i}" ${alreadyIn ? 'style="opacity:.65"' : ''} onclick="if(!event.target.closest('button') && !event.target.closest('a') && !event.target.closest('input')) openSidePanel(${i})">
     <input type="checkbox" class="search-check sc-check search-card-check" data-index="${i}" ${alreadyIn ? '' : 'checked'}>
-    ${alreadyBadge || oppBadge || chainBadge || llBadge || tempBadge || sectorBadge ? `<div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.4rem">${alreadyBadge}${sectorBadge}${uxStatusBadge}${tempBadge}${opportunityBadge}${memoryBadge}${oppBadge}${chainBadge}${llBadge}</div>` : ''}
+    ${alreadyBadge || oppBadge || chainBadge || llBadge || tempBadge || sectorBadge ? `<div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.4rem">${alreadyBadge}${sectorBadge}${uxStatusBadge}${tempBadge}${opportunityBadge}${contactQualityBadge}${memoryBadge}${oppBadge}${chainBadge}${llBadge}</div>` : ''}
     <div class="sc-header">
       <div class="sc-avatar" style="${c.logo ? 'padding:0;overflow:hidden' : ''}">
         ${c.logo
@@ -4221,6 +4463,7 @@ function buildCardHTML(c, i) {
         ${scrapeBadges ? `<div style="display:flex;gap:.25rem;flex-wrap:wrap;margin-top:.2rem">${scrapeBadges}</div>` : ''}
       </div>
     </div>
+    ${whyLine}
     <div class="sc-data">
       <div class="sc-row">
         <span class="sc-icon">âœ‰ï¸</span>
@@ -4283,11 +4526,15 @@ function renderSearchTable() {
     ].filter(Boolean).join(' ');
     const temp = calculateLeadTemperature(c);
     decorateOpportunity(c);
+    const why = (c.resultExplanation || buildResultExplanation(c)).slice(0, 3).map(x => `${x.label}: ${x.value}`).join(' | ');
+    const contactColor = (c.contactQualityScore || 0) >= 76 ? 'var(--success)' : (c.contactQualityScore || 0) >= 52 ? 'var(--warning)' : 'var(--text-muted)';
     return `<tr onclick="if(!event.target.closest('button') && !event.target.closest('a') && !event.target.closest('input')) openSidePanel(${i})" style="cursor:pointer">
       <td><input type="checkbox" class="search-check" data-index="${i}" checked></td>
       <td>
         <div class="lead-name">${temp.icon} ${c.name} <span style="font-size:.68rem;color:var(--primary)">Score ${c.opportunityScore || 0}</span></div>
         <div class="lead-company">${c.address}</div>
+        <div style="font-size:.67rem;color:${contactColor};margin-top:.15rem">Contacto ${c.contactQuality || 'pendiente'} ${c.contactQualityScore || 0}/100</div>
+        ${why ? `<div style="font-size:.66rem;color:var(--text-dim);margin-top:.15rem">${why.slice(0, 140)}</div>` : ''}
         ${c.website ? `<a href="${c.website}" target="_blank" style="color:var(--primary);font-size:.7rem">ðŸ”— web</a>` : ''}
       </td>
       <td style="font-size:.8rem">${c.phone || 'â€”'}</td>
@@ -4514,6 +4761,7 @@ async function importSelectedSearch() {
   indices.forEach(i => {
     const c = tempSearchResults[i];
     if (!c) return;
+    decorateOpportunity(c);
     // Skip if already in leads
     if (leads.some(l => !l.archived && isSameBusiness({ ...c, company: c.name }, l))) return;
     const socials = [c.instagram, c.facebook, c.linkedin, c.twitter].filter(Boolean).join(' | ');
@@ -4535,7 +4783,7 @@ async function importSelectedSearch() {
       status: 'Pendiente',
       date: new Date().toISOString(),
       status_date: new Date().toISOString(),
-      notes: `Redes: ${socials || 'â€”'}\nEmails adicionales: ${c.emails?.join(', ')||'â€”'}`,
+      notes: `Calidad contacto: ${c.contactQuality || 'pendiente'} (${c.contactQualityScore || 0}/100)\nPor que aparece: ${(c.resultExplanation || []).map(x => `${x.label}: ${x.value}`).join(' | ') || 'â€”'}\nRedes: ${socials || 'â€”'}\nEmails adicionales: ${c.emails?.join(', ')||'â€”'}`,
       activity: [{ action: `Volcado desde bÃºsqueda "${location}"`, date: new Date().toISOString() }],
       source: 'search',
       rating: c.rating || null,
@@ -4564,6 +4812,7 @@ function getProspectingMinScore() {
 }
 
 function buildLeadFromSearchCompany(c, segment, location, campaignName = '') {
+  decorateOpportunity(c);
   const signalParts = [
     c.address ? `Ubicacion: ${c.address}` : '',
     c.rating ? `Rating: ${c.rating}/5 (${c.ratingCount || 0} resenas)` : '',
@@ -4593,6 +4842,8 @@ function buildLeadFromSearchCompany(c, segment, location, campaignName = '') {
     notes: [
       campaignName ? `Campana scraping: ${campaignName}` : '',
       `Angulo: ${c.opportunityAngle || 'contacto consultivo'}`,
+      `Calidad contacto: ${c.contactQuality || 'pendiente'} (${c.contactQualityScore || 0}/100)`,
+      `Por que aparece: ${(c.resultExplanation || []).map(x => `${x.label}: ${x.value}`).join(' | ') || '-'}`,
       `Redes: ${socials || '-'}`,
       `Emails adicionales: ${c.emails?.join(', ') || '-'}`,
     ].filter(Boolean).join('\n'),
@@ -4670,6 +4921,7 @@ function createProspectingCampaignFromSearch() {
 function quickImportOne(idx) {
   const c = tempSearchResults[idx];
   if (!c) return;
+  decorateOpportunity(c);
   if (leads.some(l => !l.archived && isSameBusiness({ ...c, company: c.name }, l))) { showToast(`${c.name} ya estÃ¡ en Leads`); return; }
   const segment = c.sourceSector || document.getElementById('plan-segment').value;
   const location = document.getElementById('plan-location').value.trim();
@@ -4709,7 +4961,7 @@ function quickImportOne(idx) {
     score: calculateScore(c.decision_maker ? 'manager' : 'otros', 'mediano', signalParts.join(' '), extraData),
     status: 'Pendiente',
     date: new Date().toISOString(),
-    notes: '',
+    notes: `Calidad contacto: ${c.contactQuality || 'pendiente'} (${c.contactQualityScore || 0}/100)\nPor que aparece: ${(c.resultExplanation || []).map(x => `${x.label}: ${x.value}`).join(' | ') || '-'}`,
     rating: c.rating,
     ratingCount: c.ratingCount,
     placeId: c.placeId || '',
@@ -4761,10 +5013,13 @@ function exportSearchCSV() {
     'Decisor','LinkedIn','Instagram','Facebook','Twitter','WhatsApp',
     'DescripciÃ³n','SeÃ±ales','Fuentes','TechStack','CMS',
     'AÃ±o dominio','Edad dominio','AÃ±o fundaciÃ³n','Estado legal',
-    'Velocidad web (ms)','Emails adicionales','TelÃ©fonos adicionales'
+    'Velocidad web (ms)','Emails adicionales','TelÃ©fonos adicionales',
+    'Calidad contacto','Score contacto','Tipo email','Query origen','Plan busqueda','Por que aparece'
   ];
 
-  const rows = tempSearchResults.map(c => [
+  const rows = tempSearchResults.map(c => {
+    decorateOpportunity(c);
+    return [
     c.name || '',
     c.address || '',
     c.rating || '',
@@ -4790,7 +5045,14 @@ function exportSearchCSV() {
     c.webLoadMs || '',
     (c.emails || []).slice(1).join(' | '),
     (c.phones || []).slice(1).join(' | '),
-  ]);
+    c.contactQuality || '',
+    c.contactQualityScore || '',
+    c.contactEmailRole || '',
+    c.querySource || '',
+    c.searchPlanSummary || '',
+    (c.resultExplanation || []).map(x => `${x.label}: ${x.value}`).join(' | ').replace(/"/g, '""'),
+  ];
+  });
 
   const csv = [headers, ...rows]
     .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
@@ -5224,6 +5486,11 @@ function openSidePanel(idx) {
   const uxStatus = getLeadUXStatus(c);
   const trust = getDataTrust(c);
   const angle = c.opportunityAngle || getAngleRecommendation(c);
+  const whyRows = (c.resultExplanation || buildResultExplanation(c)).map(x => `
+    <div style="display:flex;justify-content:space-between;gap:.75rem;padding:.55rem .65rem;border:1px solid var(--glass-border);border-radius:9px;background:rgba(255,255,255,.025)">
+      <span style="font-size:.74rem;color:${x.ok ? 'var(--text-muted)' : 'var(--danger)'}">${x.label}</span>
+      <strong style="font-size:.74rem;text-align:right;word-break:break-word;color:${x.ok ? 'var(--text)' : 'var(--danger)'}">${x.value}</strong>
+    </div>`).join('');
   const trustRows = trust.length ? trust.map(t => `
     <div style="padding:.7rem .8rem;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,.03)">
       <div style="display:flex;justify-content:space-between;gap:.75rem;align-items:center">
@@ -5276,6 +5543,10 @@ function openSidePanel(idx) {
     <div style="margin-bottom:1rem">
       <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:.5rem">Confianza del dato</div>
       <div style="display:grid;gap:.5rem">${trustRows}</div>
+    </div>
+    <div style="margin-bottom:1rem">
+      <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:.5rem">Por que aparece este resultado</div>
+      <div style="display:grid;gap:.4rem">${whyRows || '<div style="font-size:.78rem;color:var(--text-muted)">Sin senales auditables todavia.</div>'}</div>
     </div>
     <div style="margin-bottom:1.15rem">
       <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:.45rem">Resumen</div>
