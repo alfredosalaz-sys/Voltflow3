@@ -28,7 +28,6 @@ const CORS_PROXIES = [
   // â”€â”€ Tier 2: alternativos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   { url: 'https://thingproxy.freeboard.io/fetch/',        mode: 'raw' },
   { url: 'https://cors-anywhere.hexlet.io/',              mode: 'raw' },
-  { url: 'https://api.proxyscrape.com/v2/?request=getproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all', mode: 'raw' },
   { url: 'https://cors.eu.org/',                          mode: 'raw' },
   { url: 'https://api.codetabs.com/v1/proxy?quest=',      mode: 'raw' },
 ];
@@ -541,6 +540,15 @@ function _getSortedProxies() {
   return base;
 }
 
+function isScrapeableHtml(content = '') {
+  if (!content || content.length < 200) return false;
+  const sample = content.slice(0, 4000).toLowerCase();
+  if (/^(\d{1,3}\.){3}\d{1,3}:\d+/m.test(sample)) return false;
+  if (/request=getproxies|proxy list|protocol=http|anonymity=/i.test(sample)) return false;
+  if (/access denied|forbidden|blocked|security check|cloudflare|hcaptcha/i.test(sample)) return false;
+  return /<html|<head|<body|<title|<meta|<script|<a\s|mailto:|schema\.org|application\/ld\+json/i.test(sample);
+}
+
 // â”€â”€ DiagnÃ³stico de proxies â€” exportado para el botÃ³n de configuraciÃ³n â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function testAllProxies() {
   const testUrl = 'https://httpbin.org/get';
@@ -567,9 +575,9 @@ async function testAllProxies() {
   return results;
 }
 
-async function fetchWithProxy(targetUrl, timeoutMs = 9000, options = {}) {
+async function fetchWithProxy(targetUrl, timeoutMs = 9000) {
   // FIX-SCRAPING 2026: DetecciÃ³n activa de proxies saturados (429/503)
-  const sortedProxies = _getSortedProxies().slice(0, options.proxyLimit || CORS_PROXIES.length + 1);
+  const sortedProxies = _getSortedProxies();
 
   for (const proxy of sortedProxies) {
     const t0 = Date.now();
@@ -599,10 +607,8 @@ async function fetchWithProxy(targetUrl, timeoutMs = 9000, options = {}) {
         content = await res.text();
       }
 
-      // ValidaciÃ³n de contenido: evitar pÃ¡ginas de error comunes envueltas en 200 OK
-      const isErrorPage = /access denied|forbidden|blocked|security check|cloudflare|hcaptcha/i.test(content.slice(0, 2000));
-      
-      if (content.length >= 200 && !isErrorPage) {
+      // Validacion de contenido: evitar paginas de error o respuestas que no son HTML.
+      if (isScrapeableHtml(content)) {
         const ms = Date.now() - t0;
         if (proxy._idx >= 0) {
           _proxyStats[proxy._idx].ok++;
@@ -627,7 +633,7 @@ async function fetchWithProxy(targetUrl, timeoutMs = 9000, options = {}) {
       const res = await fetch(archiveUrl, { signal: AbortSignal.timeout(5000) });
       if (res.ok) {
         const txt = await res.text();
-        if (txt.length >= 200) return txt;
+        if (isScrapeableHtml(txt)) return txt;
       }
     } catch {}
   }
@@ -639,7 +645,10 @@ async function fetchWithProxy(targetUrl, timeoutMs = 9000, options = {}) {
       mode: 'cors',
       headers: { 'Accept': 'text/html' }
     });
-    if (res.ok) return await res.text();
+    if (res.ok) {
+      const txt = await res.text();
+      if (isScrapeableHtml(txt)) return txt;
+    }
   } catch {}
   return '';
 }
@@ -977,14 +986,6 @@ function normalizeSearchCompany(c = {}) {
   c.scrapeDiagnostics = Array.isArray(c.scrapeDiagnostics) ? c.scrapeDiagnostics : [];
   c.scrapeSignals = Array.isArray(c.scrapeSignals) ? c.scrapeSignals : [];
   return c;
-}
-
-function cloneSectorResults(seg) {
-  return (tempSearchResults || []).map(c => ({
-    ...normalizeSearchCompany(c),
-    sourceSector: seg,
-    matchedSectors: [...new Set([...(c.matchedSectors || []), seg])],
-  }));
 }
 
 async function fetchPlaces(segment, location, maxResults) {
@@ -1419,18 +1420,12 @@ function buildDeepScrapePlan(company, html = '', domain = '', memory = {}) {
 }
 
 // â”€â”€â”€ CAPA 2: Web Scraping PRO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-async function enrichFromWeb(company, options = {}) {
+async function enrichFromWeb(company) {
   company = normalizeSearchCompany(company);
   if (!company.website) {
     company.scrapeDiagnostics = ['sin-web'];
     return company;
   }
-  const quickMode = !!options.quickMode;
-  const proxyLimit = options.proxyLimit || (quickMode ? 3 : CORS_PROXIES.length + 1);
-  const mainTimeoutMs = options.timeoutMs || (quickMode ? 5500 : 10000);
-  const deepTimeoutMs = options.deepTimeoutMs || (quickMode ? 3500 : 6500);
-  const sitemapTimeoutMs = options.sitemapTimeoutMs || (quickMode ? 3500 : 7000);
-  const maxDeepPages = options.maxDeepPages ?? (quickMode ? 2 : 6);
 
   // â”€â”€ Comprobar cachÃ© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const domainKey = extractDomain(company.website) || company.website;
@@ -1460,7 +1455,7 @@ async function enrichFromWeb(company, options = {}) {
   // Ahora medimos el tiempo del fetch que ya necesitamos hacer de todas formas.
   const t0Fetch = Date.now();
   try {
-    html = await fetchWithProxy(company.website, mainTimeoutMs, { proxyLimit }); // proxy aÃ±ade ~2-4s de latencia extra
+    html = await fetchWithProxy(company.website, 10000); // 10s: proxy aÃ±ade ~2-4s de latencia extra
   } catch (err) {
     const reason = diagnoseScrapeFailure({ url: company.website, error: err?.message, ms: Date.now() - t0Fetch });
     company.scrapeDiagnostics = [reason];
@@ -1774,7 +1769,7 @@ async function enrichFromWeb(company, options = {}) {
   // â”€â”€â”€ 8b. Tech Stack Detection (Idea 5) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // 8c. Scraping profundo inteligente: usa enlaces reales + memoria local por dominio.
   if (!company.email || !company.decision_maker) {
-    const deepUrls = buildDeepScrapePlan(company, html, domain, scrapeMemory).slice(0, maxDeepPages);
+    const deepUrls = buildDeepScrapePlan(company, html, domain, scrapeMemory);
     try {
       for (const deepUrl of deepUrls) {
         if (company.email && company.decision_maker) break;
@@ -1782,7 +1777,7 @@ async function enrichFromWeb(company, options = {}) {
         let pageHtml = '';
         let reason = '';
         try {
-          pageHtml = await fetchWithProxy(deepUrl, deepTimeoutMs, { proxyLimit });
+          pageHtml = await fetchWithProxy(deepUrl, 6500);
         } catch (e) {
           reason = diagnoseScrapeFailure({ url: deepUrl, error: e?.message, ms: Date.now() - t0Deep });
         }
@@ -1893,7 +1888,7 @@ async function enrichFromWeb(company, options = {}) {
     if (_skipSitemap) { /* early-exit: datos completos, no merece el fetch */ }
     else {
     const sitemapUrl = company.website.replace(/\/$/, '') + '/sitemap.xml';
-    const sitemapHtml = await fetchWithProxy(sitemapUrl, sitemapTimeoutMs, { proxyLimit }); // sitemap puede tardar mÃ¡s via proxy
+    const sitemapHtml = await fetchWithProxy(sitemapUrl, 7000); // sitemap puede tardar mÃ¡s via proxy
     if (sitemapHtml && /<loc>/i.test(sitemapHtml)) {
       company.hasSitemap = true;
       const urls = [...sitemapHtml.matchAll(/<loc>([^<]+)<\/loc>/gi)].map(m => m[1].trim());
@@ -1907,7 +1902,7 @@ async function enrichFromWeb(company, options = {}) {
       // Scraping de pÃ¡gina de equipo desde sitemap
       if (teamUrl && !company.decision_maker) {
         try {
-          const teamHtml = await fetchWithProxy(teamUrl, sitemapTimeoutMs, { proxyLimit });
+          const teamHtml = await fetchWithProxy(teamUrl, 7000);
           if (teamHtml) {
             const roleStr = getRoleRegexSource();
             const namePattern = /([A-ZÃÃ‰ÃÃ“ÃšÃ‘][a-zÃ¡Ã©Ã­Ã³ÃºÃ±]{1,20}\s+(?:[A-ZÃÃ‰ÃÃ“ÃšÃ‘][a-zÃ¡Ã©Ã­Ã³ÃºÃ±]{1,20}\s+)?[A-ZÃÃ‰ÃÃ“ÃšÃ‘][a-zÃ¡Ã©Ã­Ã³ÃºÃ±]{1,25})/;
@@ -3111,7 +3106,14 @@ async function searchBusinesses() {
     currentMultiSectorFilter = 'all';
     const msPanel = document.getElementById('multi-sector-results-panel');
     if (msPanel) msPanel.remove();
-    return searchBusinessesSingle();
+    try {
+      await searchBusinessesSingle();
+    } catch (err) {
+      console.error('Busqueda individual fallida:', err);
+      logEnrich('Error inesperado en busqueda: ' + (err?.message || err), 'err');
+      resetSearchBtn();
+    }
+    return;
   }
 
   const sectors = getMultiSectorSelection();
@@ -3119,12 +3121,29 @@ async function searchBusinesses() {
   if (!location) { alert('Introduce una ciudad, zona o codigo postal.'); return; }
   if (sectors.length < 2) { alert('Selecciona al menos 2 sectores para busqueda multi-sector.'); return; }
 
+  return searchBusinessesMultiSector(sectors, location);
+}
+
+async function searchBusinessesMultiSector(sectors, location) {
   const originalSegment = document.getElementById('plan-segment')?.value;
+  const maxRes = parseInt(document.getElementById('plan-max')?.value || '20', 10);
   const btn = document.getElementById('btn-search');
   const allResults = [];
   const perSector = {};
   multiSectorSearchState = { location, sectors, rawCount: 0, perSector };
   currentMultiSectorFilter = 'all';
+  tempSearchResults = [];
+  currentUXStatusFilter = 'all';
+
+  document.getElementById('enrich-pipeline').style.display = 'block';
+  document.getElementById('search-results-panel').style.display = 'none';
+  document.getElementById('enrich-stats-bar').style.display = 'none';
+  document.getElementById('search-dup-info')?.remove();
+  document.getElementById('result-filters').style.display = 'none';
+  const sfb0 = document.getElementById('search-sf-wrap'); if (sfb0) sfb0.style.display = 'none';
+  setProgress(0);
+  logEnrich('', 'clear');
+  logEnrich(`Busqueda multi-sector: ${sectors.length} sectores en ${location}`);
   ensureMultiSectorProgressPanel(sectors);
   if (btn) { btn.disabled = true; btn.textContent = `Buscando ${sectors.length} sectores...`; }
 
@@ -3135,24 +3154,23 @@ async function searchBusinesses() {
       if (planSel) planSel.value = seg;
       setMultiSectorProgress(seg, 'buscando', 12, i, sectors.length);
       try {
-        await searchBusinessesSingle({ multiChild: true, sectorOverride: seg });
-        const sectorResults = cloneSectorResults(seg);
+        const places = await searchSectorPlacesOnly(seg, location, maxRes);
+        const sectorResults = places.map(c => ({
+          ...normalizeSearchCompany(c),
+          segment: seg,
+          sourceSector: seg,
+          matchedSectors: [...new Set([...(c.matchedSectors || []), seg])],
+        }));
         perSector[seg] = { total: sectorResults.length, label: getSegmentLabel(seg) };
         allResults.push(...sectorResults);
         setMultiSectorProgress(seg, `${sectorResults.length} resultados`, 100, i + 1, sectors.length);
+        logEnrich(`${getSegmentLabel(seg)}: ${sectorResults.length} empresas`, sectorResults.length ? 'ok' : 'warn');
       } catch (err) {
-        const partialResults = cloneSectorResults(seg);
-        if (partialResults.length) {
-          perSector[seg] = { total: partialResults.length, label: getSegmentLabel(seg), warning: err?.message || 'error' };
-          allResults.push(...partialResults);
-          setMultiSectorProgress(seg, `${partialResults.length} parciales`, 100, i + 1, sectors.length);
-          logEnrich(`Multi-sector: ${getSegmentLabel(seg)} tuvo un fallo tras Places (${err?.message || 'error'}), se conservan ${partialResults.length} resultados`, 'warn');
-        } else {
-          perSector[seg] = { total: 0, label: getSegmentLabel(seg), error: err?.message || 'error' };
-          setMultiSectorProgress(seg, 'error, saltando', 100, i + 1, sectors.length);
-          logEnrich(`Multi-sector: ${getSegmentLabel(seg)} falló (${err?.message || 'error'}) y se continúa con el siguiente sector`, 'warn');
-        }
+        perSector[seg] = { total: 0, label: getSegmentLabel(seg), error: err?.message || 'error' };
+        setMultiSectorProgress(seg, 'error, saltando', 100, i + 1, sectors.length);
+        logEnrich(`Multi-sector: ${getSegmentLabel(seg)} fallo (${err?.message || 'error'}) y se continua`, 'warn');
       }
+      setProgress(Math.round(((i + 1) / sectors.length) * 100));
       await yieldToUI();
     }
 
@@ -3176,13 +3194,31 @@ async function searchBusinesses() {
   }
 }
 
+async function searchSectorPlacesOnly(segment, location, maxRes) {
+  let places = await fetchPlaces(segment, location, maxRes);
+  places = await enrichDistances(places, location);
+  places = places.map(c => detectOptimalContactWindow(c));
+  places = places.map(c => {
+    const cached = _enrichCache.get(c.id);
+    const hydrated = cached ? annotateIncrementalScrape({ ...c, ...cached, fromCache: true }) : annotateIncrementalScrape(c);
+    return normalizeSearchCompany(hydrated);
+  });
+  places = deduplicateResults(places);
+  places.slice(0, 20).forEach(c => {
+    if (!c.logo && c.website) c.logo = getClearbitLogo(c.website);
+    if (!c.domain) c.domain = extractDomain(c.website);
+  });
+  recordLeadMemoryBulk(places, 'seen_in_multisector', () => ({ segment, location }));
+  return places;
+}
+
 async function searchBusinessesSingle(options = {}) {
   const isMultiChild = !!options.multiChild;
   const segment  = options.sectorOverride || document.getElementById('plan-segment').value;
   const location = document.getElementById('plan-location').value.trim();
   const maxRes   = parseInt(document.getElementById('plan-max').value);
   const selectedEnrichMode = document.getElementById('plan-enrich').value;
-  const enrichMode = isMultiChild && selectedEnrichMode === 'all' ? 'web' : selectedEnrichMode;
+  const enrichMode = isMultiChild ? 'none' : selectedEnrichMode;
 
   if (!location) { alert('Introduce una ciudad o zona.'); return; }
 
@@ -3198,6 +3234,14 @@ async function searchBusinessesSingle(options = {}) {
     }
   }
 
+  const setStep = (step, state, msg) => {
+    const el = document.getElementById(`step-${step}`);
+    const st = document.getElementById(`st-${step}`);
+    if (el) { el.className = `pipeline-step ${state}`; }
+    if (st) st.textContent = msg;
+  };
+
+  try {
   saveSearchHistory(segment, location);
 
   // UI: mostrar pipeline
@@ -3218,13 +3262,6 @@ async function searchBusinessesSingle(options = {}) {
   currentUXStatusFilter = 'all';
   setProgress(0);
   logEnrich('', 'clear');
-
-  const setStep = (step, state, msg) => {
-    const el = document.getElementById(`step-${step}`);
-    const st = document.getElementById(`st-${step}`);
-    if (el) { el.className = `pipeline-step ${state}`; }
-    if (st) st.textContent = msg;
-  };
 
   // â”€â”€ Capa 1 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   setStep('places','active','Buscando...');
@@ -3254,24 +3291,8 @@ async function searchBusinessesSingle(options = {}) {
     return;
   }
 
-  // â”€â”€ Idea 5: Aplicar Cache de Enriquecimiento (Recuperar datos previos) â”€â”€â”€â”€â”€â”€
-  places = places.map(c => {
-    const cached = _enrichCache.get(c.id);
-    if (cached) {
-      logEnrich(`â™»ï¸ Datos recuperados de cache para: ${c.name}`);
-      return annotateIncrementalScrape({ ...c, ...cached, fromCache: true });
-    }
-    return annotateIncrementalScrape(c);
-  });
-  const beforePlacesDedup = places.length;
-  places = deduplicateResults(places);
-  if (places.length < beforePlacesDedup) {
-    logEnrich(`Deduplicacion fuerte: ${beforePlacesDedup - places.length} resultados repetidos eliminados por dominio, telefono, direccion o similitud`, 'ok');
-  }
-
   tempSearchResults = places;
   tempSearchResults.forEach(normalizeSearchCompany);
-  recordLeadMemoryBulk(tempSearchResults, 'seen_in_search', () => ({ segment, location }));
 
   // Renderizar resultado rÃ¡pido de Places mientras enriquecemos
   renderSearchCards();
@@ -3299,7 +3320,6 @@ async function searchBusinessesSingle(options = {}) {
     logEnrich(`âš¡ Modo Turbo: ${places.length} empresas en segundos. Pulsa âœ¨ en cada card para enriquecer individualmente.`, 'ok');
     // AÃ±adir logos Clearbit tambiÃ©n en modo turbo
     tempSearchResults.forEach(c => { if (!c.logo) c.logo = getClearbitLogo(c.website); });
-    recordLeadMemoryBulk(tempSearchResults, 'turbo_result', c => ({ segment, location, score: c.opportunityScore || 0 }));
     renderSearchCards();
     updateEnrichStats();
     if (!isMultiChild) resetSearchBtn();
@@ -3335,18 +3355,10 @@ async function searchBusinessesSingle(options = {}) {
         const company = tempSearchResults[i];
         if (!company.website) { done++; return; }
         try {
-          tempSearchResults[i] = await enrichFromWeb(company, isMultiChild ? {
-            quickMode: true,
-            timeoutMs: 5500,
-            deepTimeoutMs: 3500,
-            sitemapTimeoutMs: 3500,
-            maxDeepPages: 2,
-            proxyLimit: 3
-          } : {});
+          tempSearchResults[i] = await enrichFromWeb(company);
         } catch (e1) {
           // Retry automÃ¡tico con proxy alternativo tras pausa corta
           try {
-            if (isMultiChild) throw e1;
             await sleep(1500); 
             tempSearchResults[i] = await enrichFromWeb(company);
           } catch (e2) {
@@ -3588,6 +3600,14 @@ async function searchBusinessesSingle(options = {}) {
 
   // â”€â”€ Inteligencia de sesiÃ³n (asÃ­ncrona, no bloquea el pipeline) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   generateSessionIntel(tempSearchResults, segment, location);
+  } catch (err) {
+    console.error('searchBusinessesSingle failed:', err);
+    setStep('done', 'error', 'Error');
+    logEnrich('Error inesperado: ' + (err?.message || err), 'err');
+    throw err;
+  } finally {
+    if (!isMultiChild) resetSearchBtn();
+  }
 }
 
 // â”€â”€â”€ UI HELPERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
