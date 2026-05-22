@@ -26,8 +26,8 @@ const CORS_PROXIES = [
   { url: 'https://corsproxy.io/?',                        mode: 'raw' },
   { url: 'https://api.allorigins.win/raw?url=',           mode: 'raw' },
   // â”€â”€ Tier 2: alternativos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  { url: 'https://thingproxy.freeboard.io/fetch/',        mode: 'raw' },
   { url: 'https://cors-anywhere.hexlet.io/',              mode: 'raw' },
+  { url: 'https://proxy.cors.sh/',                        mode: 'raw' },
   { url: 'https://cors.eu.org/',                          mode: 'raw' },
   { url: 'https://api.codetabs.com/v1/proxy?quest=',      mode: 'raw' },
 ];
@@ -42,6 +42,18 @@ const PERF = {
 
 let multiSectorSearchState = null;
 let currentMultiSectorFilter = 'all';
+
+function resetSearchRuntimeFilters() {
+  currentResultFilter = 'all';
+  currentUXStatusFilter = 'all';
+  currentMultiSectorFilter = 'all';
+  ['search-results-text', 'search-results-has'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const sort = document.getElementById('search-results-sort');
+  if (sort) sort.value = 'default';
+}
 
 function getSegmentLabel(seg) {
   return (typeof SEGMENT_LABELS !== 'undefined' && SEGMENT_LABELS[seg]) || seg;
@@ -188,10 +200,10 @@ function renderMultiSectorResultsPanel() {
       </div>
     </div>
     <div style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.85rem">
-      <button class="rfilt ${currentMultiSectorFilter === 'all' ? 'active' : ''}" onclick="filterMultiSectorResults('all')">Todos <span style="opacity:.7">${tempSearchResults.length}</span></button>
+      <button class="rfilt ms-filt ${currentMultiSectorFilter === 'all' ? 'active' : ''}" onclick="filterMultiSectorResults('all')">Todos <span style="opacity:.7">${tempSearchResults.length}</span></button>
       ${sectors.map(seg => {
         const s = stats[seg];
-        return `<button class="rfilt ${currentMultiSectorFilter === seg ? 'active' : ''}" onclick="filterMultiSectorResults('${seg}')">${getSegmentLabel(seg)} <span style="opacity:.7">${s.total}</span></button>`;
+        return `<button class="rfilt ms-filt ${currentMultiSectorFilter === seg ? 'active' : ''}" onclick="filterMultiSectorResults('${seg}')">${getSegmentLabel(seg)} <span style="opacity:.7">${s.total}</span></button>`;
       }).join('')}
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:.5rem;margin-top:.85rem">
@@ -540,12 +552,13 @@ function _getSortedProxies() {
   return base;
 }
 
-function isScrapeableHtml(content = '') {
+function isScrapeableHtml(content = '', expected = 'html') {
   if (!content || content.length < 200) return false;
   const sample = content.slice(0, 4000).toLowerCase();
   if (/^(\d{1,3}\.){3}\d{1,3}:\d+/m.test(sample)) return false;
   if (/request=getproxies|proxy list|protocol=http|anonymity=/i.test(sample)) return false;
   if (/access denied|forbidden|blocked|security check|cloudflare|hcaptcha/i.test(sample)) return false;
+  if (expected === 'xml') return /<urlset|<sitemapindex|<loc>/.test(sample);
   return /<html|<head|<body|<title|<meta|<script|<a\s|mailto:|schema\.org|application\/ld\+json/i.test(sample);
 }
 
@@ -575,16 +588,22 @@ async function testAllProxies() {
   return results;
 }
 
-async function fetchWithProxy(targetUrl, timeoutMs = 9000) {
+async function fetchWithProxy(targetUrl, timeoutMs = 9000, options = {}) {
   // FIX-SCRAPING 2026: DetecciÃ³n activa de proxies saturados (429/503)
-  const sortedProxies = _getSortedProxies();
+  const expected = options.expected || 'html';
+  const maxProxies = options.maxProxies || 3;
+  const deadlineMs = options.deadlineMs || timeoutMs;
+  const startedAt = Date.now();
+  const sortedProxies = _getSortedProxies().slice(0, maxProxies);
 
   for (const proxy of sortedProxies) {
+    const remaining = deadlineMs - (Date.now() - startedAt);
+    if (remaining <= 250) break;
     const t0 = Date.now();
     try {
       const fullUrl = proxy.url + encodeURIComponent(targetUrl);
       const res = await fetch(fullUrl, { 
-        signal: AbortSignal.timeout(timeoutMs),
+        signal: AbortSignal.timeout(Math.min(timeoutMs, remaining)),
         headers: { 'Cache-Control': 'no-cache' } 
       });
 
@@ -608,7 +627,7 @@ async function fetchWithProxy(targetUrl, timeoutMs = 9000) {
       }
 
       // Validacion de contenido: evitar paginas de error o respuestas que no son HTML.
-      if (isScrapeableHtml(content)) {
+      if (isScrapeableHtml(content, expected)) {
         const ms = Date.now() - t0;
         if (proxy._idx >= 0) {
           _proxyStats[proxy._idx].ok++;
@@ -626,28 +645,32 @@ async function fetchWithProxy(targetUrl, timeoutMs = 9000) {
     }
   }
 
-  // â”€â”€ Idea 1: Fallback a Wayback Machine (Archive.org) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  if (targetUrl.startsWith('http')) {
+  // Wayback es lento y no debe bloquear el flujo principal. Solo se usa si se pide explicitamente.
+  if (options.useArchive && targetUrl.startsWith('http')) {
+    const remaining = deadlineMs - (Date.now() - startedAt);
+    if (remaining <= 250) return '';
     try {
       const archiveUrl = `https://web.archive.org/web/2/${targetUrl}`;
-      const res = await fetch(archiveUrl, { signal: AbortSignal.timeout(5000) });
+      const res = await fetch(archiveUrl, { signal: AbortSignal.timeout(Math.min(5000, remaining)) });
       if (res.ok) {
         const txt = await res.text();
-        if (isScrapeableHtml(txt)) return txt;
+        if (isScrapeableHtml(txt, expected)) return txt;
       }
     } catch {}
   }
 
   // â”€â”€ Ãšltimo recurso: fetch directo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const remaining = deadlineMs - (Date.now() - startedAt);
+  if (remaining <= 250) return '';
   try {
     const res = await fetch(targetUrl, {
-      signal: AbortSignal.timeout(Math.min(timeoutMs, 4000)),
+      signal: AbortSignal.timeout(Math.min(timeoutMs, 4000, remaining)),
       mode: 'cors',
       headers: { 'Accept': 'text/html' }
     });
     if (res.ok) {
       const txt = await res.text();
-      if (isScrapeableHtml(txt)) return txt;
+      if (isScrapeableHtml(txt, expected)) return txt;
     }
   } catch {}
   return '';
@@ -1041,11 +1064,15 @@ async function fetchPlaces(segment, location, maxResults) {
   }
 
   // Iterar sobre puntos del grid Ã— queries del segmento
+  let queryAttempts = 0;
+  let failedQueries = 0;
+  let lastQueryError = '';
   for (const point of searchPoints) {
     if (!exhaustive && allPlaces.length >= effectiveMax) break;
 
     for (const query of queries) {
       if (!exhaustive && allPlaces.length >= effectiveMax) break;
+      queryAttempts++;
       try {
         const request = {
           textQuery: point.lat
@@ -1103,13 +1130,18 @@ async function fetchPlaces(segment, location, maxResults) {
 
         await sleep(250); // Pausa entre llamadas API
       } catch(e) {
+        failedQueries++;
+        lastQueryError = e?.message || String(e);
         console.warn('Query fallida:', query, e.message);
       }
     }
     if (gridSize > 1) await sleep(100); // Pausa entre puntos del grid
   }
 
-  logEnrich(`âœ… Cobertura total: ${allPlaces.length} empresas Ãºnicas (${seenIds.size} IDs deduplicados)`, 'ok');
+  if (!allPlaces.length && failedQueries && failedQueries === queryAttempts) {
+    logEnrich(`Todas las consultas de Places fallaron (${lastQueryError || 'sin detalle'}). Revisa cuota/API key o prueba otra zona.`, 'err');
+  }
+  logEnrich(`âœ… Cobertura total: ${allPlaces.length} empresas Ãºnicas (${seenIds.size} IDs deduplicados)`, allPlaces.length ? 'ok' : 'warn');
   return allPlaces;
 }
 
@@ -1416,7 +1448,7 @@ function buildDeepScrapePlan(company, html = '', domain = '', memory = {}) {
     .sort((a, b) => b[1] - a[1])
     .map(([url]) => url)
     .filter(url => url.replace(/\/$/, '') !== base.replace(/\/$/, ''))
-    .slice(0, 6);
+    .slice(0, 3);
 }
 
 // â”€â”€â”€ CAPA 2: Web Scraping PRO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1455,7 +1487,7 @@ async function enrichFromWeb(company) {
   // Ahora medimos el tiempo del fetch que ya necesitamos hacer de todas formas.
   const t0Fetch = Date.now();
   try {
-    html = await fetchWithProxy(company.website, 10000); // 10s: proxy aÃ±ade ~2-4s de latencia extra
+    html = await fetchWithProxy(company.website, 10000, { deadlineMs: 11000, maxProxies: 3 }); // deadline global: evita bloqueos por web
   } catch (err) {
     const reason = diagnoseScrapeFailure({ url: company.website, error: err?.message, ms: Date.now() - t0Fetch });
     company.scrapeDiagnostics = [reason];
@@ -1777,7 +1809,7 @@ async function enrichFromWeb(company) {
         let pageHtml = '';
         let reason = '';
         try {
-          pageHtml = await fetchWithProxy(deepUrl, 6500);
+          pageHtml = await fetchWithProxy(deepUrl, 5000, { deadlineMs: 5500, maxProxies: 2 });
         } catch (e) {
           reason = diagnoseScrapeFailure({ url: deepUrl, error: e?.message, ms: Date.now() - t0Deep });
         }
@@ -1888,7 +1920,7 @@ async function enrichFromWeb(company) {
     if (_skipSitemap) { /* early-exit: datos completos, no merece el fetch */ }
     else {
     const sitemapUrl = company.website.replace(/\/$/, '') + '/sitemap.xml';
-    const sitemapHtml = await fetchWithProxy(sitemapUrl, 7000); // sitemap puede tardar mÃ¡s via proxy
+    const sitemapHtml = await fetchWithProxy(sitemapUrl, 4500, { deadlineMs: 5000, maxProxies: 2, expected: 'xml' });
     if (sitemapHtml && /<loc>/i.test(sitemapHtml)) {
       company.hasSitemap = true;
       const urls = [...sitemapHtml.matchAll(/<loc>([^<]+)<\/loc>/gi)].map(m => m[1].trim());
@@ -1902,7 +1934,7 @@ async function enrichFromWeb(company) {
       // Scraping de pÃ¡gina de equipo desde sitemap
       if (teamUrl && !company.decision_maker) {
         try {
-          const teamHtml = await fetchWithProxy(teamUrl, 7000);
+          const teamHtml = await fetchWithProxy(teamUrl, 5000, { deadlineMs: 5500, maxProxies: 2 });
           if (teamHtml) {
             const roleStr = getRoleRegexSource();
             const namePattern = /([A-ZÃÃ‰ÃÃ“ÃšÃ‘][a-zÃ¡Ã©Ã­Ã³ÃºÃ±]{1,20}\s+(?:[A-ZÃÃ‰ÃÃ“ÃšÃ‘][a-zÃ¡Ã©Ã­Ã³ÃºÃ±]{1,20}\s+)?[A-ZÃÃ‰ÃÃ“ÃšÃ‘][a-zÃ¡Ã©Ã­Ã³ÃºÃ±]{1,25})/;
@@ -3106,6 +3138,8 @@ async function searchBusinesses() {
     currentMultiSectorFilter = 'all';
     const msPanel = document.getElementById('multi-sector-results-panel');
     if (msPanel) msPanel.remove();
+    const msProgress = document.getElementById('multi-sector-progress');
+    if (msProgress) msProgress.remove();
     try {
       await searchBusinessesSingle();
     } catch (err) {
@@ -3121,7 +3155,13 @@ async function searchBusinesses() {
   if (!location) { alert('Introduce una ciudad, zona o codigo postal.'); return; }
   if (sectors.length < 2) { alert('Selecciona al menos 2 sectores para busqueda multi-sector.'); return; }
 
-  return searchBusinessesMultiSector(sectors, location);
+  try {
+    await searchBusinessesMultiSector(sectors, location);
+  } catch (err) {
+    console.error('Busqueda multi-sector fallida:', err);
+    logEnrich('Error inesperado en multi-sector: ' + (err?.message || err), 'err');
+    resetSearchBtn();
+  }
 }
 
 async function searchBusinessesMultiSector(sectors, location) {
@@ -3131,9 +3171,8 @@ async function searchBusinessesMultiSector(sectors, location) {
   const allResults = [];
   const perSector = {};
   multiSectorSearchState = { location, sectors, rawCount: 0, perSector };
-  currentMultiSectorFilter = 'all';
   tempSearchResults = [];
-  currentUXStatusFilter = 'all';
+  resetSearchRuntimeFilters();
 
   document.getElementById('enrich-pipeline').style.display = 'block';
   document.getElementById('search-results-panel').style.display = 'none';
@@ -3259,7 +3298,7 @@ async function searchBusinessesSingle(options = {}) {
   document.getElementById('btn-search').disabled = true;
   document.getElementById('btn-search').textContent = 'â³ Buscando...';
   tempSearchResults = [];
-  currentUXStatusFilter = 'all';
+  resetSearchRuntimeFilters();
   setProgress(0);
   logEnrich('', 'clear');
 
@@ -3428,21 +3467,25 @@ async function searchBusinessesSingle(options = {}) {
       await runLimitedBatches(externalCandidates, PERF.externalBatch, async (item) => {
         const i = item.i;
         markCardEnriching(i, true);
-        
-        // Hunter.io (solo si no hay email)
-        if (hunterKey && !tempSearchResults[i].email) {
-          tempSearchResults[i] = await enrichFromHunter(tempSearchResults[i]);
+        try {
+          // Hunter.io (solo si no hay email)
+          if (hunterKey && !tempSearchResults[i].email) {
+            tempSearchResults[i] = await enrichFromHunter(tempSearchResults[i]);
+          }
+          
+          // Apollo.io (si no hay decisor o email despuÃ©s de Hunter)
+          if (apolloKey && (!tempSearchResults[i].email || !tempSearchResults[i].decision_maker)) {
+            tempSearchResults[i] = await enrichFromApollo(tempSearchResults[i]);
+          }
+        } catch (err) {
+          tempSearchResults[i].scrapeDiagnostics = [...new Set([...(tempSearchResults[i].scrapeDiagnostics || []), 'externas-fallo'])];
+          console.warn('External enrichment failed:', tempSearchResults[i].name, err);
+        } finally {
+          markCardEnriching(i, false);
+          updateCard(i);
+          extDone++;
+          if (extDone % 3 === 0) scheduleEnrichStats();
         }
-        
-        // Apollo.io (si no hay decisor o email despuÃ©s de Hunter)
-        if (apolloKey && (!tempSearchResults[i].email || !tempSearchResults[i].decision_maker)) {
-          tempSearchResults[i] = await enrichFromApollo(tempSearchResults[i]);
-        }
-
-        markCardEnriching(i, false);
-        updateCard(i);
-        extDone++;
-        if (extDone % 3 === 0) scheduleEnrichStats();
       }, 500);
       setStep('hunter','done', 'Completado');
       setStep('apollo','done', 'Completado');
@@ -3461,22 +3504,27 @@ async function searchBusinessesSingle(options = {}) {
       const batch = tempSearchResults.slice(i, i + SIGNAL_BATCH);
       await Promise.all(batch.map(async (c, idx) => {
         const realIdx = i + idx;
-        // 1. Social & Web Signals
-        tempSearchResults[realIdx] = await enrichFromSocial(tempSearchResults[realIdx]);
-        // 2. Google News (solo si no tenemos muchas seÃ±ales aÃºn)
-        if (tempSearchResults[realIdx].signals.length < 3) {
-          tempSearchResults[realIdx] = await enrichFromNews(tempSearchResults[realIdx]);
+        try {
+          // 1. Social & Web Signals
+          tempSearchResults[realIdx] = await enrichFromSocial(tempSearchResults[realIdx]);
+          // 2. Google News (solo si no tenemos muchas seÃ±ales aÃºn)
+          if (tempSearchResults[realIdx].signals.length < 3) {
+            tempSearchResults[realIdx] = await enrichFromNews(tempSearchResults[realIdx]);
+          }
+          // 3. Whois (edad de dominio)
+          if (tempSearchResults[realIdx].website) {
+            tempSearchResults[realIdx] = await enrichFromWhois(tempSearchResults[realIdx]);
+          }
+          // 4. OpenCorporates (registro legal)
+          tempSearchResults[realIdx] = await enrichFromOpenCorporates(tempSearchResults[realIdx]);
+          // 5. AnÃ¡lisis de ReseÃ±as (dolor del cliente)
+          tempSearchResults[realIdx] = await enrichFromReviews(tempSearchResults[realIdx]);
+        } catch (err) {
+          tempSearchResults[realIdx].scrapeDiagnostics = [...new Set([...(tempSearchResults[realIdx].scrapeDiagnostics || []), 'senales-fallo'])];
+          console.warn('Signal enrichment failed:', tempSearchResults[realIdx].name, err);
+        } finally {
+          updateCard(realIdx);
         }
-        // 3. Whois (edad de dominio)
-        if (tempSearchResults[realIdx].website) {
-          tempSearchResults[realIdx] = await enrichFromWhois(tempSearchResults[realIdx]);
-        }
-        // 4. OpenCorporates (registro legal)
-        tempSearchResults[realIdx] = await enrichFromOpenCorporates(tempSearchResults[realIdx]);
-        // 5. AnÃ¡lisis de ReseÃ±as (dolor del cliente)
-        tempSearchResults[realIdx] = await enrichFromReviews(tempSearchResults[realIdx]);
-        
-        updateCard(realIdx);
       }));
       
       setProgress(80 + Math.round((i / tempSearchResults.length) * 20));
@@ -3505,33 +3553,37 @@ async function searchBusinessesSingle(options = {}) {
       .map(x => x.i);
     await runLimitedBatches(advancedIndices, PERF.advancedBatch, async (i) => {
       if (tempSearchResults[i].fromCache) return;
+      try {
+        // 1. LinkedIn Dorking (Idea 3 - Decisor probable)
+        tempSearchResults[i] = await enrichFromLinkedInDorking(tempSearchResults[i]);
 
-      // 1. LinkedIn Dorking (Idea 3 - Decisor probable)
-      tempSearchResults[i] = await enrichFromLinkedInDorking(tempSearchResults[i]);
+        // 2. BORME (TrÃ¡mites legales reales)
+        tempSearchResults[i] = await enrichFromBorme(tempSearchResults[i]);
+        
+        // 3. Empresite (NIF, empleados, facturaciÃ³n)
+        tempSearchResults[i] = await enrichFromEmpressite(tempSearchResults[i]);
+        if (tempSearchResults[i].enrichSource.includes('Empresite')) empresiteOk++;
 
-      // 2. BORME (TrÃ¡mites legales reales)
-      tempSearchResults[i] = await enrichFromBorme(tempSearchResults[i]);
-      
-      // 3. Empresite (NIF, empleados, facturaciÃ³n)
-      tempSearchResults[i] = await enrichFromEmpressite(tempSearchResults[i]);
-      if (tempSearchResults[i].enrichSource.includes('Empresite')) empresiteOk++;
+        // 4. Experian (Riesgo, morosidad)
+        tempSearchResults[i] = await enrichFromExperian(tempSearchResults[i]);
+        if (tempSearchResults[i].enrichSource.includes('Experian')) experianOk++;
 
-      // 4. Experian (Riesgo, morosidad)
-      tempSearchResults[i] = await enrichFromExperian(tempSearchResults[i]);
-      if (tempSearchResults[i].enrichSource.includes('Experian')) experianOk++;
-
-      // 5. Street View Vision (Idea 4 - AnÃ¡lisis necesidades reforma)
-      if (geminiKey && tempSearchResults[i].address) {
-        tempSearchResults[i] = await enrichFromStreetView(tempSearchResults[i]);
-      }
-      
-      // 6. IA Email Rescue (Ãšltimo recurso con Gemini)
-      if (geminiKey && !tempSearchResults[i].email && tempSearchResults[i].website) {
-        const rescued = await extractEmailWithAI(tempSearchResults[i].website, tempSearchResults[i].name, geminiKey);
-        if (rescued) {
-          tempSearchResults[i].email = rescued;
-          tempSearchResults[i].enrichSource.push('IA-Rescue');
+        // 5. Street View Vision (Idea 4 - AnÃ¡lisis necesidades reforma)
+        if (geminiKey && tempSearchResults[i].address) {
+          tempSearchResults[i] = await enrichFromStreetView(tempSearchResults[i]);
         }
+        
+        // 6. IA Email Rescue (Ãšltimo recurso con Gemini)
+        if (geminiKey && !tempSearchResults[i].email && tempSearchResults[i].website) {
+          const rescued = await extractEmailWithAI(tempSearchResults[i].website, tempSearchResults[i].name, geminiKey);
+          if (rescued) {
+            tempSearchResults[i].email = rescued;
+            tempSearchResults[i].enrichSource.push('IA-Rescue');
+          }
+        }
+      } catch (err) {
+        tempSearchResults[i].scrapeDiagnostics = [...new Set([...(tempSearchResults[i].scrapeDiagnostics || []), 'avanzadas-fallo'])];
+        console.warn('Advanced enrichment failed:', tempSearchResults[i].name, err);
       }
       
       updateCard(i);
@@ -3553,7 +3605,7 @@ async function searchBusinessesSingle(options = {}) {
     dupBar.style.cssText = 'margin-bottom:.75rem;padding:.6rem 1rem;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;font-size:.82rem';
     dupBar.innerHTML = `<span>ðŸ“‹ <strong>${dupCount}</strong> empresa${dupCount>1?'s':''} de los resultados ya ${dupCount>1?'estÃ¡n':'estÃ¡'} en tu CRM</span>
       <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;color:var(--text-muted)">
-        <input type="checkbox" id="filter-no-leads" onchange="applyAdvancedFilters()" checked style="cursor:pointer">
+        <input type="checkbox" id="filter-no-leads-auto" onchange="document.getElementById('filter-no-leads').checked=this.checked;applyAdvancedFilters()" checked style="cursor:pointer">
         Mostrando solo nuevas (clic para ver todas)
       </label>`;
     const statsBar = document.getElementById('enrich-stats-bar');
@@ -3561,6 +3613,8 @@ async function searchBusinessesSingle(options = {}) {
       statsBar.parentNode.insertBefore(dupBar, statsBar.nextSibling);
     }
     // Aplicar filtro automÃ¡ticamente â€” ocultar duplicados por defecto
+    const staticNoLeads = document.getElementById('filter-no-leads');
+    if (staticNoLeads) staticNoLeads.checked = true;
     setTimeout(() => applyAdvancedFilters(), 50);
   }
 
@@ -3628,31 +3682,43 @@ async function enrichSingleCard(idx) {
   const hunterKey  = localStorage.getItem('gordi_hunter_key');
   const apolloKey  = localStorage.getItem('gordi_apollo_key');
   const geminiKey  = getGeminiKey();
+  let hadError = false;
 
-  // Ejecutar capas disponibles en secuencia
-  tempSearchResults[idx] = await enrichFromWeb(tempSearchResults[idx]);
-  if (hunterKey && !tempSearchResults[idx].email)
-    tempSearchResults[idx] = await enrichFromHunter(tempSearchResults[idx]);
-  if (apolloKey && (!tempSearchResults[idx].email || !tempSearchResults[idx].decision_maker))
-    tempSearchResults[idx] = await enrichFromApollo(tempSearchResults[idx]);
-  tempSearchResults[idx] = await enrichFromSocial(tempSearchResults[idx]);
-  tempSearchResults[idx] = await enrichFromNews(tempSearchResults[idx]);
-  tempSearchResults[idx] = await enrichFromBorme(tempSearchResults[idx]);
-  tempSearchResults[idx] = await enrichFromEmpressite(tempSearchResults[idx]);
-  tempSearchResults[idx] = await enrichFromExperian(tempSearchResults[idx]);
-  if (!tempSearchResults[idx].email && geminiKey)
-    tempSearchResults[idx].email = await extractEmailWithAI(
-      tempSearchResults[idx].website, tempSearchResults[idx].name, geminiKey
-    ) || '';
-  if (!tempSearchResults[idx].logo)
-    tempSearchResults[idx].logo = getClearbitLogo(tempSearchResults[idx].website);
+  try {
+    // Ejecutar capas disponibles en secuencia, pero sin dejar la card bloqueada si falla una capa.
+    tempSearchResults[idx] = await enrichFromWeb(tempSearchResults[idx]);
+    if (hunterKey && !tempSearchResults[idx].email)
+      tempSearchResults[idx] = await enrichFromHunter(tempSearchResults[idx]);
+    if (apolloKey && (!tempSearchResults[idx].email || !tempSearchResults[idx].decision_maker))
+      tempSearchResults[idx] = await enrichFromApollo(tempSearchResults[idx]);
+    tempSearchResults[idx] = await enrichFromSocial(tempSearchResults[idx]);
+    tempSearchResults[idx] = await enrichFromNews(tempSearchResults[idx]);
+    tempSearchResults[idx] = await enrichFromBorme(tempSearchResults[idx]);
+    tempSearchResults[idx] = await enrichFromEmpressite(tempSearchResults[idx]);
+    tempSearchResults[idx] = await enrichFromExperian(tempSearchResults[idx]);
+    if (!tempSearchResults[idx].email && geminiKey)
+      tempSearchResults[idx].email = await extractEmailWithAI(
+        tempSearchResults[idx].website, tempSearchResults[idx].name, geminiKey
+      ) || '';
+    if (!tempSearchResults[idx].logo)
+      tempSearchResults[idx].logo = getClearbitLogo(tempSearchResults[idx].website);
+  } catch (err) {
+    hadError = true;
+    console.warn('Single card enrichment failed:', tempSearchResults[idx]?.name, err);
+    tempSearchResults[idx].scrapeDiagnostics = [...new Set([...(tempSearchResults[idx].scrapeDiagnostics || []), 'enriquecimiento-fallo'])];
+    showToast(`${tempSearchResults[idx].name}: enriquecimiento parcial, revisa diagnostico`);
+  } finally {
+    markCardEnriching(idx, false);
+    updateCard(idx);
+    updateEnrichStats();
 
-  markCardEnriching(idx, false);
-  updateCard(idx);
-  updateEnrichStats();
-
-  const c = tempSearchResults[idx];
-  showToast(`${c.name}: ${c.email ? 'âœ‰ï¸ ' + c.email : 'sin email'} ${c.decision_maker ? 'Â· ðŸ‘¤ ' + c.decision_maker.split('(')[0] : ''} âœ“`);
+    const c = tempSearchResults[idx];
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<span class="reenrich-icon">${c.enriched ? 'ðŸ”„' : 'âœ¨'}</span> ${!c.email ? (c.enriched ? 'Buscar email' : 'Enriquecer') : 'Buscar decisor'}`;
+    }
+    if (!hadError) showToast(`${c.name}: ${c.email ? 'âœ‰ï¸ ' + c.email : 'sin email'} ${c.decision_maker ? 'Â· ðŸ‘¤ ' + c.decision_maker.split('(')[0] : ''} âœ“`);
+  }
 }
 
 // â”€â”€ Panel de Inteligencia de SesiÃ³n (Gemini) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -4205,7 +4271,10 @@ function renderSearchCards() {
 function renderSearchTable() {
   const tbody = document.getElementById('search-results-body');
   if (!tbody) return;
-  tbody.innerHTML = tempSearchResults.map((c, i) => {
+  tbody.innerHTML = tempSearchResults
+  .map((c, i) => ({ c, i }))
+  .filter(({ c }) => searchResultPassesFilters(c))
+  .map(({ c, i }) => {
     const bc = c.email ? 'badge-high' : 'badge-low';
     const socLinks = [
       c.instagram ? `<a href="${c.instagram}" target="_blank" class="sc-social-badge instagram" style="font-size:.68rem">IG</a>` : '',
@@ -4251,9 +4320,55 @@ function switchResultView(view) {
 let currentResultFilter = 'all';
 function filterResults(type, btn) {
   currentResultFilter = type;
-  document.querySelectorAll('.rfilt').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.rfilt:not(.ms-filt)').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   applyAdvancedFilters();
+}
+
+function searchResultPassesFilters(c) {
+  if (!c) return false;
+  const type       = currentResultFilter || 'all';
+  const ratingMin  = parseFloat(document.getElementById('filter-rating-min')?.value || 0);
+  const reviewsMin = parseInt(document.getElementById('filter-reviews-min')?.value || 0);
+  const distMax    = parseFloat(document.getElementById('filter-dist-max')?.value || 50);
+  const hasWeb     = document.getElementById('filter-has-web')?.checked || false;
+  const noLeads    = document.getElementById('filter-no-leads')?.checked || false;
+  const srText     = (document.getElementById('search-results-text')?.value || '').toLowerCase();
+  const srHas      = document.getElementById('search-results-has')?.value || '';
+
+  let show = true;
+  if (type === 'email')      show = !!c.email;
+  if (type === 'phone')      show = !!c.phone;
+  if (type === 'social')     show = !!(c.instagram || c.facebook || c.linkedin);
+  if (type === 'noemail')    show = !c.email;
+  if (type === 'decision')   show = !!c.decision_maker;
+  if (type === 'signals')    show = !!(c.signals && c.signals.length > 0);
+  if (type === 'pain')       show = !!(c.scrapeSignals && c.scrapeSignals.length > 0);
+  if (type === 'new_domain') show = !!(c.domainAge !== undefined && c.domainAge <= 2);
+  if (type === 'verified')   show = !!(c.legalStatus && /active|activa/i.test(c.legalStatus));
+  if (show && ratingMin > 0)  show = !!(c.rating && c.rating >= ratingMin);
+  if (show && reviewsMin > 0) show = !!(c.ratingCount && c.ratingCount >= reviewsMin);
+  if (show && distMax < 50 && c.distKm != null) show = c.distKm <= distMax;
+  if (show && hasWeb) show = !!c.website;
+  if (show && noLeads) show = !leads.find(l => !l.archived && isSameBusiness({ ...c, company: c.name }, l));
+  if (show && srText) {
+    const hay = [c.name, c.email, c.website, c.phone, c.address, c.decision_maker, ...(c.signals || [])].join(' ').toLowerCase();
+    show = hay.includes(srText);
+  }
+  if (show && srHas) {
+    if (srHas === 'email' && !c.email) show = false;
+    if (srHas === 'phone' && !c.phone) show = false;
+    if (srHas === 'web' && !c.website) show = false;
+    if (srHas === 'social' && !(c.instagram||c.facebook||c.linkedin)) show = false;
+    if (srHas === 'decision' && !c.decision_maker) show = false;
+    if (srHas === 'whatsapp' && !c.whatsapp) show = false;
+    if (srHas === 'pain' && !(c.scrapeSignals && c.scrapeSignals.length)) show = false;
+  }
+  if (show && currentUXStatusFilter && currentUXStatusFilter !== 'all') show = getLeadUXStatus(c).key === currentUXStatusFilter;
+  if (show && currentMultiSectorFilter && currentMultiSectorFilter !== 'all') {
+    show = (c.matchedSectors || [c.sourceSector || c.segment]).includes(currentMultiSectorFilter);
+  }
+  return show;
 }
 
 function applyAdvancedFilters() {
@@ -4390,7 +4505,8 @@ async function importSelectedSearch() {
   const segment  = segEl?.value  || 'Otros';
   const location = locEl?.value?.trim() || 'bÃºsqueda';
   const checked = document.querySelectorAll('.search-check:checked');
-  const indices = [...new Set([...checked].map(c => parseInt(c.getAttribute('data-index'))))];
+  const indices = [...new Set([...checked].map(c => parseInt(c.getAttribute('data-index'))))]
+    .filter(i => searchResultPassesFilters(tempSearchResults[i]));
 
   if (!indices.length) { showToast('âš ï¸ Selecciona al menos una empresa'); return; }
 
