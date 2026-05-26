@@ -348,7 +348,7 @@ function renderInboxResults() {
   const nomatchList  = document.getElementById('inbox-nomatch-list');
   const countEl = document.getElementById('inbox-match-count');
 
-  const matched   = _inboxMatched.filter(e => e.lead);
+  const matched   = _inboxMatched.map((e, originalIndex) => ({ ...e, originalIndex })).filter(e => e.lead);
   const unmatched = _inboxMatched.filter(e => !e.lead);
 
   countEl.textContent = `${matched.length} coincidencia${matched.length!==1?'s':''} Â· ${unmatched.length} sin match`;
@@ -359,6 +359,7 @@ function renderInboxResults() {
   // Render matched
   list.innerHTML = matched.length ? matched.map((em, i) => {
     const l = em.lead;
+    const originalIndex = em.originalIndex;
     const initials = (em.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const applied = _inboxApplied.has(em.email);
     return `<div class="inbox-match-card matched ${applied?'applied':''}" id="imatch-${i}">
@@ -372,10 +373,10 @@ function renderInboxResults() {
       <div class="inbox-match-actions">
         ${applied
           ? `<span style="font-size:.72rem;color:var(--success)">âœ… Aplicado</span>
-             <button class="btn-action btn-sm" onclick="openReplyModal(${i})" style="white-space:nowrap;background:rgba(99,102,241,.15);color:#a78bfa;border:1px solid rgba(99,102,241,.3)">âœ¨ Contestar</button>`
-          : `<button class="btn-action btn-sm" onclick="applySingleMatch(${i})" style="white-space:nowrap">âœ… Aplicar</button>
+             <button class="btn-action btn-sm" onclick="openReplyModal(${originalIndex})" style="white-space:nowrap;background:rgba(99,102,241,.15);color:#a78bfa;border:1px solid rgba(99,102,241,.3)">âœ¨ Contestar</button>`
+          : `<button class="btn-action btn-sm" onclick="applySingleMatch(${originalIndex})" style="white-space:nowrap">âœ… Aplicar</button>
              <button class="btn-action btn-sm" onclick="openLeadDrawer('${l.id}')" style="white-space:nowrap">Ver lead</button>
-             <button class="btn-action btn-sm" onclick="openReplyModal(${i})" style="white-space:nowrap;background:rgba(99,102,241,.15);color:#a78bfa;border:1px solid rgba(99,102,241,.3)">âœ¨ Contestar</button>`
+             <button class="btn-action btn-sm" onclick="openReplyModal(${originalIndex})" style="white-space:nowrap;background:rgba(99,102,241,.15);color:#a78bfa;border:1px solid rgba(99,102,241,.3)">âœ¨ Contestar</button>`
         }
       </div>
     </div>`;

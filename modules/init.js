@@ -646,7 +646,13 @@ function updateDate() {
 function showView(view) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   const target = document.getElementById(`${view}-view`);
-  if (target) target.classList.add('active');
+  if (!target) {
+    const fallback = document.getElementById('dashboard-view');
+    if (fallback) fallback.classList.add('active');
+    console.warn('Vista no encontrada:', view);
+    return;
+  }
+  target.classList.add('active');
   document.querySelectorAll('aside nav li').forEach(li => {
     li.classList.toggle('active', li.getAttribute('data-view') === view);
   });

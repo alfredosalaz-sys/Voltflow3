@@ -654,7 +654,7 @@ function importSelectedLeads() {
       tags:     [],
       budget:   0,
       next_contact: '',
-      source:   'propio',
+      source:   'import',
       activity: [{ action: `Lead importado desde "${_importFile || 'base de datos'}"${lead.status && lead.status !== 'Pendiente' ? ` — Etapa: ${lead.status}` : ''}`, date: now }],
     });
     imported++;

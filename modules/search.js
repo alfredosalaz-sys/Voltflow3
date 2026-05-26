@@ -43,6 +43,17 @@ const PERF = {
 let multiSectorSearchState = null;
 let currentMultiSectorFilter = 'all';
 
+function extractDomain(url) {
+  try {
+    if (!url) return null;
+    const value = String(url).trim();
+    const parsed = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`);
+    return parsed.hostname.replace(/^www\./i, '');
+  } catch {
+    return null;
+  }
+}
+
 function resetSearchRuntimeFilters() {
   currentResultFilter = 'all';
   currentUXStatusFilter = 'all';
@@ -1205,7 +1216,7 @@ function normalizeSearchCompany(c = {}) {
   return c;
 }
 
-async function fetchPlaces(segment, location, maxResults) {
+async function fetchPlaces(segment, location, maxResults, opts = {}) {
   const apiKey = localStorage.getItem('gordi_api_key');
   if (!apiKey) throw new Error('API Key de Google no configurada. Ve a ConfiguraciÃ³n.');
 
@@ -1213,7 +1224,7 @@ async function fetchPlaces(segment, location, maxResults) {
   const { Place } = await google.maps.importLibrary('places');
   const seenIds = new Set();
   const allPlaces = [];
-  const plan = await buildSearchPlan(segment, location, maxResults);
+  const plan = await buildSearchPlan(segment, location, maxResults, opts);
   const exhaustive = plan.exhaustive;
   const effectiveMax = plan.effectiveMax;
   logEnrich(`  Plan inteligente: ${plan.summary}`, 'ok');
@@ -3380,7 +3391,8 @@ async function searchBusinesses() {
 
 async function searchBusinessesMultiSector(sectors, location) {
   const originalSegment = document.getElementById('plan-segment')?.value;
-  const maxRes = parseInt(document.getElementById('plan-max')?.value || '20', 10);
+  const parsedMax = parseInt(document.getElementById('plan-max')?.value || '20', 10);
+  const maxRes = Number.isFinite(parsedMax) && parsedMax > 0 ? parsedMax : 20;
   const btn = document.getElementById('btn-search');
   const allResults = [];
   const perSector = {};
@@ -3401,6 +3413,7 @@ async function searchBusinessesMultiSector(sectors, location) {
   if (btn) { btn.disabled = true; btn.textContent = `Buscando ${sectors.length} sectores...`; }
 
   try {
+    await waitForGoogleMaps(5000);
     for (let i = 0; i < sectors.length; i++) {
       const seg = sectors[i];
       const planSel = document.getElementById('plan-segment');
@@ -3441,6 +3454,9 @@ async function searchBusinessesMultiSector(sectors, location) {
     updateEnrichStats();
     renderMultiSectorResultsPanel();
     logEnrich(`Multi-sector completado: ${allResults.length} resultados brutos, ${tempSearchResults.length} empresas unicas`, 'ok');
+    if (!tempSearchResults.length) {
+      logEnrich('Sin resultados multi-sector. Prueba menos sectores, otra zona o revisa cuota/API key de Google Places.', 'warn');
+    }
   } finally {
     if (originalSegment && document.getElementById('plan-segment')) document.getElementById('plan-segment').value = originalSegment;
     if (btn) { btn.disabled = false; btn.textContent = 'Buscar y Enriquecer'; }
@@ -3448,20 +3464,29 @@ async function searchBusinessesMultiSector(sectors, location) {
 }
 
 async function searchSectorPlacesOnly(segment, location, maxRes) {
-  let places = await fetchPlaces(segment, location, maxRes);
+  let places = await fetchPlaces(segment, location, maxRes, { multiSector: true });
   places = await enrichDistances(places, location);
   places = places.map(c => detectOptimalContactWindow(c));
   places = places.map(c => {
-    const cached = _enrichCache.get(c.id);
-    const hydrated = cached ? annotateIncrementalScrape({ ...c, ...cached, fromCache: true }) : annotateIncrementalScrape(c);
-    return normalizeSearchCompany(hydrated);
+    try {
+      const cached = _enrichCache.get(c.id);
+      const hydrated = cached ? annotateIncrementalScrape({ ...c, ...cached, fromCache: true }) : annotateIncrementalScrape(c);
+      return normalizeSearchCompany(hydrated);
+    } catch (err) {
+      console.warn('Postprocesado multisector omitido:', c?.name, err);
+      return normalizeSearchCompany(c);
+    }
   });
   places = deduplicateResults(places);
   places.slice(0, 20).forEach(c => {
     if (!c.logo && c.website) c.logo = getClearbitLogo(c.website);
     if (!c.domain) c.domain = extractDomain(c.website);
   });
-  recordLeadMemoryBulk(places, 'seen_in_multisector', () => ({ segment, location }));
+  try {
+    recordLeadMemoryBulk(places, 'seen_in_multisector', () => ({ segment, location }));
+  } catch (err) {
+    console.warn('Memoria multisector no guardada:', err);
+  }
   return places;
 }
 
@@ -4744,6 +4769,18 @@ function toggleAllSearch(checked) {
   document.querySelectorAll('.search-check').forEach(c => c.checked = checked);
 }
 
+function getVisibleSearchChecks() {
+  const tableView = document.getElementById('results-table-view');
+  const cardsView = document.getElementById('results-cards-view');
+  if (tableView && tableView.style.display !== 'none') {
+    return [...document.querySelectorAll('#search-results-body .search-check')];
+  }
+  if (cardsView && cardsView.style.display !== 'none') {
+    return [...document.querySelectorAll('#search-cards-grid .search-check')];
+  }
+  return [...document.querySelectorAll('.search-check')];
+}
+
 // â”€â”€â”€ VOLCAR A LEADS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function importSelectedSearch() {
   // Safe fallbacks for segment/location (may be empty in some search modes)
@@ -4751,7 +4788,7 @@ async function importSelectedSearch() {
   const locEl  = document.getElementById('plan-location');
   const segment  = segEl?.value  || 'Otros';
   const location = locEl?.value?.trim() || 'bÃºsqueda';
-  const checked = document.querySelectorAll('.search-check:checked');
+  const checked = getVisibleSearchChecks().filter(c => c.checked);
   const indices = [...new Set([...checked].map(c => parseInt(c.getAttribute('data-index'))))]
     .filter(i => searchResultPassesFilters(tempSearchResults[i]));
 
@@ -4961,6 +4998,7 @@ function quickImportOne(idx) {
     score: calculateScore(c.decision_maker ? 'manager' : 'otros', 'mediano', signalParts.join(' '), extraData),
     status: 'Pendiente',
     date: new Date().toISOString(),
+    status_date: new Date().toISOString(),
     notes: `Calidad contacto: ${c.contactQuality || 'pendiente'} (${c.contactQualityScore || 0}/100)\nPor que aparece: ${(c.resultExplanation || []).map(x => `${x.label}: ${x.value}`).join(' | ') || '-'}`,
     rating: c.rating,
     ratingCount: c.ratingCount,
@@ -4984,7 +5022,7 @@ function quickImportOne(idx) {
     address: c.address || '',
     description: c.description || '',
     tags: [], budget: 0, next_contact: '',
-    source: 'busqueda',
+    source: 'search',
     activity: [{ action: `Lead importado desde bÃºsqueda en ${location}`, date: new Date().toISOString() }],
     reviewSummary: c.reviewSummary || '',
     reviewPain: c.reviewPain || [],
@@ -4998,7 +5036,8 @@ function quickImportOne(idx) {
   });
   recordLeadMemory(c, 'imported_quick', { score: c.opportunityScore || 0, location });
   saveLeads();
-  renderLeads();
+  renderAll();
+  renderDashboardCharts();
   updateStats();
   updateStreakData();
   showToast(`âœ… ${c.name} aÃ±adida a Leads`);

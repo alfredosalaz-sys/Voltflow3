@@ -339,6 +339,9 @@ function applyContactCalendar() {
   }).join('\n');
   addActivityLog(lead.id, `Ã°Å¸â€œâ€¦ Calendario de seguimiento generado:\n${calStr}`);
   saveLeads();
+  if (typeof renderAll === 'function') renderAll();
+  if (typeof renderTracking === 'function') renderTracking();
+  if (typeof updateFollowupBadge === 'function') updateFollowupBadge();
   showToast('Ã¢Å“â€¦ Calendario aplicado Ã¢â‚¬â€ prÃƒÂ³ximo contacto en ' + firstTp.day + ' dÃƒÂ­as');
   document.getElementById('contact-calendar-panel').style.display = 'none';
 }

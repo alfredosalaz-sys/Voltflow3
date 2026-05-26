@@ -189,6 +189,7 @@ const SEQUENCE_RULES = {
 function applySequenceRule(lead, newStatus) {
   const rule = SEQUENCE_RULES[newStatus];
   if (!rule) return;
+  lead.notes = lead.notes || '';
   // Solo asignar si next_contact estÃ¡ vacÃ­o â€” nunca pisar fecha manual
   if (lead.next_contact) return;
   const d = new Date();

@@ -427,7 +427,11 @@ function dropLead(e, newStatus) {
   const lead = leads.find(l => l.id == draggedId);
   if (lead) {
     const oldStatus = lead.status;
-    if (oldStatus === newStatus) return;
+    if (oldStatus === newStatus) {
+      document.querySelectorAll('.kanban-card.dragging').forEach(c => c.classList.remove('dragging'));
+      draggedId = null;
+      return;
+    }
     confirmStatusChange(lead, newStatus, () => {
       lead.status = newStatus;
       lead.status_date = new Date().toISOString();
@@ -440,6 +444,7 @@ function dropLead(e, newStatus) {
     });
   }
   document.querySelectorAll('.kanban-card.dragging').forEach(c => c.classList.remove('dragging'));
+  draggedId = null;
 }
 
 // ============ TRACKING ============

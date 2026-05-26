@@ -684,6 +684,58 @@ function buildSaludo(name, company) {
   //          buildLeadContext, buildGoldenProfile, saveTemplate, enrichSingleCard
 // ══════════════════════════════════════════════════════════════════════════
 
+const PIPELINE_STAGES = ['Pendiente', 'Contactado', 'Respuesta', 'Visita', 'Presupuesto', 'Cerrado'];
+const STAGE_MAPPING = {
+  'Pendiente': 'Pendiente',
+  'Contactado': 'Contactado',
+  'Respuesta': 'Respuesta del cliente',
+  'Visita': 'Visita',
+  'Presupuesto': 'Entrega de presupuesto',
+  'Cerrado': 'Cerrado'
+};
+const REVERSE_STAGE_MAPPING = {
+  'Pendiente': 'Pendiente',
+  'Contactado': 'Contactado',
+  'Respuesta del cliente': 'Respuesta',
+  'Visita': 'Visita',
+  'Entrega de presupuesto': 'Presupuesto',
+  'Cerrado': 'Cerrado',
+  'No interesa': 'Pendiente'
+};
+
+function renderStatusPipeline(currentStatus, leadId) {
+  const currentMapped = REVERSE_STAGE_MAPPING[currentStatus] || 'Pendiente';
+  const currentIndex = Math.max(0, PIPELINE_STAGES.indexOf(currentMapped));
+  const safeLeadId = JSON.stringify(String(leadId));
+  return `<div class="status-pipeline" style="display:flex;align-items:center;gap:0.3rem;margin-top:0.5rem;background:rgba(255,255,255,0.03);padding:0.4rem;border-radius:12px;border:1px solid var(--glass-border)">
+    ${PIPELINE_STAGES.map((s, i) => {
+      const isActive = i <= currentIndex;
+      const isCurrent = i === currentIndex;
+      const color = isActive ? 'var(--primary)' : 'var(--text-dim)';
+      const opacity = isActive ? '1' : '0.4';
+      return `
+        <div onclick="updateLeadStatusViaPipeline(${safeLeadId}, '${s}')" style="flex:1;text-align:center;padding:0.6rem 0.3rem;cursor:pointer;position:relative;transition:all 0.3s">
+          <div style="width:100%;height:4px;background:${isActive ? 'var(--primary-gradient)' : 'rgba(255,255,255,0.1)'};border-radius:2px;margin-bottom:0.5rem"></div>
+          <div style="font-size:0.65rem;font-weight:${isCurrent ? '700' : '500'};color:${color};opacity:${opacity}">${s}</div>
+          ${isCurrent ? '<div style="position:absolute;top:-4px;left:50%;transform:translateX(-50%);width:8px;height:8px;background:var(--primary);border-radius:50%;box-shadow:0 0 10px var(--primary)"></div>' : ''}
+        </div>
+        ${i < PIPELINE_STAGES.length - 1 ? '<div style="color:rgba(255,255,255,0.1);font-size:0.8rem">›</div>' : ''}
+      `;
+    }).join('')}
+  </div>`;
+}
+
+function updateLeadStatusViaPipeline(leadId, stageName) {
+  const fullStatus = STAGE_MAPPING[stageName];
+  if (!fullStatus) return;
+  const input = document.getElementById('detail-status');
+  if (input) input.value = fullStatus;
+  const container = document.getElementById('status-pipeline-container');
+  if (container) container.innerHTML = renderStatusPipeline(fullStatus, leadId);
+  const lead = leads.find(l => String(l.id) === String(leadId));
+  if (lead && lead.status !== fullStatus) showToast('Estado actualizado ✓ (No olvides Guardar)');
+}
+
 function generateEmail(id) {
   const lead = leads.find(l => l.id == id);
   if (!lead) return;
