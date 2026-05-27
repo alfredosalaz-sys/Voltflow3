@@ -1739,8 +1739,9 @@ async function githubPush(showFeedback) {
     const payload  = JSON.stringify({ voltflow: safeSnapshot, _updated: new Date().toISOString() }, null, 0);
     const encoded  = btoa(unescape(encodeURIComponent(payload)));
 
-    // Get current SHA (needed for update)
-    const sha = await githubGetSHA(token, user, repo);
+    // Get current SHA from the repository default branch.
+    const remoteFile = await githubGetRemoteFile(token, user, repo);
+    const sha = remoteFile?.sha || null;
 
     const body = { message: `Voltflow sync ${new Date().toISOString()}`, content: encoded };
     if (sha) body.sha = sha;
@@ -1777,8 +1778,13 @@ async function githubPush(showFeedback) {
 
 // â”€â”€ Get SHA of existing file (required for updates) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function githubGetSHA(token, user, repo) {
+  const remoteFile = await githubGetRemoteFile(token, user, repo);
+  return remoteFile?.sha || null;
+}
+
+async function githubGetRemoteFile(token, user, repo) {
   try {
-    const res = await fetch(`https://api.github.com/repos/${user}/${repo}/contents/${GITHUB_DATA_FILE}`, {
+    const res = await fetch(`https://api.github.com/repos/${user}/${repo}/contents/${GITHUB_DATA_FILE}?t=${Date.now()}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/vnd.github+json',
@@ -1787,7 +1793,12 @@ async function githubGetSHA(token, user, repo) {
     });
     if (!res.ok) return null;
     const data = await res.json();
-    return data.sha || null;
+    let parsed = null;
+    if (data.content) {
+      const raw = decodeURIComponent(escape(atob(String(data.content).replace(/\s/g, ''))));
+      parsed = JSON.parse(raw);
+    }
+    return { sha: data.sha || null, data: parsed };
   } catch { return null; }
 }
 
@@ -1798,13 +1809,9 @@ async function githubPull(showFeedback) {
   if (showFeedback) setGithubStatus('â¬‡ Descargando...', 'var(--text-muted)');
 
   try {
-    // Use raw content URL to avoid base64 decode complexity
-    const res = await fetch(`https://raw.githubusercontent.com/${user}/${repo}/principal/${GITHUB_DATA_FILE}?t=${Date.now()}`, {
-      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-    });
-
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
+    const remoteFile = await githubGetRemoteFile(token, user, repo);
+    const data = remoteFile?.data;
+    if (!data) throw new Error('No se pudo leer el archivo de datos en GitHub');
     const snapshot = data?.voltflow;
     if (!snapshot) throw new Error('Datos no encontrados');
     const snapshotValidation = typeof validateDataSnapshot === 'function'
@@ -1815,6 +1822,17 @@ async function githubPull(showFeedback) {
     // Confirm if cloud has different lead count
     const cloudLeads = (() => { try { return JSON.parse(snapshot['gordi_leads'] || '[]').length; } catch { return 0; } })();
     const localLeads = leads.length;
+    const cloudUpdated = data?._updated || '';
+    const lastLocalChange = localStorage.getItem('gordi_local_last_modified') || '';
+    const lastPull = localStorage.getItem('gordi_gh_last_pull') || '';
+    const lastPush = localStorage.getItem('gordi_gh_last_push') || '';
+    const lastSync = [lastPull, lastPush].map(v => new Date(v || 0).getTime()).filter(Boolean).sort((a, b) => b - a)[0] || 0;
+    const localChangeTime = new Date(lastLocalChange || 0).getTime() || 0;
+    const cloudTime = new Date(cloudUpdated || 0).getTime() || 0;
+    if (!showFeedback && localChangeTime > lastSync + 5000 && (!cloudTime || cloudTime <= localChangeTime + 5000)) {
+      console.warn('GitHub pull silencioso omitido: hay cambios locales sin confirmar.');
+      return false;
+    }
 
     if (showFeedback && cloudLeads !== localLeads) {
       const warnings = snapshotValidation.warnings && snapshotValidation.warnings.length ? `\n\nAvisos:\n- ${snapshotValidation.warnings.join('\n- ')}` : '';
@@ -1863,10 +1881,8 @@ function initGithubSync() {
   if (autoEl)  autoEl.checked = localStorage.getItem('gordi_gh_auto') === 'true';
   if (badge && token)   badge.style.display = 'inline-block';
 
-  // Auto-pull on load if configured
-  if (token && user && repo && localStorage.getItem('gordi_gh_auto') === 'true') {
-    setTimeout(() => githubPull(false), 2000);
-  }
+  // GitHub auto-sync writes local work to the repo. Pull stays manual except on a clean first run.
+  // This avoids an older repository snapshot replacing scraping/leads stored in this browser.
   // First-run on new device: no local data but GitHub configured
   const hasLocal = !!(localStorage.getItem('gordi_leads') || localStorage.getItem('gordi_api_key'));
   if (!hasLocal && token && user && repo) {
@@ -2673,10 +2689,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initScheduler();
   initGithubSync();
   setTimeout(addTTSButton, 800);
-  // Auto-pull from JSONBin on load if enabled
-  if (localStorage.getItem('gordi_jsonbin_auto') === 'true' && localStorage.getItem('gordi_jsonbin_key')) {
-    setTimeout(() => jsonbinPull(false), 1500); // slight delay to let app init
-  }
+  // JSONBin auto-pull is initialized once from init.js after local recovery checks.
 });
 
 // â”€â”€ Flatpickr: inicializar en el formulario de nuevo lead â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

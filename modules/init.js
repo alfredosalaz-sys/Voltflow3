@@ -4,7 +4,10 @@ document.addEventListener('DOMContentLoaded', () => {
   populateSegmentDropdowns(); // Poblar dropdowns antes de cargar datos que puedan depender de ellos
   const migrationResult = tryAutoMigrate();
   loadAllData();
+  const autoRescued = autoRestoreCriticalRescueIfNeeded();
+  if (autoRescued) loadAllData();
   const recoverySummary = getLocalRecoverySummary();
+  createCriticalRescueSnapshot(`startup_${VOLTFLOW_VERSION}`, { throttleMs: 12 * 60 * 60 * 1000 });
 
   updateDate();
   renderAllFull();
@@ -16,10 +19,14 @@ document.addEventListener('DOMContentLoaded', () => {
   renderTodayPanel();
   renderSearchHistory();
   updateStorageInfo();
+  setTimeout(() => showStartupStorageRecoveryNotice(recoverySummary), 1200);
 
   // Mostrar banner de migraciÃƒÂ³n automÃƒÂ¡tica si hubo volcado
   if (migrationResult && typeof migrationResult === 'object' && migrationResult.leads > 0) {
     setTimeout(() => showMigrationBanner(migrationResult), 600);
+  }
+  if (autoRescued) {
+    setTimeout(() => showToast(`Rescate automatico aplicado: ${leads.length} leads recuperados`), 700);
   }
 
   const leadForm = document.getElementById('lead-form');
@@ -192,10 +199,15 @@ const VOLTFLOW_DATA_KEYS = [
 
 const VOLTFLOW_SAFETY_SNAPSHOTS_KEY = 'gordi_safety_snapshots';
 const VOLTFLOW_LAST_SAFETY_SNAPSHOT_KEY = 'gordi_last_safety_snapshot';
+const VOLTFLOW_CRITICAL_RESCUE_KEY = 'gordi_critical_rescue_snapshots';
+const VOLTFLOW_INTENTIONAL_EMPTY_KEY = 'gordi_intentional_empty_leads_at';
 const VOLTFLOW_MAX_SAFETY_SNAPSHOTS = 12;
+const VOLTFLOW_MAX_CRITICAL_RESCUES = 6;
 const VOLTFLOW_SNAPSHOT_EXCLUDED_KEYS = new Set([
   VOLTFLOW_SAFETY_SNAPSHOTS_KEY,
   VOLTFLOW_LAST_SAFETY_SNAPSHOT_KEY,
+  VOLTFLOW_CRITICAL_RESCUE_KEY,
+  VOLTFLOW_INTENTIONAL_EMPTY_KEY,
   'gordi_auto_backup'
 ]);
 
@@ -336,6 +348,92 @@ function createSafetySnapshot(reason = 'manual', options = {}) {
   }
 }
 
+function readCriticalRescues() {
+  try {
+    const items = JSON.parse(localStorage.getItem(VOLTFLOW_CRITICAL_RESCUE_KEY) || '[]');
+    return Array.isArray(items) ? items : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCriticalRescues(items) {
+  localStorage.setItem(VOLTFLOW_CRITICAL_RESCUE_KEY, JSON.stringify(items.slice(0, VOLTFLOW_MAX_CRITICAL_RESCUES)));
+}
+
+function createCriticalRescueSnapshot(reason = 'auto', options = {}) {
+  try {
+    const now = Date.now();
+    const throttleMs = options.throttleMs || 0;
+    const items = readCriticalRescues();
+    if (throttleMs && items[0] && items[0].reason === reason && now - new Date(items[0].date).getTime() < throttleMs) {
+      return items[0];
+    }
+
+    const snapshot = exportDataSnapshot();
+    const summary = getSnapshotSummary(snapshot);
+    const hasApiKeys = ['gordi_api_key','gordi_hunter_key','gordi_apollo_key','gordi_gemini_key','gordi_claude_key','gordi_groq_key','gordi_openrouter_key']
+      .some(key => !!snapshot[key]);
+    if (!summary.keys || (!summary.leads && !summary.emails && !summary.campaigns && !summary.searches && !hasApiKeys)) return null;
+
+    const item = {
+      id: `rescue_${now}_${Math.random().toString(36).slice(2, 8)}`,
+      date: new Date(now).toISOString(),
+      reason,
+      summary,
+      snapshot
+    };
+    writeCriticalRescues([item, ...items].slice(0, VOLTFLOW_MAX_CRITICAL_RESCUES));
+    return item;
+  } catch (e) {
+    console.warn('No se pudo crear rescate critico:', e);
+    return null;
+  }
+}
+
+function getBestCriticalRescue() {
+  return readCriticalRescues()
+    .filter(item => item && item.snapshot)
+    .sort((a, b) => {
+      const la = a.summary?.leads || getSnapshotSummary(a.snapshot).leads;
+      const lb = b.summary?.leads || getSnapshotSummary(b.snapshot).leads;
+      if (lb !== la) return lb - la;
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    })[0] || null;
+}
+
+function wasIntentionalEmptyRecently() {
+  const ts = parseInt(localStorage.getItem(VOLTFLOW_INTENTIONAL_EMPTY_KEY) || '0', 10);
+  return ts && Date.now() - ts < 24 * 60 * 60 * 1000;
+}
+
+function markIntentionalEmptyLeads() {
+  localStorage.setItem(VOLTFLOW_INTENTIONAL_EMPTY_KEY, Date.now().toString());
+}
+
+function autoRestoreCriticalRescueIfNeeded() {
+  if (wasIntentionalEmptyRecently()) return false;
+  const current = getCurrentDataSummary();
+  if (current.leads > 0) return false;
+  const rescue = getBestCriticalRescue();
+  const rescueLeads = rescue?.summary?.leads || (rescue ? getSnapshotSummary(rescue.snapshot).leads : 0);
+  if (!rescue || rescueLeads <= 0) return false;
+
+  try {
+    importDataSnapshot(rescue.snapshot, true, { reason: 'before_auto_restore_critical_rescue' });
+    localStorage.setItem('_voltflow_last_auto_rescue', JSON.stringify({
+      date: new Date().toISOString(),
+      rescueId: rescue.id,
+      leads: rescueLeads,
+      reason: rescue.reason
+    }));
+    return true;
+  } catch (e) {
+    console.warn('No se pudo restaurar rescate critico:', e);
+    return false;
+  }
+}
+
 function listSafetySnapshots() {
   return readSafetySnapshots().map(({ snapshot, ...meta }) => meta);
 }
@@ -358,6 +456,30 @@ function exportLatestSafetySnapshot() {
   }
   downloadDataSnapshot(item.snapshot, `voltflow_snapshot_${item.date.slice(0,10)}.json`);
   if (typeof showToast === 'function') showToast('Snapshot exportado');
+}
+
+function exportLatestCriticalRescue() {
+  const item = getBestCriticalRescue();
+  if (!item || !item.snapshot) {
+    if (typeof showToast === 'function') showToast('No hay rescates criticos todavia');
+    return;
+  }
+  downloadDataSnapshot(item.snapshot, `voltflow_rescate_critico_${item.date.slice(0,10)}.json`);
+  if (typeof showToast === 'function') showToast(`Rescate critico exportado: ${item.summary?.leads || 0} leads`);
+}
+
+function showCriticalRescueDiagnostics() {
+  const items = readCriticalRescues();
+  const best = getBestCriticalRescue();
+  const lines = items.map((item, idx) => {
+    const s = item.summary || getSnapshotSummary(item.snapshot);
+    return `${idx + 1}. ${new Date(item.date).toLocaleString('es-ES')} - ${s.leads} leads, ${s.keys} claves (${item.reason})`;
+  });
+  alert(
+    `Rescates criticos guardados: ${items.length}\n` +
+    `Mejor rescate: ${best ? `${best.summary?.leads || 0} leads del ${new Date(best.date).toLocaleString('es-ES')}` : 'ninguno'}\n\n` +
+    (lines.length ? lines.join('\n') : 'Aun no hay rescates criticos.')
+  );
 }
 
 function restoreSafetySnapshot(id) {
@@ -404,8 +526,8 @@ function importDataSnapshot(snapshot, overwrite = false, options = {}) {
 
 function parseStoredArray(key) {
   try {
-    const value = JSON.parse(localStorage.getItem(key) || '[]');
-    return Array.isArray(value) ? value : [];
+    const value = parseStoredJson(localStorage.getItem(key), []);
+    return coerceStoredArray(value, key.replace(/^gordi_/, ''));
   } catch {
     return [];
   }
@@ -413,7 +535,7 @@ function parseStoredArray(key) {
 
 function parseStoredObject(key) {
   try {
-    const value = JSON.parse(localStorage.getItem(key) || '{}');
+    const value = parseStoredJson(localStorage.getItem(key), {});
     return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
   } catch {
     return {};
@@ -468,6 +590,56 @@ function hasRecoveredLocalData(summary) {
 
 // Detecta si esta versiÃƒÂ³n concreta se abre por primera vez en este navegador
 // Si hay datos de versiones anteriores en el mismo localStorage, los vuelca todo automÃƒÂ¡ticamente.
+function showStorageDiagnostics() {
+  const summary = getLocalRecoverySummary();
+  const origin = summary.origin || location.href;
+  alert(
+    `Almacenamiento actual:\n${origin}\n\n` +
+    `Leads: ${summary.leads}\n` +
+    `Emails: ${summary.emails}\n` +
+    `Campanas: ${summary.campaigns}\n` +
+    `Busquedas: ${summary.searches}\n` +
+    `Claves gordi_*: ${summary.localKeys}\n\n` +
+    'GitHub debe usarse para actualizar archivos. Para trabajar, abre siempre la misma URL local, por ejemplo http://127.0.0.1:8765/app.html. Si antes trabajaste desde GitHub Pages, localhost, file://, otro puerto, otro perfil o modo incognito, el navegador usa otro almacenamiento.'
+  );
+}
+
+function showStartupStorageRecoveryNotice(summary) {
+  if (!summary || summary.leads > 0) return;
+  try {
+    if (sessionStorage.getItem('_voltflow_storage_notice_dismissed') === '1') return;
+  } catch {}
+  if (document.getElementById('storage-recovery-notice')) return;
+
+  const origin = summary.origin || location.href;
+  const notice = document.createElement('div');
+  notice.id = 'storage-recovery-notice';
+  notice.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:99998;width:min(430px,calc(100vw - 36px));background:var(--bg-card);border:1px solid rgba(245,158,11,.35);box-shadow:0 18px 45px rgba(0,0,0,.35);border-radius:14px;padding:14px;color:var(--text);font-size:.82rem;line-height:1.45';
+  notice.innerHTML = `
+    <div style="display:flex;gap:.75rem;align-items:flex-start">
+      <div style="font-size:1.25rem;line-height:1">!</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800;margin-bottom:.25rem;color:var(--warning)">Este navegador no ve leads guardados</div>
+        <div style="color:var(--text-muted);margin-bottom:.55rem">
+          Origen actual: <strong style="color:var(--text);word-break:break-all">${origin}</strong><br>
+          GitHub actualiza archivos; los datos viven en la URL local. Si antes trabajaste desde GitHub Pages, localhost, file://, otro puerto o modo incognito, esos datos estan en otro almacenamiento.
+        </div>
+        <div style="display:flex;gap:.45rem;flex-wrap:wrap">
+          <button class="btn-primary" style="padding:.42rem .7rem;font-size:.75rem" onclick="showStorageDiagnostics()">Diagnosticar</button>
+          <button class="btn-outline" style="padding:.42rem .7rem;font-size:.75rem" onclick="showView('settings')">Abrir datos</button>
+          <button class="btn-outline" style="padding:.42rem .7rem;font-size:.75rem" onclick="document.getElementById('restore-file')?.click()">Restaurar backup</button>
+          <button class="btn-action" style="padding:.42rem .7rem;font-size:.75rem" onclick="dismissStorageRecoveryNotice()">Ocultar</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(notice);
+}
+
+function dismissStorageRecoveryNotice() {
+  document.getElementById('storage-recovery-notice')?.remove();
+  try { sessionStorage.setItem('_voltflow_storage_notice_dismissed', '1'); } catch {}
+}
+
 function tryAutoMigrate() {
   const thisVersionKey = `_voltflow_opened_${VOLTFLOW_VERSION}`;
 
@@ -523,13 +695,51 @@ function tryAutoMigrate() {
   return migrationLog;
 }
 
+function parseStoredJson(raw, defaultVal) {
+  if (!raw) return defaultVal;
+  try {
+    let parsed = JSON.parse(raw);
+    if (typeof parsed === 'string') parsed = JSON.parse(parsed);
+    return parsed;
+  } catch (e) {
+    throw e;
+  }
+}
+
+function coerceStoredArray(value, key) {
+  if (Array.isArray(value)) return value;
+  if (value && Array.isArray(value[key])) return value[key];
+  if (key === 'leads' && value && Array.isArray(value.gordi_leads)) return value.gordi_leads;
+  return [];
+}
+
+function normalizeLoadedLead(lead, index) {
+  if (!lead || typeof lead !== 'object') return null;
+  const now = new Date().toISOString();
+  return {
+    ...lead,
+    id: lead.id || `${Date.now()}_${index}`,
+    name: lead.name || lead.contact || lead.manager || '',
+    company: lead.company || lead.title || lead.nombre || 'Sin empresa',
+    email: lead.email || '',
+    phone: lead.phone || lead.telefono || '',
+    segment: lead.segment || lead.sector || 'Otros',
+    status: lead.status || 'Pendiente',
+    date: lead.date || lead.created_at || now,
+    status_date: lead.status_date || lead.date || now,
+    notes: lead.notes || '',
+    tags: Array.isArray(lead.tags) ? lead.tags : [],
+    activity: Array.isArray(lead.activity) ? lead.activity : []
+  };
+}
+
 function loadAllData() {
   let corruptionDetected = false;
   
   const loadWithCatch = (key, defaultVal) => {
     try {
       const data = localStorage.getItem(key);
-      return data ? JSON.parse(data) : defaultVal;
+      return parseStoredJson(data, defaultVal);
     } catch (e) {
       console.error(`Error parsing ${key}:`, e);
       corruptionDetected = true;
@@ -537,11 +747,20 @@ function loadAllData() {
     }
   };
 
-  leads = loadWithCatch('gordi_leads', []);
-  emailHistory = loadWithCatch('gordi_email_history', []);
-  campaigns = loadWithCatch('gordi_campaigns', []);
+  const rawLeads = localStorage.getItem('gordi_leads');
+  leads = coerceStoredArray(loadWithCatch('gordi_leads', []), 'leads')
+    .map(normalizeLoadedLead)
+    .filter(Boolean);
+  emailHistory = coerceStoredArray(loadWithCatch('gordi_email_history', []), 'emailHistory');
+  campaigns = coerceStoredArray(loadWithCatch('gordi_campaigns', []), 'campaigns');
   objectives = loadWithCatch('gordi_objectives', { leads: 20, emails: 10, replies: 3 });
-  searchHistoryList = loadWithCatch('gordi_search_history', []);
+  searchHistoryList = coerceStoredArray(loadWithCatch('gordi_search_history', []), 'searchHistoryList');
+  window.__voltflowLoadDiagnostics = {
+    origin: location.origin && location.origin !== 'null' ? location.origin : location.href,
+    rawLeadsPresent: !!rawLeads,
+    loadedLeads: leads.length,
+    loadedAt: new Date().toISOString()
+  };
   
   try {
     const saved = localStorage.getItem('gordi_templates');
@@ -924,10 +1143,8 @@ async function jsonbinPull(showFeedback = true) {
 
     // Apply snapshot
     importDataSnapshot(snapshot, true, { reason: 'before_jsonbin_pull' });
-    // Reload all data
-    try { leads = JSON.parse(localStorage.getItem('gordi_leads') || '[]'); } catch { leads = []; }
-    try { emailHistory = JSON.parse(localStorage.getItem('gordi_email_history') || '[]'); } catch { emailHistory = []; }
-    try { campaigns = JSON.parse(localStorage.getItem('gordi_campaigns') || '[]'); } catch { campaigns = []; }
+    // Reload all data through the same tolerant loader used at startup.
+    loadAllData();
 
     renderAll();
     try { renderTracking(); } catch(e) {}

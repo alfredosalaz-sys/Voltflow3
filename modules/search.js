@@ -430,13 +430,15 @@ function getBusinessIdentity(c = {}) {
   const phone = normalizeLeadPhone(c.phone || c.whatsapp || '');
   const name = normalizeLeadText(c.name || c.company || '');
   const address = normalizeLeadText(c.address || '').slice(0, 60);
+  const email = String(c.email || '').trim().toLowerCase();
   return {
     placeId: c.placeId || '',
     domain,
     phone,
     name,
     address,
-    emailDomain: c.email ? String(c.email).split('@')[1]?.replace(/^www\./, '') || '' : ''
+    email,
+    emailDomain: email ? email.split('@')[1]?.replace(/^www\./, '') || '' : ''
   };
 }
 
@@ -456,12 +458,18 @@ function similarityRatio(a = '', b = '') {
 function isSameBusiness(a = {}, b = {}) {
   const ia = getBusinessIdentity(a);
   const ib = getBusinessIdentity(b);
+  const nameScore = similarityRatio(ia.name, ib.name);
+  const addressScore = similarityRatio(ia.address, ib.address);
   if (ia.placeId && ib.placeId && ia.placeId === ib.placeId) return true;
-  if (ia.domain && ib.domain && ia.domain === ib.domain) return true;
-  if (ia.emailDomain && ib.emailDomain && ia.emailDomain === ib.emailDomain) return true;
+  if (ia.email && ib.email && ia.email === ib.email) return true;
   if (ia.phone && ib.phone && ia.phone === ib.phone) return true;
-  if (ia.address && ib.address && ia.address === ib.address && similarityRatio(ia.name, ib.name) >= 0.55) return true;
-  return similarityRatio(ia.name, ib.name) >= 0.86 && (!ia.address || !ib.address || similarityRatio(ia.address, ib.address) >= 0.35);
+  if (ia.address && ib.address && ia.address === ib.address && nameScore >= 0.55) return true;
+
+  const hasBothAddresses = !!(ia.address && ib.address);
+  const addressLooksSame = !hasBothAddresses || addressScore >= 0.55;
+  if (ia.domain && ib.domain && ia.domain === ib.domain && nameScore >= 0.82 && addressLooksSame) return true;
+  if (ia.emailDomain && ib.emailDomain && ia.emailDomain === ib.emailDomain && nameScore >= 0.82 && addressLooksSame) return true;
+  return nameScore >= 0.88 && (!hasBothAddresses || addressScore >= 0.65);
 }
 
 function getScrapeFingerprint(c = {}) {
@@ -1257,6 +1265,7 @@ async function fetchPlaces(segment, location, maxResults, opts = {}) {
               'editorialSummary','priceLevel','parkingOptions','accessibilityOptions','location',
             ],
             language: 'es',
+            region: 'es',
             maxResultCount: 20, // MÃ¡ximo que permite la API por llamada
           };
 
@@ -1325,14 +1334,19 @@ async function fetchPlaces(segment, location, maxResults, opts = {}) {
           failedQueries++;
           lastQueryError = e?.message || String(e);
           console.warn('Query fallida:', query, e.message);
+          if (failedQueries <= 3 || failedQueries === queryAttempts) {
+            logEnrich(`  Places fallo: "${query}" (${lastQueryError})`, 'warn');
+          }
         }
       }
       if (plan.gridSize > 1) await sleep(100); // Pausa entre puntos del grid
     }
   }
 
-  if (!allPlaces.length && failedQueries && failedQueries === queryAttempts) {
-    logEnrich(`Todas las consultas de Places fallaron (${lastQueryError || 'sin detalle'}). Revisa cuota/API key o prueba otra zona.`, 'err');
+  if (!allPlaces.length && failedQueries) {
+    logEnrich(`Places no produjo resultados. Fallaron ${failedQueries}/${queryAttempts} consultas; ultimo error: ${lastQueryError || 'sin detalle'}. Revisa cuota/API key o prueba otra zona.`, 'err');
+  } else if (!allPlaces.length) {
+    logEnrich(`Places devolvio 0 empresas tras ${queryAttempts} consultas. Prueba otra zona, mas radio o otro sector.`, 'warn');
   }
   logEnrich(`âœ… Cobertura total: ${allPlaces.length} empresas Ãºnicas (${seenIds.size} IDs deduplicados)`, allPlaces.length ? 'ok' : 'warn');
   return allPlaces;
@@ -2513,9 +2527,8 @@ function deduplicateResults(results) {
     const ib = getBusinessIdentity(b);
     return [
       ia.placeId && ib.placeId && ia.placeId === ib.placeId ? 'placeId' : '',
-      ia.domain && ib.domain && ia.domain === ib.domain ? 'dominio' : '',
+      ia.email && ib.email && ia.email === ib.email ? 'email exacto' : '',
       ia.phone && ib.phone && ia.phone === ib.phone ? 'telefono' : '',
-      ia.emailDomain && ib.emailDomain && ia.emailDomain === ib.emailDomain ? 'dominio email' : '',
       ia.address && ib.address && ia.address === ib.address ? 'direccion' : '',
       similarityRatio(ia.name, ib.name) >= 0.86 ? 'nombre similar' : '',
     ].filter(Boolean);
@@ -2544,10 +2557,10 @@ function deduplicateResults(results) {
     const identity = getBusinessIdentity(company);
     const keys = [
       identity.placeId && `p:${identity.placeId}`,
-      identity.domain && `d:${identity.domain}`,
       identity.phone && `t:${identity.phone}`,
-      identity.emailDomain && `e:${identity.emailDomain}`,
+      identity.email && `m:${identity.email}`,
       identity.name && identity.address && `na:${identity.name}|${identity.address}`,
+      identity.domain && identity.name && identity.address && `dna:${identity.domain}|${identity.name}|${identity.address}`,
     ].filter(Boolean);
     let isDuplicate = false;
 
@@ -3356,6 +3369,13 @@ function saveSheetsConfig() {
 })();
 
 // â”€â”€â”€ MOTOR PRINCIPAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function setStep(step, state, msg) {
+  const el = document.getElementById(`step-${step}`);
+  const st = document.getElementById(`st-${step}`);
+  if (el) el.className = `pipeline-step ${state}`;
+  if (st) st.textContent = msg;
+}
+
 async function searchBusinesses() {
   const multiEnabled = document.getElementById('plan-multi-toggle')?.checked;
   if (!multiEnabled) {
@@ -3413,7 +3433,7 @@ async function searchBusinessesMultiSector(sectors, location) {
   if (btn) { btn.disabled = true; btn.textContent = `Buscando ${sectors.length} sectores...`; }
 
   try {
-    await waitForGoogleMaps(5000);
+    await waitForGoogleMaps(12000);
     for (let i = 0; i < sectors.length; i++) {
       const seg = sectors[i];
       const planSel = document.getElementById('plan-segment');
@@ -3446,6 +3466,8 @@ async function searchBusinessesMultiSector(sectors, location) {
       c.segment = c.sourceSector || c.segment;
       decorateOpportunity(c);
     });
+    const enrichMode = document.getElementById('plan-enrich')?.value || 'all';
+    await enrichMultiSectorMergedResults(location, enrichMode);
     sortSearchResultsLive();
     renderSearchCards();
     showResultsPanel();
@@ -3454,13 +3476,151 @@ async function searchBusinessesMultiSector(sectors, location) {
     updateEnrichStats();
     renderMultiSectorResultsPanel();
     logEnrich(`Multi-sector completado: ${allResults.length} resultados brutos, ${tempSearchResults.length} empresas unicas`, 'ok');
+    if (typeof saveCurrentSearch === 'function' && tempSearchResults.length) {
+      saveCurrentSearch(tempSearchResults, sectors.length > 1 ? 'Multi-sector' : (sectors[0] || 'Multi-sector'), location, 0);
+    }
     if (!tempSearchResults.length) {
-      logEnrich('Sin resultados multi-sector. Prueba menos sectores, otra zona o revisa cuota/API key de Google Places.', 'warn');
+      logEnrich('Sin resultados multi-sector. Si arriba aparecen fallos de Places, revisa API key, Places API New, cuota o restricciones de dominio local.', 'warn');
     }
   } finally {
     if (originalSegment && document.getElementById('plan-segment')) document.getElementById('plan-segment').value = originalSegment;
     if (btn) { btn.disabled = false; btn.textContent = 'Buscar y Enriquecer'; }
   }
+}
+
+async function enrichMultiSectorMergedResults(location, enrichMode = 'all') {
+  if (!Array.isArray(tempSearchResults) || !tempSearchResults.length) return;
+
+  const shouldWeb = enrichMode === 'all' || enrichMode === 'web';
+  const shouldExternal = enrichMode === 'all' || enrichMode === 'hunter' || enrichMode === 'apollo';
+  const shouldSignals = enrichMode === 'all';
+
+  if (enrichMode === 'none') {
+    logEnrich('Multi-sector: modo Solo Google Places, scraping omitido por configuracion.', 'warn');
+    return;
+  }
+
+  logEnrich(`Multi-sector: enriqueciendo ${tempSearchResults.length} empresas unicas (${enrichMode})`, 'ok');
+  renderSearchCards();
+  showResultsPanel();
+  updateEnrichStats();
+
+  if (shouldWeb) {
+    setStep('web', 'active', 'Scraping multi-sector...');
+    const candidates = tempSearchResults
+      .map((c, i) => ({ c, i }))
+      .filter(x => x.c.website && !x.c.fromCache)
+      .sort((a, b) => getLayerPriority(b.c) - getLayerPriority(a.c));
+
+    let done = 0;
+    const total = candidates.length || 1;
+    logEnrich(`Web scraping multi-sector: ${candidates.length} webs con dominio.`, candidates.length ? 'ok' : 'warn');
+    for (let b = 0; b < candidates.length; b += PERF.webBatch) {
+      const batch = candidates.slice(b, b + PERF.webBatch);
+      batch.forEach(({ i }) => markCardEnriching(i, true));
+      await Promise.all(batch.map(async ({ i, c }) => {
+        try {
+          tempSearchResults[i] = await enrichFromWeb(c);
+        } catch (e1) {
+          try {
+            await sleep(1200);
+            tempSearchResults[i] = await enrichFromWeb(c);
+          } catch (e2) {
+            tempSearchResults[i].scrapeDiagnostics = [...new Set([...(tempSearchResults[i].scrapeDiagnostics || []), 'web-fallo'])];
+            console.warn('Multi-sector web scraping failed:', c.name, e2);
+          }
+        } finally {
+          markCardEnriching(i, false);
+          updateCard(i);
+          done++;
+        }
+      }));
+      setStep('web', 'active', `${done}/${candidates.length}`);
+      setProgress(Math.min(95, 45 + Math.round((done / total) * 35)));
+      logEnrich(`Web multi-sector: ${done}/${candidates.length} procesadas`);
+      renderSearchCards();
+      scheduleEnrichStats();
+      await yieldToUI();
+      if (b + PERF.webBatch < candidates.length) await sleep(tempSearchResults.length > 30 ? 1600 : 800);
+    }
+    setStep('web', 'done', `${done} procesadas`);
+    _enrichCache.setMany(tempSearchResults.filter(c => !c.fromCache));
+  } else {
+    setStep('web', 'done', 'Omitido');
+  }
+
+  if (shouldExternal) {
+    const hunterKey = localStorage.getItem('gordi_hunter_key');
+    const apolloKey = localStorage.getItem('gordi_apollo_key');
+    const externalCandidates = tempSearchResults
+      .map((c, i) => ({ c, i }))
+      .filter(x => x.c.website && (!x.c.email || !x.c.decision_maker))
+      .sort((a, b) => getLayerPriority(b.c) - getLayerPriority(a.c));
+
+    if (externalCandidates.length) {
+      setStep('hunter', hunterKey ? 'active' : 'done', hunterKey ? 'Buscando...' : 'Omitido');
+      setStep('apollo', apolloKey ? 'active' : 'done', apolloKey ? 'Buscando...' : 'Omitido');
+      let done = 0;
+      await runLimitedBatches(externalCandidates, PERF.externalBatch, async ({ i }) => {
+        markCardEnriching(i, true);
+        try {
+          if (hunterKey && !tempSearchResults[i].email) {
+            tempSearchResults[i] = await enrichFromHunter(tempSearchResults[i]);
+          }
+          if (apolloKey && (!tempSearchResults[i].email || !tempSearchResults[i].decision_maker)) {
+            tempSearchResults[i] = await enrichFromApollo(tempSearchResults[i]);
+          }
+        } catch (err) {
+          tempSearchResults[i].scrapeDiagnostics = [...new Set([...(tempSearchResults[i].scrapeDiagnostics || []), 'externas-fallo'])];
+        } finally {
+          markCardEnriching(i, false);
+          updateCard(i);
+          done++;
+        }
+      }, 450);
+      setStep('hunter', 'done', 'Completado');
+      setStep('apollo', 'done', 'Completado');
+      logEnrich(`Capas externas multi-sector: ${done} candidatos procesados.`, 'ok');
+    }
+  }
+
+  if (shouldSignals) {
+    setStep('social', 'active', 'Senales...');
+    const signalCandidates = tempSearchResults
+      .map((c, i) => ({ c, i }))
+      .filter(x => getLayerPriority(x.c) >= 30)
+      .slice(0, 40);
+    await runLimitedBatches(signalCandidates, PERF.signalBatch, async ({ i }) => {
+      try {
+        tempSearchResults[i] = await enrichFromSocial(tempSearchResults[i]);
+        if ((tempSearchResults[i].signals || []).length < 3) tempSearchResults[i] = await enrichFromNews(tempSearchResults[i]);
+        tempSearchResults[i] = await enrichFromReviews(tempSearchResults[i]);
+      } catch (err) {
+        tempSearchResults[i].scrapeDiagnostics = [...new Set([...(tempSearchResults[i].scrapeDiagnostics || []), 'senales-fallo'])];
+      } finally {
+        updateCard(i);
+      }
+    }, 250);
+    setStep('social', 'done', 'Analizado');
+  }
+
+  tempSearchResults = deduplicateResults(tempSearchResults);
+  tempSearchResults.forEach(c => {
+    normalizeSearchCompany(c);
+    decorateOpportunity(c);
+    if (!c.logo && c.website) c.logo = getClearbitLogo(c.website);
+  });
+  sortSearchResultsLive();
+  _enrichCache.setMany(tempSearchResults.filter(c => !c.fromCache));
+  recordLeadMemoryBulk(tempSearchResults, 'scraped_multisector', c => ({
+    location,
+    segment: c.sourceSector || c.segment,
+    score: c.opportunityScore || 0,
+    hasEmail: !!c.email,
+    hasDecisionMaker: !!c.decision_maker
+  }));
+  setStep('done', 'done', `${tempSearchResults.filter(c => c.email).length} con email`);
+  setProgress(100);
 }
 
 async function searchSectorPlacesOnly(segment, location, maxRes) {
@@ -3494,7 +3654,8 @@ async function searchBusinessesSingle(options = {}) {
   const isMultiChild = !!options.multiChild;
   const segment  = options.sectorOverride || document.getElementById('plan-segment').value;
   const location = document.getElementById('plan-location').value.trim();
-  const maxRes   = parseInt(document.getElementById('plan-max').value);
+  const parsedMax = parseInt(document.getElementById('plan-max')?.value || '20', 10);
+  const maxRes = Number.isFinite(parsedMax) && parsedMax > 0 ? parsedMax : 20;
   const selectedEnrichMode = document.getElementById('plan-enrich').value;
   const enrichMode = isMultiChild ? 'none' : selectedEnrichMode;
 
@@ -3504,20 +3665,13 @@ async function searchBusinessesSingle(options = {}) {
   if (typeof google === 'undefined' || !google.maps) {
     document.getElementById('btn-search').textContent = 'â³ Iniciando Maps...';
     try {
-      await waitForGoogleMaps(5000); // 5 segundos max
+      await waitForGoogleMaps(12000);
     } catch (err) {
       alert('Error al inicializar Google Maps. Revisa tu API Key en ConfiguraciÃ³n.\n' + err.message);
       if (!isMultiChild) document.getElementById('btn-search').textContent = 'ðŸ” Buscar y Enriquecer';
       return;
     }
   }
-
-  const setStep = (step, state, msg) => {
-    const el = document.getElementById(`step-${step}`);
-    const st = document.getElementById(`st-${step}`);
-    if (el) { el.className = `pipeline-step ${state}`; }
-    if (st) st.textContent = msg;
-  };
 
   try {
   saveSearchHistory(segment, location);
@@ -3608,7 +3762,8 @@ async function searchBusinessesSingle(options = {}) {
   if (enrichMode === 'all' || enrichMode === 'web') {
     setStep('web','active','Procesando...');
     if (isMultiChild) setMultiSectorProgress(segment, 'web scraping', 35);
-    logEnrich('ðŸŒ Web scraping: extrayendo datos de ' + places.length + ' webs...');
+    const websiteCount = tempSearchResults.filter(c => c.website).length;
+    logEnrich(`Web scraping: ${websiteCount}/${places.length} empresas tienen web para rastrear.`, websiteCount ? 'ok' : 'warn');
     let done = 0;
     // FIX-SCRAPING: BATCH_SIZE reducido a 3 para no saturar los proxies CORS gratuitos.
     const BATCH_SIZE = PERF.webBatch;
@@ -4801,37 +4956,9 @@ async function importSelectedSearch() {
     decorateOpportunity(c);
     // Skip if already in leads
     if (leads.some(l => !l.archived && isSameBusiness({ ...c, company: c.name }, l))) return;
-    const socials = [c.instagram, c.facebook, c.linkedin, c.twitter].filter(Boolean).join(' | ');
-    const signal = [
-      c.address ? `UbicaciÃ³n: ${c.address}` : '',
-      c.rating  ? `Rating: ${c.rating}/5 (${c.ratingCount} reseÃ±as)` : '',
-      c.description ? c.description.slice(0,120) : '',
-    ].filter(Boolean).join('. ');
-
-    leads.unshift({
-      id: Date.now() + Math.random(),
-      name: c.decision_maker?.split('(')[0]?.trim() || 'Responsable',
-      company: c.name,
-      email: c.email || '',
-      phone: c.phone || '',
-      segment: c.sourceSector || segment, website: c.website || '',
-      signal: signal || `Encontrado en ${location}`,
-      score: calculateScore(c.decision_maker ? 'manager' : 'otros', 'mediano', signal, { rating: c.rating, ratingCount: c.ratingCount, email: c.email, phone: c.phone, signals: c.signals || [], enrichSource: c.enrichSource || [], segment }),
-      status: 'Pendiente',
-      date: new Date().toISOString(),
-      status_date: new Date().toISOString(),
-      notes: `Calidad contacto: ${c.contactQuality || 'pendiente'} (${c.contactQualityScore || 0}/100)\nPor que aparece: ${(c.resultExplanation || []).map(x => `${x.label}: ${x.value}`).join(' | ') || 'â€”'}\nRedes: ${socials || 'â€”'}\nEmails adicionales: ${c.emails?.join(', ')||'â€”'}`,
-      activity: [{ action: `Volcado desde bÃºsqueda "${location}"`, date: new Date().toISOString() }],
-      source: 'search',
-      rating: c.rating || null,
-      ratingCount: c.ratingCount || 0,
-      placeId: c.placeId || '',
-      address: c.address || '',
-      description: c.description || '',
-      opportunityScore: c.opportunityScore || 0,
-      opportunityAngle: c.opportunityAngle || '',
-      tags: [], budget: 0, next_contact: ''
-    });
+    const lead = buildLeadFromSearchCompany(c, c.sourceSector || segment, location);
+    lead.activity = [{ action: `Volcado desde busqueda "${location}"`, date: lead.date }];
+    leads.unshift(lead);
     recordLeadMemory(c, 'imported_bulk', { score: c.opportunityScore || 0, location });
     imported++;
   });
@@ -4856,8 +4983,11 @@ function buildLeadFromSearchCompany(c, segment, location, campaignName = '') {
     c.opportunityReasons?.length ? `Motivos: ${c.opportunityReasons.join(', ')}` : '',
     c.scrapeSignals?.length ? `Dolores web: ${c.scrapeSignals.map(s => s.label).join(', ')}` : '',
     c.description ? c.description.slice(0, 120) : '',
+    c.signals?.length ? c.signals.slice(0, 6).join(' | ') : '',
+    c.domainAge !== undefined ? `Dominio ${c.domainYear || 'desconocido'} (${c.domainAge} anos)` : '',
+    c.incorporationYear ? `Fundada ${c.incorporationYear}` : '',
   ].filter(Boolean);
-  const socials = [c.instagram, c.facebook, c.linkedin, c.twitter].filter(Boolean).join(' | ');
+  const socials = [c.instagram, c.facebook, c.linkedin, c.twitter, c.youtube].filter(Boolean).join(' | ');
   const now = new Date().toISOString();
   return {
     id: Date.now() + Math.random(),
@@ -4892,8 +5022,29 @@ function buildLeadFromSearchCompany(c, segment, location, campaignName = '') {
     address: c.address || '',
     description: c.description || '',
     decision_maker: c.decision_maker || '',
+    instagram: c.instagram || '',
+    facebook: c.facebook || '',
+    linkedin: c.linkedin || '',
+    twitter: c.twitter || '',
+    youtube: c.youtube || '',
+    domainAge: c.domainAge,
+    domainYear: c.domainYear,
+    incorporationYear: c.incorporationYear,
+    legalStatus: c.legalStatus || '',
+    logo: c.logo || '',
     signals: c.signals || [],
     scrapeSignals: c.scrapeSignals || [],
+    techStack: c.techStack || [],
+    webLoadMs: c.webLoadMs || null,
+    hasSitemap: c.hasSitemap || false,
+    enrichSource: c.enrichSource || [],
+    reviewSummary: c.reviewSummary || '',
+    reviewPain: c.reviewPain || [],
+    competitorBetter: c.competitorBetter || null,
+    distKm: c.distKm || null,
+    sslValid: c.sslValid,
+    optimalContact: c.optimalContact || null,
+    fachadaAnalysis: c.fachadaAnalysis || '',
     opportunityScore: c.opportunityScore || 0,
     opportunityAngle: c.opportunityAngle || '',
     tags: campaignName ? ['campana-scraping'] : [],

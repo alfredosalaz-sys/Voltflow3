@@ -1676,8 +1676,8 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
     <div class="glass-panel">
       <div class="panel-header"><h3>Gestión de Datos</h3></div>
       <div style="font-size:.8rem;color:var(--text-muted);padding:.6rem .8rem;background:rgba(10,132,255,.05);border:1px solid rgba(10,132,255,.15);border-radius:8px;margin-top:.75rem;line-height:1.6">
-        💡 <strong>Cambio de versión:</strong> Los datos se migran automáticamente al abrir una versión nueva en la misma carpeta.<br>
-        Si los datos no aparecen, usa <strong>Exportar datos portátiles</strong> en la versión antigua e <strong>Importar</strong> en la nueva.
+        💡 <strong>Actualizaciones desde GitHub:</strong> GitHub debe usarse para actualizar los archivos, pero el trabajo diario debe abrirse siempre desde la misma URL local.<br>
+        URL recomendada: <strong>http://127.0.0.1:8765/app.html</strong>. Si trabajas desde GitHub Pages, localhost, file:// u otro puerto, el navegador usará otro almacén.
       </div>
       <div style="display:flex;gap:1rem;margin-top:1rem;flex-wrap:wrap">
         <button class="btn-outline" onclick="exportFilteredData()">Exportar leads (CSV)</button>
@@ -1686,6 +1686,10 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
         <button class="btn-outline" onclick="exportPortableData()" title="Genera un archivo que puedes importar en cualquier versión de Voltflow2">📦 Exportar datos portátiles</button>
         <button class="btn-outline" onclick="openSafetySnapshotsModal()" title="Ver puntos de recuperación automáticos antes de importaciones, restauraciones y sincronizaciones">🛡️ Snapshots de seguridad</button>
         <button class="btn-outline" onclick="createSafetySnapshot('manual', { download: true })" title="Crea un snapshot ahora y descarga una copia fuera del navegador">⬇ Snapshot manual</button>
+        <button class="btn-outline" onclick="showStorageDiagnostics()" title="Muestra la URL y los datos visibles para este navegador">Diagnosticar almacenamiento</button>
+        <button class="btn-outline" onclick="showCriticalRescueDiagnostics()" title="Muestra las copias críticas automáticas disponibles">Ver rescates críticos</button>
+        <button class="btn-outline" onclick="exportLatestCriticalRescue()" title="Descarga la mejor copia crítica automática">Exportar rescate crítico</button>
+        <button class="btn-outline" onclick="openPasteRecoveryModal()" title="Pega un JSON exportado desde otra versión o URL">Pegar backup JSON</button>
         <input type="file" id="import-portable-file" accept=".json" style="display:none" onchange="restoreBackup(event)">
         <button class="btn-primary" onclick="openImportFromLocalStorage()" title="Lee los datos de Voltflow2 guardados en este navegador" style="display:flex;align-items:center;gap:.4rem">📥 Importar desde versión anterior</button>
         <button class="btn-outline" onclick="document.getElementById('restore-file').click()">📂 Restaurar backup</button>
@@ -2276,17 +2280,17 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
 <script src="modules/state.js?v=2" charset="UTF-8"></script>
 <script src="modules/email-templates.js?v=2" charset="UTF-8"></script>
 <script src="modules/scoring.js?v=2" charset="UTF-8"></script>
-<script src="modules/init.js?v=3" charset="UTF-8"></script>
-<script src="modules/search.js?v=11" charset="UTF-8"></script>
-<script src="modules/leads.js?v=2" charset="UTF-8"></script>
-<script src="modules/dashboard.js?v=4" charset="UTF-8"></script>
-<script src="modules/ai-email.js?v=2" charset="UTF-8"></script>
-<script src="modules/chat.js?v=4" charset="UTF-8"></script>
-<script src="modules/ui.js?v=6" charset="UTF-8"></script>
-<script src="modules/inbox.js?v=2" charset="UTF-8"></script>
-<script src="modules/ai-router.js?v=2" charset="UTF-8"></script>
+<script src="modules/init.js?v=7" charset="UTF-8"></script>
+<script src="modules/search.js?v=15" charset="UTF-8"></script>
+<script src="modules/leads.js?v=6" charset="UTF-8"></script>
+<script src="modules/dashboard.js?v=6" charset="UTF-8"></script>
+<script src="modules/ai-email.js?v=3" charset="UTF-8"></script>
+<script src="modules/chat.js?v=5" charset="UTF-8"></script>
+<script src="modules/ui.js?v=7" charset="UTF-8"></script>
+<script src="modules/inbox.js?v=3" charset="UTF-8"></script>
+<script src="modules/ai-router.js?v=3" charset="UTF-8"></script>
 <script src="modules/misc.js?v=2" charset="UTF-8"></script>
-<script src="modules/smart-import.js?v=3" charset="UTF-8"></script>
+<script src="modules/smart-import.js?v=4" charset="UTF-8"></script>
 
 </body>
 </html>

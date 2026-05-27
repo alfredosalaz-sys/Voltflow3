@@ -910,6 +910,47 @@ function exportFullBackup() {
   a.click(); URL.revokeObjectURL(url);
   showToast('Backup exportado âœ“');
 }
+
+function openPasteRecoveryModal() {
+  const old = document.getElementById('paste-recovery-modal');
+  if (old) old.remove();
+  const modal = document.createElement('div');
+  modal.id = 'paste-recovery-modal';
+  modal.className = 'modal-overlay';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div style="width:min(720px,100%);background:var(--bg-card);border:1px solid var(--glass-border);border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.45);overflow:hidden">
+      <div style="padding:18px 20px;border-bottom:1px solid var(--glass-border)">
+        <h3 style="margin:0;font-size:1rem">Pegar backup o datos portatiles</h3>
+        <p style="margin:.35rem 0 0;color:var(--text-muted);font-size:.8rem;line-height:1.45">Pega aqui el JSON exportado desde otra URL o version. Se validara igual que un archivo de backup.</p>
+      </div>
+      <div style="padding:18px 20px">
+        <textarea id="paste-recovery-json" spellcheck="false" placeholder='{"gordi_leads":"[...]"}' style="width:100%;height:260px;box-sizing:border-box;background:var(--glass);border:1px solid var(--glass-border);border-radius:10px;color:var(--text);padding:12px;font-family:ui-monospace,Consolas,monospace;font-size:.78rem;line-height:1.45;resize:vertical"></textarea>
+      </div>
+      <div style="padding:14px 20px;border-top:1px solid var(--glass-border);display:flex;justify-content:flex-end;gap:.6rem;flex-wrap:wrap">
+        <button class="btn-outline" onclick="document.getElementById('paste-recovery-modal')?.remove()">Cancelar</button>
+        <button class="btn-primary" onclick="restoreBackupFromPastedJson()">Validar y restaurar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  setTimeout(() => document.getElementById('paste-recovery-json')?.focus(), 50);
+}
+
+function restoreBackupFromPastedJson() {
+  const textarea = document.getElementById('paste-recovery-json');
+  const raw = textarea?.value?.trim();
+  if (!raw) { showToast('Pega primero el JSON del backup'); return; }
+  try {
+    JSON.parse(raw);
+  } catch (e) {
+    alert('JSON no valido: ' + e.message);
+    return;
+  }
+  const file = new File([raw], 'voltflow_pasted_backup.json', { type: 'application/json' });
+  document.getElementById('paste-recovery-modal')?.remove();
+  restoreBackup({ target: { files: [file] } });
+}
+
 function restoreBackup(event) {
   const file = event.target.files[0];
   if (!file) return;

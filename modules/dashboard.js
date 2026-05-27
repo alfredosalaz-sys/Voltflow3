@@ -795,6 +795,8 @@ function downloadCSV(content, filename) {
 function clearAllLeads() {
   if (!confirm('âš ï¸ Â¿Borrar TODOS los leads? Esta acciÃ³n no se puede deshacer.')) return;
   if (typeof createSafetySnapshot === 'function') createSafetySnapshot('before_clear_all_leads');
+  if (typeof createCriticalRescueSnapshot === 'function') createCriticalRescueSnapshot('before_clear_all_leads');
+  if (typeof markIntentionalEmptyLeads === 'function') markIntentionalEmptyLeads();
   leads = [];
   saveLeads();
   renderAll();

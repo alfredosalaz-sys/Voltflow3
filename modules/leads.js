@@ -47,7 +47,36 @@ function saveLead() {
 
 let _saveLeadsTimer = null;
 function saveLeads() {
-  localStorage.setItem('gordi_leads', JSON.stringify(leads));
+  const currentLeads = Array.isArray(leads) ? leads : [];
+  if (currentLeads.length > 0 && typeof createCriticalRescueSnapshot === 'function') {
+    createCriticalRescueSnapshot('before_leads_save', { throttleMs: 5 * 60 * 1000 });
+  }
+  if (currentLeads.length === 0) {
+    try {
+      const stored = JSON.parse(localStorage.getItem('gordi_leads') || '[]');
+      if (Array.isArray(stored) && stored.length > 0 && typeof createSafetySnapshot === 'function') {
+        createSafetySnapshot('before_empty_leads_save');
+        console.warn('Snapshot creado antes de guardar cero leads sobre un almacenamiento con datos.');
+      }
+      if (Array.isArray(stored) && stored.length > 0 && typeof createCriticalRescueSnapshot === 'function') {
+        createCriticalRescueSnapshot('before_empty_leads_save');
+      }
+    } catch (e) {
+      if (typeof createSafetySnapshot === 'function') createSafetySnapshot('before_empty_leads_save_unparsed');
+      if (typeof createCriticalRescueSnapshot === 'function') createCriticalRescueSnapshot('before_empty_leads_save_unparsed');
+    }
+  }
+  try {
+    localStorage.setItem('gordi_local_last_modified', new Date().toISOString());
+    localStorage.setItem('gordi_leads', JSON.stringify(currentLeads));
+  } catch (e) {
+    console.error('No se pudieron guardar los leads en localStorage:', e);
+    if (typeof createCriticalRescueSnapshot === 'function') {
+      try { createCriticalRescueSnapshot('localstorage_save_failed', { throttleMs: 0 }); } catch {}
+    }
+    showToast('No se pudieron guardar los leads. Revisa espacio del navegador y exporta una copia de seguridad.');
+    return;
+  }
   _goldenProfile = null; // Invalidar cache lookalike
 
   // 🏛️ ARQUITECTURA: Notificar cambio global
@@ -161,6 +190,34 @@ function resetLeadsFilters() {
   renderLeads();
 }
 
+function getActiveLeadFilterCount() {
+  return [
+    document.getElementById('lead-search')?.value || '',
+    document.getElementById('filter-segment')?.value || '',
+    document.getElementById('filter-status')?.value || '',
+    document.getElementById('filter-source')?.value || '',
+    document.getElementById('filter-score-min')?.value || '',
+    document.getElementById('filter-date-range')?.value || '',
+    document.getElementById('filter-next-contact')?.value || ''
+  ].filter(Boolean).length;
+}
+
+function showLeadEmptyState(empty, activeCount, totalLeads) {
+  if (!empty) return;
+  empty.style.display = 'flex';
+  if (totalLeads > 0 && activeCount > 0) {
+    empty.innerHTML = `
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <p>Hay ${totalLeads} leads cargados, pero los filtros actuales no muestran ninguno.</p>
+      <button class="btn-primary" onclick="resetLeadsFilters()">Limpiar filtros y ver leads</button>`;
+    return;
+  }
+  empty.innerHTML = `
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+    <p>No hay leads que mostrar</p>
+    <button class="btn-primary" onclick="showView('planner')">Buscar empresas</button>`;
+}
+
 function renderLeads() {
   saveFilters();
   const tbody = document.getElementById('leads-body');
@@ -168,7 +225,14 @@ function renderLeads() {
   if (!tbody) return;
   const list = getFilteredLeads();
   tbody.innerHTML = '';
-  if (!list.length) { empty.style.display = 'flex'; return; }
+  if (!list.length) {
+    document.getElementById('no-email-banner')?.remove();
+    const paginationEl = document.getElementById('leads-pagination');
+    if (paginationEl) paginationEl.style.display = 'none';
+    const totalActive = leads.filter(l => !l.archived).length;
+    showLeadEmptyState(empty, getActiveLeadFilterCount(), totalActive);
+    return;
+  }
   empty.style.display = 'none';
 
   // Check for no-email leads — always remove stale banner first to prevent duplicates
