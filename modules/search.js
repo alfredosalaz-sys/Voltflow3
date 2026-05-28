@@ -426,7 +426,7 @@ function normalizeLeadPhone(value = '') {
 }
 
 function getBusinessIdentity(c = {}) {
-  const domain = extractDomain(c.website || '').replace(/^www\./, '');
+  const domain = (extractDomain(c.website || '') || '').replace(/^www\./, '');
   const phone = normalizeLeadPhone(c.phone || c.whatsapp || '');
   const name = normalizeLeadText(c.name || c.company || '');
   const address = normalizeLeadText(c.address || '').slice(0, 60);
@@ -4950,12 +4950,16 @@ async function importSelectedSearch() {
   if (!indices.length) { showToast('âš ï¸ Selecciona al menos una empresa'); return; }
 
   let imported = 0;
+  let skippedDuplicates = 0;
   indices.forEach(i => {
     const c = tempSearchResults[i];
     if (!c) return;
     decorateOpportunity(c);
     // Skip if already in leads
-    if (leads.some(l => !l.archived && isSameBusiness({ ...c, company: c.name }, l))) return;
+    if (leads.some(l => !l.archived && isSameBusiness({ ...c, company: c.name }, l))) {
+      skippedDuplicates++;
+      return;
+    }
     const lead = buildLeadFromSearchCompany(c, c.sourceSector || segment, location);
     lead.activity = [{ action: `Volcado desde busqueda "${location}"`, date: lead.date }];
     leads.unshift(lead);
@@ -4963,11 +4967,19 @@ async function importSelectedSearch() {
     imported++;
   });
 
+  if (!imported) {
+    showToast(skippedDuplicates
+      ? `No se importo nada: ${skippedDuplicates} ya estaban en Leads`
+      : 'No se importo nada. Revisa filtros o resultados visibles.');
+    return;
+  }
+
   saveLeads();
   renderAll();
   renderDashboardCharts();
+  if (typeof renderTracking === 'function') renderTracking();
   updateStreakData();
-  showToast(`âœ… ${imported} empresas volcadas a Leads`);
+  showToast(`âœ… ${imported} empresas volcadas a Leads${skippedDuplicates ? ` (${skippedDuplicates} duplicadas omitidas)` : ''}`);
 }
 
 function getProspectingMinScore() {
@@ -5107,91 +5119,31 @@ function createProspectingCampaignFromSearch() {
 }
 
 function quickImportOne(idx) {
-  const c = tempSearchResults[idx];
-  if (!c) return;
-  decorateOpportunity(c);
-  if (leads.some(l => !l.archived && isSameBusiness({ ...c, company: c.name }, l))) { showToast(`${c.name} ya estÃ¡ en Leads`); return; }
-  const segment = c.sourceSector || document.getElementById('plan-segment').value;
-  const location = document.getElementById('plan-location').value.trim();
-
-  // Construir seÃ±al con toda la info disponible
-  let signalParts = [];
-  if (c.description) signalParts.push(c.description.slice(0,120));
-  if (c.signals?.length) signalParts.push(c.signals.join(' | '));
-  if (c.domainAge !== undefined) signalParts.push(`Dominio ${c.domainYear} (${c.domainAge} aÃ±os)`);
-  if (c.incorporationYear) signalParts.push(`Fundada ${c.incorporationYear}`);
-  if (!signalParts.length) signalParts.push(`Encontrado en ${location}`);
-
-  const extraData = {
-    rating: c.rating,
-    ratingCount: c.ratingCount,
-    email: c.email,
-    phone: c.phone,
-    decision_maker: c.decision_maker,
-    signals: c.signals || [],
-    techStack: c.techStack || [],
-    webLoadMs: c.webLoadMs || null,
-    hasSitemap: c.hasSitemap || false,
-    enrichSource: c.enrichSource || [],
-    legalStatus: c.legalStatus || '',
-    segment,
-  };
-
-  leads.unshift({
-    id: Date.now(),
-    name: c.decision_maker?.split('(')[0]?.trim() || 'Responsable',
-    company: c.name,
-    email: c.email || '',
-    phone: c.phone || '',
-    segment,
-    website: c.website || '',
-    signal: signalParts.join(' â€” ').slice(0, 300),
-    score: calculateScore(c.decision_maker ? 'manager' : 'otros', 'mediano', signalParts.join(' '), extraData),
-    status: 'Pendiente',
-    date: new Date().toISOString(),
-    status_date: new Date().toISOString(),
-    notes: `Calidad contacto: ${c.contactQuality || 'pendiente'} (${c.contactQualityScore || 0}/100)\nPor que aparece: ${(c.resultExplanation || []).map(x => `${x.label}: ${x.value}`).join(' | ') || '-'}`,
-    rating: c.rating,
-    ratingCount: c.ratingCount,
-    placeId: c.placeId || '',
-    decision_maker: c.decision_maker || '',
-    instagram: c.instagram || '',
-    facebook: c.facebook || '',
-    linkedin: c.linkedin || '',
-    twitter: c.twitter || '',
-    youtube: c.youtube || '',
-    domainAge: c.domainAge,
-    domainYear: c.domainYear,
-    incorporationYear: c.incorporationYear,
-    legalStatus: c.legalStatus || '',
-    logo: c.logo || '',
-    signals: c.signals || [],
-    techStack: c.techStack || [],
-    webLoadMs: c.webLoadMs || null,
-    hasSitemap: c.hasSitemap || false,
-    enrichSource: c.enrichSource || [],
-    address: c.address || '',
-    description: c.description || '',
-    tags: [], budget: 0, next_contact: '',
-    source: 'search',
-    activity: [{ action: `Lead importado desde bÃºsqueda en ${location}`, date: new Date().toISOString() }],
-    reviewSummary: c.reviewSummary || '',
-    reviewPain: c.reviewPain || [],
-    competitorBetter: c.competitorBetter || null,
-    distKm: c.distKm || null,
-    sslValid: c.sslValid,
-    optimalContact: c.optimalContact || null,
-    fachadaAnalysis: c.fachadaAnalysis || '',
-    opportunityScore: c.opportunityScore || 0,
-    opportunityAngle: c.opportunityAngle || '',
-  });
-  recordLeadMemory(c, 'imported_quick', { score: c.opportunityScore || 0, location });
-  saveLeads();
-  renderAll();
-  renderDashboardCharts();
-  updateStats();
-  updateStreakData();
-  showToast(`âœ… ${c.name} aÃ±adida a Leads`);
+  try {
+    const c = tempSearchResults[idx];
+    if (!c) { showToast('No se encontro este resultado. Recarga la busqueda.'); return; }
+    decorateOpportunity(c);
+    if (leads.some(l => !l.archived && isSameBusiness({ ...c, company: c.name }, l))) {
+      showToast(`${c.name} ya esta en Leads`);
+      return;
+    }
+    const segment = c.sourceSector || document.getElementById('plan-segment')?.value || 'Otros';
+    const location = document.getElementById('plan-location')?.value?.trim() || 'busqueda';
+    const lead = buildLeadFromSearchCompany(c, segment, location);
+    lead.activity = [{ action: `Lead importado desde busqueda en ${location}`, date: lead.date }];
+    leads.unshift(lead);
+    recordLeadMemory(c, 'imported_quick', { score: c.opportunityScore || 0, location });
+    saveLeads();
+    renderAll();
+    renderDashboardCharts();
+    if (typeof renderTracking === 'function') renderTracking();
+    updateStats();
+    updateStreakData();
+    showToast(`OK: ${c.name} anadida a Leads`);
+  } catch (err) {
+    console.error('Error al volcar resultado a Leads:', err);
+    showToast(`No se pudo volcar a Leads: ${err?.message || 'error desconocido'}`);
+  }
 }
 
 

@@ -800,6 +800,28 @@ function updateLeadStatusViaPipeline(leadId, stageName) {
   if (lead && lead.status !== fullStatus) showToast('Estado actualizado ✓ (No olvides Guardar)');
 }
 
+function updateLeadStatusViaPipelineSaved(leadId, stageName) {
+  const fullStatus = STAGE_MAPPING[stageName];
+  if (!fullStatus) return;
+  const input = document.getElementById('detail-status');
+  if (input) input.value = fullStatus;
+  const container = document.getElementById('status-pipeline-container');
+  if (container) container.innerHTML = renderStatusPipeline(fullStatus, leadId);
+  const lead = leads.find(l => String(l.id) === String(leadId));
+  if (!lead || lead.status === fullStatus) return;
+  const oldStatus = lead.status || 'Pendiente';
+  lead.status = fullStatus;
+  lead.status_date = new Date().toISOString();
+  addActivityLog(lead.id, `Pipeline: ${oldStatus} -> ${fullStatus}`);
+  saveLeads();
+  renderLeads();
+  renderKanban();
+  if (typeof renderTracking === 'function') renderTracking();
+  if (typeof updateStats === 'function') updateStats();
+  showToast('Estado actualizado y guardado');
+}
+updateLeadStatusViaPipeline = updateLeadStatusViaPipelineSaved;
+
 function generateEmail(id) {
   const lead = leads.find(l => l.id == id);
   if (!lead) return;
