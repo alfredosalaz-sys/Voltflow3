@@ -115,6 +115,8 @@ function getFilteredLeads() {
     if (search) {
       const haystack = [l.name, l.company, l.email, l.phone, l.segment,
         l.signal, l.notes, l.address, l.web, l.description,
+        l.coverageLocation, l.coverageSector, l.coverageMissionId, l.coverageMissionLabel,
+        l.coverageMission?.label, l.coverageMission?.location, l.coverageMission?.sector,
         ...(l.tags||[]), ...(l.signals||[])].join(' ').toLowerCase();
       if (!haystack.includes(search)) return false;
     }
@@ -305,6 +307,14 @@ function renderLeads() {
 
     // Tags
     const tagsHtml = (lead.tags || []).slice(0, 2).map(t => `<span class="lead-tag">${t}</span>`).join('');
+    const coverageMission = lead.coverageMission || (lead.coverageMissionLabel ? {
+      label: lead.coverageMissionLabel,
+      location: lead.coverageLocation || '',
+      sector: lead.coverageSector || lead.segment || '',
+    } : null);
+    const coverageChip = coverageMission
+      ? `<button class="coverage-lead-chip" onclick="event.stopPropagation(); if(typeof openCoverageForLocation==='function')openCoverageForLocation('${String(coverageMission.location || '').replace(/'/g, "\\'")}'); else showView('coverage');" title="Abrir cobertura">${coverageMission.label || `${coverageMission.location} · ${coverageMission.sector}`}</button>`
+      : '';
 
     // Next contact alert
     let nextAlert = '';
@@ -327,6 +337,7 @@ function renderLeads() {
       <td>
         <div class="lead-name">${tempHtml} ${lead.name}</div>
         <div class="lead-company">${lead.company}</div>
+        ${coverageChip}
         ${tagsHtml}
         ${nextAlert}
       </td>
@@ -590,6 +601,7 @@ function openLeadDetail(id) {
         <span style="font-size:.8rem;background:var(--glass);padding:3px 10px;border-radius:5px">${lead.segment}</span>
         <span style="font-size:.8rem;color:var(--text-muted)">${new Date(lead.date).toLocaleDateString('es-ES')}</span>
         ${lead.source ? `<span style="font-size:.72rem;color:var(--text-dim)">Origen: ${lead.source}</span>` : ''}
+        ${(lead.coverageMission || lead.coverageMissionLabel) ? `<button class="coverage-lead-chip" onclick="if(typeof openCoverageForLocation==='function')openCoverageForLocation('${String(lead.coverageLocation || lead.coverageMission?.location || '').replace(/'/g, "\\'")}'); else showView('coverage');">Cobertura: ${(lead.coverageMission?.label || lead.coverageMissionLabel || '').replace(/</g,'&lt;')}</button>` : ''}
       </div>
       ${followupHtml}
       <div class="grid-form" style="grid-template-columns:1fr 1fr;gap:.75rem">

@@ -3453,6 +3453,9 @@ async function searchBusinessesMultiSector(sectors, location) {
         logEnrich(`${getSegmentLabel(seg)}: ${sectorResults.length} empresas`, sectorResults.length ? 'ok' : 'warn');
       } catch (err) {
         perSector[seg] = { total: 0, label: getSegmentLabel(seg), error: err?.message || 'error' };
+        if (typeof recordSearchCoverage === 'function') {
+          recordSearchCoverage({ location, sectors: [seg], mode: 'multi', status: 'error', results: [], rawCount: 0, error: err?.message || 'error' });
+        }
         setMultiSectorProgress(seg, 'error, saltando', 100, i + 1, sectors.length);
         logEnrich(`Multi-sector: ${getSegmentLabel(seg)} fallo (${err?.message || 'error'}) y se continua`, 'warn');
       }
@@ -3754,6 +3757,9 @@ async function searchBusinessesSingle(options = {}) {
     tempSearchResults.forEach(c => { if (!c.logo) c.logo = getClearbitLogo(c.website); });
     renderSearchCards();
     updateEnrichStats();
+    if (!isMultiChild && typeof recordSearchCoverage === 'function') {
+      recordSearchCoverage({ location, sectors: [segment], mode: 'single', status: places.length ? 'complete' : 'partial', results: tempSearchResults, rawCount: places.length });
+    }
     if (!isMultiChild) resetSearchBtn();
     return;
   }
@@ -4052,6 +4058,9 @@ async function searchBusinessesSingle(options = {}) {
     console.error('searchBusinessesSingle failed:', err);
     setStep('done', 'error', 'Error');
     logEnrich('Error inesperado: ' + (err?.message || err), 'err');
+    if (!isMultiChild && typeof recordSearchCoverage === 'function') {
+      recordSearchCoverage({ location, sectors: [segment], mode: 'single', status: 'error', results: [], rawCount: 0, error: err?.message || String(err) });
+    }
     throw err;
   } finally {
     if (!isMultiChild) resetSearchBtn();

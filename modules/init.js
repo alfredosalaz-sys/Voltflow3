@@ -876,6 +876,7 @@ function showView(view) {
     li.classList.toggle('active', li.getAttribute('data-view') === view);
   });
   if (view === 'kanban') renderKanban();
+  if (view === 'coverage' && typeof renderCoverage === 'function') renderCoverage();
   if (view === 'dashboard') { renderDashboardCharts(); renderRecentActivity(); renderTopLeads(); }
 }
 
