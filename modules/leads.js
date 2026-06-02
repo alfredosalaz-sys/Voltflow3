@@ -95,6 +95,57 @@ function saveLeads() {
   }, 2000); // wait 2s after last save before pushing to cloud
 }
 
+function getCoverageLeadScope() {
+  try {
+    const raw = localStorage.getItem('gordi_coverage_lead_filter');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearCoverageLeadScope() {
+  try { localStorage.removeItem('gordi_coverage_lead_filter'); } catch {}
+  renderLeads();
+}
+
+function leadMatchesCoverageScope(lead, scope) {
+  if (!scope || !lead) return true;
+  const wantedLocation = String(scope.location || '').trim().toLowerCase();
+  const wantedSector = String(scope.sector || '').trim();
+  const wantedMission = String(scope.missionId || '').trim();
+  const leadLocation = String(lead.coverageLocation || lead.coverageMission?.location || '').trim().toLowerCase();
+  const leadSector = String(lead.coverageSector || lead.coverageMission?.sector || lead.segment || '').trim();
+  const leadMission = String(lead.coverageMissionId || lead.coverageMission?.id || '').trim();
+  if (wantedMission && leadMission === wantedMission) return true;
+  if (wantedLocation && leadLocation !== wantedLocation) return false;
+  if (wantedSector && wantedSector !== leadSector && wantedSector !== lead.segment) return false;
+  return true;
+}
+
+function renderCoverageLeadScopeBar() {
+  const host = document.getElementById('leads-sf-bar');
+  if (!host) return;
+  let bar = document.getElementById('coverage-lead-scope');
+  const scope = getCoverageLeadScope();
+  if (!scope) {
+    if (bar) bar.remove();
+    return;
+  }
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'coverage-lead-scope';
+    host.insertAdjacentElement('afterend', bar);
+  }
+  const label = [scope.location, scope.sectorLabel || scope.sector].filter(Boolean).join(' · ');
+  bar.className = 'coverage-lead-scope';
+  bar.innerHTML = `
+    <span>Origen de cobertura</span>
+    <strong>${String(label || scope.label || 'Mision activa').replace(/</g, '&lt;')}</strong>
+    <button class="btn-outline btn-sm" onclick="if(typeof openCoverageForLocation==='function')openCoverageForLocation('${String(scope.location || '').replace(/'/g, "\\'")}')">Volver a cobertura</button>
+    <button class="btn-outline btn-sm" onclick="clearCoverageLeadScope()">Quitar filtro</button>`;
+}
+
 function getFilteredLeads() {
   const search    = (document.getElementById('lead-search')?.value || '').toLowerCase();
   const seg       = document.getElementById('filter-segment')?.value || '';
@@ -104,6 +155,7 @@ function getFilteredLeads() {
   const scoreMin  = parseInt(document.getElementById('filter-score-min')?.value || '0') || 0;
   const dateRange = document.getElementById('filter-date-range')?.value || '';
   const nextCon   = document.getElementById('filter-next-contact')?.value || '';
+  const coverageScope = getCoverageLeadScope();
 
   const today = new Date(); today.setHours(0,0,0,0);
   const weekStart = new Date(today); weekStart.setDate(today.getDate() - today.getDay() + 1);
@@ -112,6 +164,7 @@ function getFilteredLeads() {
 
   let list = leads.filter(l => {
     if (l.archived) return false;
+    if (!leadMatchesCoverageScope(l, coverageScope)) return false;
     if (search) {
       const haystack = [l.name, l.company, l.email, l.phone, l.segment,
         l.signal, l.notes, l.address, l.web, l.description,
@@ -173,7 +226,7 @@ function getFilteredLeads() {
   });
 
   // Count active filters
-  const activeFilters = [search, seg, status, source, scoreMin, dateRange, nextCon].filter(Boolean).length;
+  const activeFilters = [search, seg, status, source, scoreMin, dateRange, nextCon, coverageScope ? 'coverage' : ''].filter(Boolean).length;
   const bar = document.getElementById('leads-count-bar');
   if (bar) {
     const total = leads.filter(l=>!l.archived).length;
@@ -189,10 +242,12 @@ function resetLeadsFilters() {
     const el = document.getElementById(id);
     if (el) { el.value = id === 'sort-leads' ? 'score' : ''; }
   });
+  clearCoverageLeadScope();
   renderLeads();
 }
 
 function getActiveLeadFilterCount() {
+  const coverageScope = getCoverageLeadScope();
   return [
     document.getElementById('lead-search')?.value || '',
     document.getElementById('filter-segment')?.value || '',
@@ -200,7 +255,8 @@ function getActiveLeadFilterCount() {
     document.getElementById('filter-source')?.value || '',
     document.getElementById('filter-score-min')?.value || '',
     document.getElementById('filter-date-range')?.value || '',
-    document.getElementById('filter-next-contact')?.value || ''
+    document.getElementById('filter-next-contact')?.value || '',
+    coverageScope ? 'coverage' : ''
   ].filter(Boolean).length;
 }
 
@@ -222,6 +278,7 @@ function showLeadEmptyState(empty, activeCount, totalLeads) {
 
 function renderLeads() {
   saveFilters();
+  renderCoverageLeadScopeBar();
   const tbody = document.getElementById('leads-body');
   const empty = document.getElementById('leads-empty');
   if (!tbody) return;

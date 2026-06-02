@@ -1,26 +1,27 @@
 {
-  "version": "2.4.0",
-  "date": "2026-05-19",
+  "version": "2.5.1",
+  "build": "2026.06.02.1200",
+  "date": "2026-06-02",
   "changelog": [
     {
-      "title": "Copiloto autonomo diario gratuito",
-      "desc": "Nuevo panel diario que crea una agenda comercial automaticamente con reglas locales, sin backend ni coste adicional."
+      "title": "Cobertura integrada con scraping, leads y mapa",
+      "desc": "Nueva pestaña de cobertura, mapa operativo por codigo postal, misiones activas y trazabilidad CP/sector."
     },
     {
-      "title": "Priorizacion de acciones",
-      "desc": "Detecta seguimientos vencidos, leads calientes, oportunidades en riesgo, busquedas antiguas y empresas nuevas de radar."
+      "title": "Actualizaciones locales sin perder datos",
+      "desc": "La app fuerza la comprobacion de version y limpia caches tecnicas sin borrar localStorage, leads, scraping ni API keys."
     },
     {
-      "title": "IA opcional con las claves existentes",
-      "desc": "El briefing diario puede mejorarse usando Gemini, Groq u OpenRouter si ya estan configurados en la herramienta."
+      "title": "Filtro real de leads por origen",
+      "desc": "Los leads pueden abrirse desde cobertura por CP, sector y mision sin depender de busquedas de texto."
     },
     {
-      "title": "Continuidad entre sesiones",
-      "desc": "El copiloto se regenera al abrir la app una vez al dia y guarda la agenda en la memoria local del navegador."
+      "title": "Busqueda multisectorial conectada a cobertura",
+      "desc": "Las busquedas individuales y multisector registran cobertura, errores y resultados utiles por sector."
     },
     {
-      "title": "Acciones directas",
-      "desc": "Desde cada recomendacion puedes abrir el lead, generar plan de ataque, enviar email, cargar busquedas guardadas o lanzar el radar."
+      "title": "Chinchetas visuales de cobertura",
+      "desc": "El mapa muestra codigos postales con colores por estado y acciones directas hacia cobertura, scraping y leads."
     }
   ]
 }

@@ -5041,6 +5041,8 @@ function buildLeadFromSearchCompany(c, segment, location, campaignName = '') {
     ratingCount: c.ratingCount || 0,
     placeId: c.placeId || '',
     address: c.address || '',
+    lat: c.lat ?? null,
+    lng: c.lng ?? null,
     description: c.description || '',
     decision_maker: c.decision_maker || '',
     instagram: c.instagram || '',

@@ -894,6 +894,54 @@ function focusMarkDone(id) {
 let _mapInstance    = null;
 let _mapMarkers     = [];
 let _mapInfoWindow  = null;
+let _mapMode        = 'leads';
+const MAP_GEOCODE_CACHE_KEY = 'gordi_map_geocode_cache';
+
+function getMapGeocodeCache() {
+  try { return JSON.parse(localStorage.getItem(MAP_GEOCODE_CACHE_KEY) || '{}'); } catch { return {}; }
+}
+
+function saveMapGeocodeCache(cache) {
+  try { localStorage.setItem(MAP_GEOCODE_CACHE_KEY, JSON.stringify(cache)); } catch {}
+}
+
+async function geocodeForMap(address) {
+  const apiKey = localStorage.getItem('gordi_api_key');
+  if (!apiKey || !address) return null;
+  const clean = String(address).trim();
+  const key = clean.toLowerCase();
+  const cache = getMapGeocodeCache();
+  if (cache[key]?.lat != null && cache[key]?.lng != null) return cache[key];
+  const res = await fetch(
+    `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(clean)}&key=${apiKey}`,
+    { signal: AbortSignal.timeout(5000) }
+  );
+  const data = await res.json();
+  const loc = data.results?.[0]?.geometry?.location;
+  if (!loc) return null;
+  cache[key] = { lat: loc.lat, lng: loc.lng, at: Date.now() };
+  saveMapGeocodeCache(cache);
+  return cache[key];
+}
+
+function setMapMode(mode) {
+  _mapMode = mode === 'coverage' ? 'coverage' : 'leads';
+  document.getElementById('map-mode-leads')?.classList.toggle('active', _mapMode === 'leads');
+  document.getElementById('map-mode-coverage')?.classList.toggle('active', _mapMode === 'coverage');
+  const title = document.getElementById('map-mode-title');
+  if (title) title.textContent = _mapMode === 'coverage' ? 'Cobertura por codigo postal' : 'Leads en mapa';
+  renderMapLegend();
+  refreshMapMarkers();
+}
+
+function renderMapLegend() {
+  const el = document.getElementById('map-legend');
+  if (!el) return;
+  const items = _mapMode === 'coverage'
+    ? [['#10d97c', 'Completo'], ['#0A84FF', 'Buscado'], ['#f59e0b', 'Parcial/caducado'], ['#ef4444', 'Error'], ['#8e8e93', 'Pendiente']]
+    : [['#f59e0b', 'Pendiente'], ['#0A84FF', 'Contactado'], ['#34d399', 'Visita'], ['#10d97c', 'Cerrado']];
+  el.innerHTML = items.map(([color, label]) => `<span><i style="background:${color}"></i>${label}</span>`).join('');
+}
 
 async function initLeadsMap() {
   const apiKey = localStorage.getItem('gordi_api_key');
@@ -902,7 +950,7 @@ async function initLeadsMap() {
       '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted)">âš ï¸ Necesitas configurar tu API Key de Google en Ajustes para ver el mapa</div>';
     return;
   }
-  if (_mapInstance) { refreshMapMarkers(); return; }
+  if (_mapInstance) { renderMapLegend(); refreshMapMarkers(); return; }
 
   try {
     const { Map, InfoWindow } = await google.maps.importLibrary('maps');
@@ -915,6 +963,7 @@ async function initLeadsMap() {
       disableDefaultUI: false,
     });
     _mapInfoWindow = new InfoWindow();
+    renderMapLegend();
     refreshMapMarkers();
   } catch(e) { console.warn('Maps init error:', e); }
 }
@@ -923,6 +972,11 @@ function refreshMapMarkers() {
   if (!_mapInstance) return;
   _mapMarkers.forEach(m => { if (m.map) m.map = null; });
   _mapMarkers = [];
+  renderMapLegend();
+  if (_mapMode === 'coverage') {
+    refreshCoverageMapMarkers();
+    return;
+  }
 
   const STATUS_COLORS = {
     'Pendiente':'#f59e0b', 'Contactado':'#0A84FF',
@@ -976,6 +1030,132 @@ function refreshMapMarkers() {
       _mapMarkers.push(marker);
     } catch(e) { /* silently skip ungeocodeable */ }
   });
+}
+
+function getCoverageMapColor(status) {
+  return {
+    complete: '#10d97c',
+    searched: '#0A84FF',
+    partial: '#f59e0b',
+    stale: '#f59e0b',
+    error: '#ef4444',
+    pending: '#8e8e93',
+    empty: '#3a3a46',
+  }[status] || '#8e8e93';
+}
+
+function getCoverageMapStatus(cells) {
+  if (cells.some(c => c.status === 'error')) return 'error';
+  if (cells.some(c => c.status === 'stale')) return 'stale';
+  if (cells.some(c => c.status === 'partial')) return 'partial';
+  if (cells.some(c => c.status === 'searched')) return 'searched';
+  if (cells.length && cells.every(c => c.status === 'complete')) return 'complete';
+  if (cells.some(c => c.status === 'pending')) return 'pending';
+  return 'empty';
+}
+
+function buildCoverageMapPoints() {
+  if (typeof getCoverageModel !== 'function' || typeof buildCoverageCells !== 'function') return [];
+  const model = getCoverageModel();
+  const cells = buildCoverageCells(model);
+  const grouped = new Map();
+  cells.forEach(cell => {
+    if (!grouped.has(cell.location)) grouped.set(cell.location, []);
+    grouped.get(cell.location).push(cell);
+  });
+  return [...grouped.entries()].map(([location, row]) => {
+    const searched = row.filter(c => c.entry).length;
+    const complete = row.filter(c => c.status === 'complete').length;
+    const actionable = row.filter(c => typeof isCoverageActionable === 'function' ? isCoverageActionable(c) : c.status !== 'complete').length;
+    const ready = row.reduce((sum, c) => sum + (c.entry?.readyCount || 0), 0);
+    const imported = row.reduce((sum, c) => {
+      if (typeof getCoverageCellFunnel === 'function') return sum + (getCoverageCellFunnel(c.location, c.sector).imported || 0);
+      return sum + (c.entry?.importedCount || 0);
+    }, 0);
+    const best = row.filter(c => c.status !== 'complete' && c.status !== 'empty').sort((a, b) => b.debt - a.debt)[0] || row[0];
+    return {
+      location,
+      cells: row,
+      status: getCoverageMapStatus(row),
+      searched,
+      actionable,
+      ready,
+      imported,
+      best,
+      pct: row.length ? Math.round((complete / row.length) * 100) : 0,
+    };
+  }).filter(p => p.location);
+}
+
+function getCoveragePointCoords(point) {
+  const searches = typeof getSavedSearches === 'function' ? getSavedSearches() : [];
+  const coords = searches
+    .filter(s => String(s.location || '').trim().toLowerCase() === point.location.toLowerCase())
+    .flatMap(s => (s.results || []).map(r => ({ lat: r.lat, lng: r.lng })).filter(c => c.lat != null && c.lng != null));
+  if (!coords.length) return null;
+  return {
+    lat: coords.reduce((sum, c) => sum + Number(c.lat), 0) / coords.length,
+    lng: coords.reduce((sum, c) => sum + Number(c.lng), 0) / coords.length,
+  };
+}
+
+async function refreshCoverageMapMarkers() {
+  const points = buildCoverageMapPoints();
+  const { AdvancedMarkerElement } = await google.maps.importLibrary('marker');
+  const bounds = new google.maps.LatLngBounds();
+  let placed = 0;
+  points.forEach(async point => {
+    try {
+      const coords = getCoveragePointCoords(point) || await geocodeForMap(`${point.location}, España`);
+      if (!coords) return;
+      const color = getCoverageMapColor(point.status);
+      const pinEl = document.createElement('button');
+      pinEl.className = 'coverage-map-pin';
+      pinEl.style.setProperty('--pin-color', color);
+      pinEl.innerHTML = `<strong>${point.location}</strong><span>${point.pct}%</span>`;
+      const marker = new AdvancedMarkerElement({
+        map: _mapInstance,
+        position: coords,
+        content: pinEl,
+        title: `${point.location} · ${point.searched} sectores buscados`,
+      });
+      marker.addListener('click', () => openCoverageMapPopup(point, marker));
+      _mapMarkers.push(marker);
+      bounds.extend(coords);
+      placed++;
+      if (placed === 1) _mapInstance.setCenter(coords);
+      if (placed > 1) _mapInstance.fitBounds(bounds, 60);
+    } catch(e) { /* skip CP without coordinates */ }
+  });
+}
+
+function openCoverageMapPopup(point, marker) {
+  const color = getCoverageMapColor(point.status);
+  const next = point.best;
+  const nextLoc = encodeURIComponent(next?.location || point.location);
+  const nextSector = encodeURIComponent(next?.sector || '');
+  _mapInfoWindow.setContent(`
+    <div class="coverage-map-popup">
+      <div class="coverage-map-popup-head" style="border-color:${color}">
+        <strong>${point.location}</strong>
+        <span>${point.pct}% cubierto · ${point.searched}/${point.cells.length} sectores</span>
+      </div>
+      <div class="coverage-map-popup-grid">
+        <div><b>${point.ready}</b><span>Listos</span></div>
+        <div><b>${point.imported}</b><span>Leads</span></div>
+        <div><b>${point.actionable}</b><span>Pendientes</span></div>
+      </div>
+      ${next ? `<div class="coverage-map-next">
+        <span>Siguiente accion</span>
+        <strong>${next.location} · ${typeof getCoverageSectorLabel === 'function' ? getCoverageSectorLabel(next.sector) : next.sector}</strong>
+      </div>` : ''}
+      <div class="coverage-map-actions">
+        <button onclick="openCoverageForLocation('${point.location.replace(/'/g, "\\'")}')">Ver cobertura</button>
+        ${next ? `<button onclick="runCoverageSearch('${nextLoc}','${nextSector}')">Buscar siguiente</button>` : ''}
+        ${next ? `<button onclick="filterCoverageCellLeads('${nextLoc}','${nextSector}')">Ver leads</button>` : ''}
+      </div>
+    </div>`);
+  _mapInfoWindow.open(_mapInstance, marker);
 }
 
 // Hook showView to init map when navigating to it

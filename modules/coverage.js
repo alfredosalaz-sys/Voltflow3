@@ -5,6 +5,7 @@ const COVERAGE_FILTER_KEY = 'gordi_coverage_filter';
 const COVERAGE_EVENTS_KEY = 'gordi_coverage_events';
 const COVERAGE_VIEW_KEY = 'gordi_coverage_view_mode';
 const COVERAGE_MISSION_KEY = 'gordi_coverage_active_mission';
+const COVERAGE_LEAD_FILTER_KEY = 'gordi_coverage_lead_filter';
 const COVERAGE_STALE_DAYS = 30;
 const COVERAGE_REPEAT_WARN_DAYS = 7;
 
@@ -118,6 +119,9 @@ function saveCoverageActiveMission(mission) {
     selectedCount: mission.selectedCount || 0,
     importedCount: mission.importedCount || 0,
     duplicateCount: mission.duplicateCount || 0,
+    resultSearchId: mission.resultSearchId || null,
+    searchMode: mission.searchMode || ((mission.sectors || []).length > 1 ? 'multi' : 'single'),
+    lastAction: mission.lastAction || '',
   };
   coverageSaveJson(COVERAGE_MISSION_KEY, clean);
   renderCoverageFlowBar();
@@ -184,6 +188,19 @@ function getCoverageCellFunnel(location, sector) {
     responded: related.filter(l => ['Respuesta del cliente', 'Visita', 'Entrega de presupuesto', 'Cerrado'].includes(l.status)).length,
     leads: related,
   };
+}
+
+function getCoverageProfitability(location, sector) {
+  const funnel = getCoverageCellFunnel(location, sector);
+  const usefulRate = funnel.searched ? Math.round((funnel.useful / funnel.searched) * 100) : 0;
+  const importRate = funnel.useful ? Math.round((funnel.imported / funnel.useful) * 100) : 0;
+  const responseRate = funnel.imported ? Math.round((funnel.responded / funnel.imported) * 100) : 0;
+  const value = Math.round((usefulRate * 0.35) + (importRate * 0.35) + (responseRate * 0.30));
+  let label = 'Sin datos';
+  if (funnel.searched && value >= 55) label = 'Rentable';
+  else if (funnel.searched && value >= 25) label = 'Prometedora';
+  else if (funnel.searched) label = 'Floja';
+  return { ...funnel, usefulRate, importRate, responseRate, value, label };
 }
 
 function summarizeCoverageResults(results = []) {
@@ -503,7 +520,7 @@ function renderCoverage() {
 
   root.innerHTML = `
     ${renderCoverageSearchPanel()}
-    ${renderCoverageRadar(model)}
+    ${renderCoverageCommandDeck(model)}
     ${renderCoverageFilterBar(allCells)}
     ${renderCoverageSearchResult(allCells, queryLocations)}
     ${renderCoverageNarrative(cells, visibleLocations)}
@@ -545,9 +562,7 @@ function renderCoverage() {
         ${coverageViewMode === 'sector' ? renderCoverageSectorView(matrixModel, cells) : renderCoverageMatrix(matrixModel, cells)}
       </div>
       <div class="coverage-side">
-        ${renderCoveragePlanPanel(model)}
         ${renderCoverageTargetPanel(model)}
-        ${renderCoverageQueue(filterCoverageCells(buildCoverageCells(model)))}
       </div>
     </div>`;
 }
@@ -574,6 +589,54 @@ function renderCoverageSearchPanel() {
       <input id="coverage-search-input" type="search" value="${coverageEscapeHtml(coverageSearchTerm)}" placeholder="Buscar CP o zona: 28001, Alcobendas..." oninput="setCoverageSearch(this.value)">
       <button class="btn-outline btn-sm" onclick="clearCoverageSearch()" ${coverageSearchTerm ? '' : 'disabled'}>Limpiar</button>
     </div>
+  </div>`;
+}
+
+function renderCoverageCommandDeck(model) {
+  const best = getCoverageBestNextCell(model);
+  const inbox = getCoverageInboxItems(model);
+  const profit = getCoverageGlobalProfit(model);
+  const plan = getCoverageDailyPlan();
+  const done = (plan.items || []).filter(i => i.status === 'done').length;
+  const bestMeta = best ? coverageStatusMeta(best.status) : null;
+  const activeMission = getCoverageActiveMission();
+  return `<div class="glass-panel coverage-command-deck">
+    <div class="coverage-command-main">
+      <div>
+        <span class="coverage-eyebrow">Ruta de trabajo</span>
+        <h3>${best ? `${coverageEscapeHtml(best.location)} · ${coverageEscapeHtml(getCoverageSectorLabel(best.sector))}` : 'Sin siguiente hueco'}</h3>
+        <p>${best ? `${coverageEscapeHtml(best.reason)} · deuda ${Math.round(best.debt)} · accion ${coverageEscapeHtml(getCoverageActionLabel(best))}` : 'Define objetivos o revisa los resultados guardados para generar una ruta.'}</p>
+      </div>
+      <div class="coverage-command-actions">
+        <button class="btn-primary" onclick="runCoverageBestNext()" ${best ? '' : 'disabled'}>Siguiente mejor busqueda</button>
+        <button class="btn-outline" onclick="generateCoverageDailyPlan()">Crear ruta de hoy</button>
+        ${activeMission ? '<button class="btn-outline" onclick="runNextCoverageMissionStep()">Continuar mision</button>' : ''}
+      </div>
+    </div>
+    <div class="coverage-command-grid">
+      <button class="coverage-command-card" onclick="setCoverageSmartFilter('valuable')">
+        <strong>${inbox.length}</strong>
+        <span>Pendientes accionables</span>
+      </button>
+      <button class="coverage-command-card" onclick="showCoverageInbox()">
+        <strong>${inbox.filter(i => i.type === 'unimported').length}</strong>
+        <span>Resultados sin volcar</span>
+      </button>
+      <button class="coverage-command-card" onclick="showCoverageProfitPanel()">
+        <strong>${profit.responseRate}%</strong>
+        <span>Respuesta sobre importados</span>
+      </button>
+      <button class="coverage-command-card" onclick="showCoverageDailyRoute()">
+        <strong>${done}/${(plan.items || []).length}</strong>
+        <span>Ruta de hoy</span>
+      </button>
+    </div>
+    ${best ? `<div class="coverage-command-strip">
+      <span class="coverage-pill ${bestMeta.cls}">${bestMeta.label}</span>
+      <span>${coverageEscapeHtml(getCoverageActionLabel(best))}</span>
+      <span>${best.entry ? `${best.entry.uniqueCount || 0} empresas · ${best.entry.readyCount || 0} listas · ${getCoverageCellFunnel(best.location, best.sector).imported} leads` : 'Nunca buscado'}</span>
+      <button class="btn-outline btn-sm" onclick="openCoverageCell('${encodeURIComponent(best.location)}','${encodeURIComponent(best.sector)}')">Abrir celda</button>
+    </div>` : ''}
   </div>`;
 }
 
@@ -637,14 +700,23 @@ function showCoverageMissionResults() {
   if (Array.isArray(tempSearchResults) && tempSearchResults.length) {
     showResultsPanel();
     renderCoveragePostScrapingPanel();
+  } else if (mission.resultSearchId) {
+    loadCoverageSearchById(mission.resultSearchId);
+  } else {
+    loadCoverageSearch(encodeURIComponent(mission.location), encodeURIComponent(mission.sector || mission.sectors?.[0] || ''));
   }
 }
 
 function showCoverageMissionLeads() {
   const mission = getCoverageActiveMission();
   if (!mission) return;
-  const input = document.getElementById('lead-search');
-  if (input) input.value = mission.label || mission.id;
+  setCoverageLeadScope({
+    missionId: mission.id,
+    label: mission.label,
+    location: mission.location,
+    sector: mission.sector,
+    sectorLabel: getCoverageSectorLabel(mission.sector),
+  });
   showView('leads');
   if (typeof renderLeads === 'function') renderLeads();
 }
@@ -652,10 +724,22 @@ function showCoverageMissionLeads() {
 function filterCoverageCellLeads(encodedLocation, encodedSector) {
   const location = decodeURIComponent(encodedLocation);
   const sector = decodeURIComponent(encodedSector);
-  const input = document.getElementById('lead-search');
-  if (input) input.value = `${location} ${getCoverageSectorLabel(sector)}`;
+  setCoverageLeadScope({
+    location,
+    sector,
+    sectorLabel: getCoverageSectorLabel(sector),
+    label: `${location} · ${getCoverageSectorLabel(sector)}`,
+  });
   showView('leads');
   if (typeof renderLeads === 'function') renderLeads();
+}
+
+function setCoverageLeadScope(scope) {
+  coverageSaveJson(COVERAGE_LEAD_FILTER_KEY, {
+    ...scope,
+    location: normalizeCoverageLocation(scope.location || ''),
+    createdAt: new Date().toISOString(),
+  });
 }
 
 function runNextCoverageMissionStep() {
@@ -798,6 +882,8 @@ function renderCoverageMatrix(model, cells) {
             if (!cell) return '<td><div class="coverage-cell coverage-filtered"><small>Filtro</small></div></td>';
             const meta = coverageStatusMeta(cell.status);
             const e = cell.entry;
+            const funnel = getCoverageCellFunnel(location, sector);
+            const profit = getCoverageProfitability(location, sector);
             const title = e
               ? `${getCoverageSectorLabel(sector)} en ${location}: ${e.uniqueCount || 0} empresas, ${e.readyCount || 0} listas, ${e.importedCount || 0} importadas. Accion: ${getCoverageActionLabel(cell)}`
               : `${getCoverageSectorLabel(sector)} en ${location}: ${meta.label}`;
@@ -806,6 +892,7 @@ function renderCoverageMatrix(model, cells) {
                 <span>${coverageEscapeHtml(getCoverageCellPrimary(cell))}</span>
                 <small>${e ? cell.freshness.label : 'Nunca'}</small>
                 <em class="${e ? cell.freshness.cls : ''}">${coverageEscapeHtml(getCoverageCellResult(cell))}</em>
+                ${e ? `<small class="coverage-cell-funnel">${funnel.imported}L · ${funnel.contacted}C · ${profit.label}</small>` : ''}
               </button>
             </td>`;
           }).join('')}
@@ -919,6 +1006,92 @@ function renderCoveragePlanPanel(model) {
   </div>`;
 }
 
+function showCoverageDailyRoute() {
+  const model = getCoverageModel();
+  const modal = document.createElement('div');
+  modal.className = 'coverage-modal';
+  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+  modal.innerHTML = `<div class="coverage-modal-box coverage-work-modal">
+    <button class="coverage-modal-close" onclick="this.closest('.coverage-modal').remove()">x</button>
+    <div class="coverage-modal-title">Ruta de hoy</div>
+    <div class="coverage-modal-date">Plan operativo para avanzar cobertura, scraping y leads sin perder contexto.</div>
+    ${renderCoveragePlanPanel(model)}
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+function showCoverageInbox() {
+  const items = getCoverageInboxItems();
+  const modal = document.createElement('div');
+  modal.className = 'coverage-modal';
+  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+  modal.innerHTML = `<div class="coverage-modal-box coverage-work-modal">
+    <button class="coverage-modal-close" onclick="this.closest('.coverage-modal').remove()">x</button>
+    <div class="coverage-modal-title">Bandeja de trabajo pendiente</div>
+    <div class="coverage-modal-date">Huecos reales entre busqueda, volcado a leads y seguimiento.</div>
+    <div class="coverage-pending-list">
+      ${items.length ? items.map(item => {
+        const c = item.cell;
+        const meta = coverageStatusMeta(c.status);
+        return `<div class="coverage-pending-row">
+          <span class="coverage-pill ${meta.cls}">${coverageEscapeHtml(item.title)}</span>
+          <strong>${coverageEscapeHtml(c.location)} · ${coverageEscapeHtml(getCoverageSectorLabel(c.sector))}</strong>
+          <em>${coverageEscapeHtml(item.detail)}</em>
+          <button class="btn-outline btn-sm" onclick="openCoverageCell('${encodeURIComponent(c.location)}','${encodeURIComponent(c.sector)}')">Abrir</button>
+          <button class="btn-primary btn-sm" onclick="resolveCoverageGap('${encodeURIComponent(c.location)}','${encodeURIComponent(c.sector)}','${item.type}');this.closest('.coverage-modal').remove()">Resolver</button>
+        </div>`;
+      }).join('') : '<div class="coverage-empty-task">No hay tareas pendientes ahora.</div>'}
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+function showCoverageProfitPanel() {
+  const model = getCoverageModel();
+  const rows = buildCoverageCells(model)
+    .filter(c => c.entry)
+    .map(c => ({ cell: c, profit: getCoverageProfitability(c.location, c.sector) }))
+    .sort((a, b) => b.profit.value - a.profit.value)
+    .slice(0, 20);
+  const totals = getCoverageGlobalProfit(model);
+  const modal = document.createElement('div');
+  modal.className = 'coverage-modal';
+  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+  modal.innerHTML = `<div class="coverage-modal-box coverage-work-modal">
+    <button class="coverage-modal-close" onclick="this.closest('.coverage-modal').remove()">x</button>
+    <div class="coverage-modal-title">Rentabilidad por CP y sector</div>
+    <div class="coverage-modal-date">${totals.searched} empresas · ${totals.imported} leads · ${totals.contacted} contactados · ${totals.responded} respuestas.</div>
+    <div class="coverage-cp-brief">
+      <div><strong>${totals.usefulRate}%</strong><span>utiles sobre scraping</span></div>
+      <div><strong>${totals.importRate}%</strong><span>volcados sobre utiles</span></div>
+      <div><strong>${totals.contactRate}%</strong><span>contactados sobre leads</span></div>
+      <div><strong>${totals.responseRate}%</strong><span>respuesta sobre leads</span></div>
+    </div>
+    <div class="coverage-pending-list">
+      ${rows.length ? rows.map(row => `<div class="coverage-pending-row">
+        <span class="coverage-pill ${row.profit.value >= 55 ? 'coverage-complete' : row.profit.value >= 25 ? 'coverage-partial' : 'coverage-searched'}">${coverageEscapeHtml(row.profit.label)}</span>
+        <strong>${coverageEscapeHtml(row.cell.location)} · ${coverageEscapeHtml(getCoverageSectorLabel(row.cell.sector))}</strong>
+        <em>${row.profit.usefulRate}% utiles · ${row.profit.importRate}% volcados · ${row.profit.responseRate}% respuesta</em>
+        <button class="btn-outline btn-sm" onclick="openCoverageCell('${encodeURIComponent(row.cell.location)}','${encodeURIComponent(row.cell.sector)}')">Abrir</button>
+      </div>`).join('') : '<div class="coverage-empty-task">Todavia no hay suficientes datos para medir rentabilidad.</div>'}
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+function resolveCoverageGap(encodedLocation, encodedSector, type = '') {
+  if (type === 'unimported') {
+    loadCoverageSearch(encodedLocation, encodedSector);
+    setTimeout(renderCoveragePostScrapingPanel, 0);
+    return;
+  }
+  if (type === 'followup') {
+    filterCoverageCellLeads(encodedLocation, encodedSector);
+    return;
+  }
+  runCoverageSearch(encodedLocation, encodedSector);
+}
+
 function renderCoveragePlanItem(item) {
   const done = item.status === 'done';
   const encodedLocation = encodeURIComponent(item.location);
@@ -934,6 +1107,67 @@ function getCoverageRecommendations(model) {
   return buildCoverageCells(model)
     .filter(c => c.status !== 'complete' && c.status !== 'empty')
     .sort((a, b) => b.debt - a.debt);
+}
+
+function getCoverageBestNextCell(model = getCoverageModel()) {
+  return getCoverageRecommendations(model)[0] || null;
+}
+
+function runCoverageBestNext() {
+  const cell = getCoverageBestNextCell();
+  if (!cell) {
+    showToast('No hay huecos accionables ahora');
+    return;
+  }
+  runCoverageSearch(encodeURIComponent(cell.location), encodeURIComponent(cell.sector));
+}
+
+function getCoverageInboxItems(model = getCoverageModel()) {
+  const cells = buildCoverageCells(model);
+  const items = [];
+  cells.forEach(cell => {
+    const funnel = getCoverageCellFunnel(cell.location, cell.sector);
+    if (cell.status === 'error') {
+      items.push({ type: 'error', priority: 100, cell, title: 'Reintentar error', detail: cell.entry?.error || 'La busqueda anterior fallo' });
+    }
+    if (cell.entry && (cell.entry.readyCount || 0) > funnel.imported) {
+      items.push({
+        type: 'unimported',
+        priority: 92,
+        cell,
+        title: 'Leads utiles sin volcar',
+        detail: `${(cell.entry.readyCount || 0) - funnel.imported} posibles leads pendientes`,
+      });
+    }
+    if (cell.status === 'pending') {
+      items.push({ type: 'pending', priority: 82, cell, title: 'Busqueda pendiente', detail: cell.reason });
+    }
+    if (cell.status === 'stale') {
+      items.push({ type: 'stale', priority: 70, cell, title: 'Cobertura caducada', detail: `Hace ${cell.freshness?.age || '?'} dias` });
+    }
+    if (funnel.imported && !funnel.contacted) {
+      items.push({ type: 'followup', priority: 64, cell, title: 'Leads sin seguimiento', detail: `${funnel.imported} importados sin contacto` });
+    }
+  });
+  return items.sort((a, b) => b.priority - a.priority).slice(0, 12);
+}
+
+function getCoverageGlobalProfit(model = getCoverageModel()) {
+  const cells = buildCoverageCells(model).filter(c => c.entry);
+  const totals = cells.reduce((acc, cell) => {
+    const p = getCoverageProfitability(cell.location, cell.sector);
+    acc.searched += p.searched;
+    acc.useful += p.useful;
+    acc.imported += p.imported;
+    acc.contacted += p.contacted;
+    acc.responded += p.responded;
+    return acc;
+  }, { searched: 0, useful: 0, imported: 0, contacted: 0, responded: 0 });
+  const usefulRate = totals.searched ? Math.round((totals.useful / totals.searched) * 100) : 0;
+  const importRate = totals.useful ? Math.round((totals.imported / totals.useful) * 100) : 0;
+  const contactRate = totals.imported ? Math.round((totals.contacted / totals.imported) * 100) : 0;
+  const responseRate = totals.imported ? Math.round((totals.responded / totals.imported) * 100) : 0;
+  return { ...totals, usefulRate, importRate, contactRate, responseRate };
 }
 
 function getCoverageDailyPlan() {
@@ -1243,6 +1477,7 @@ function openCoverageCell(encodedLocation, encodedSector) {
   }
   const freshness = getCoverageCellFreshness(entry);
   const funnel = getCoverageCellFunnel(location, sector);
+  const profit = getCoverageProfitability(location, sector);
   const modal = document.createElement('div');
   modal.className = 'coverage-modal';
   modal.onclick = e => { if (e.target === modal) modal.remove(); };
@@ -1262,6 +1497,10 @@ function openCoverageCell(encodedLocation, encodedSector) {
       <div><b>${funnel.imported}</b><span>Importadas</span></div>
       <div><b>${funnel.contacted}</b><span>Contactadas</span></div>
       <div><b>${funnel.responded}</b><span>Respondieron</span></div>
+    </div>
+    <div class="coverage-profit-strip">
+      <strong>${coverageEscapeHtml(profit.label)}</strong>
+      <span>${profit.usefulRate}% utiles · ${profit.importRate}% volcados · ${profit.responseRate}% respuesta</span>
     </div>
     ${entry.error ? `<div class="coverage-error-box">${coverageEscapeHtml(entry.error)}</div>` : ''}
     <div class="coverage-modal-actions">
@@ -1358,6 +1597,24 @@ function loadCoverageSearch(encodedLocation, encodedSector) {
   updateEnrichStats();
 }
 
+function loadCoverageSearchById(searchId) {
+  const searches = typeof getSavedSearches === 'function' ? getSavedSearches() : [];
+  const match = searches.find(s => String(s.id) === String(searchId));
+  if (!match || !match.results?.length) {
+    showToast('No hay resultados guardados para esta mision');
+    return;
+  }
+  tempSearchResults = match.results;
+  const locEl = document.getElementById('plan-location');
+  const segEl = document.getElementById('plan-segment');
+  if (locEl) locEl.value = match.location || '';
+  if (segEl && match.segment && match.segment !== 'Multi-sector') segEl.value = match.segment;
+  showView('planner');
+  renderSearchCards();
+  showResultsPanel();
+  updateEnrichStats();
+}
+
 function runCoverageSearch(encodedLocation, encodedSector, force = false) {
   const location = decodeURIComponent(encodedLocation);
   const sector = decodeURIComponent(encodedSector);
@@ -1370,7 +1627,7 @@ function runCoverageSearch(encodedLocation, encodedSector, force = false) {
   const multiToggle = document.getElementById('plan-multi-toggle');
   if (locEl) locEl.value = location;
   if (segEl) segEl.value = sector;
-  startCoverageMission(location, sector, { status: 'coverage' });
+  startCoverageMission(location, sector, { status: 'coverage', searchMode: 'single' });
   if (multiToggle) {
     multiToggle.checked = false;
     if (typeof toggleMultiSectorSearch === 'function') toggleMultiSectorSearch(false);
@@ -1536,20 +1793,53 @@ function renderCoveragePostScrapingPanel() {
     </div>
     <div class="coverage-post-actions">
       <button class="btn-primary btn-sm" onclick="coverageImportRecommended()">Importar recomendadas</button>
+      <button class="btn-outline btn-sm" onclick="coverageReviewResults()">Revisar resultados</button>
       <button class="btn-outline btn-sm" onclick="showCoverageMissionCoverage()">Ver cobertura</button>
       <button class="btn-outline btn-sm" onclick="showCoverageMissionLeads()">Ver leads</button>
       <button class="btn-outline btn-sm" onclick="runNextCoveragePendingFromMission()">Siguiente pendiente</button>
+      <button class="btn-outline btn-sm" onclick="coverageCloseMission()">Cerrar mision</button>
     </div>`;
+}
+
+function coverageReviewResults() {
+  if (typeof renderSearchCards === 'function') renderSearchCards();
+  if (typeof showResultsPanel === 'function') showResultsPanel();
+  const panel = document.getElementById('search-results-panel');
+  panel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function coverageCloseMission() {
+  const mission = getCoverageActiveMission();
+  if (!mission) return;
+  appendCoverageEvent({
+    key: coverageKey(mission.location, mission.sector),
+    location: mission.location,
+    sector: mission.sector,
+    mode: (mission.sectors || []).length > 1 ? 'multi' : 'single',
+    type: 'mission_closed',
+    status: 'closed',
+    uniqueCount: mission.searchedCount || 0,
+    readyCount: mission.readyCount || 0,
+    importedCount: mission.importedCount || 0,
+  });
+  clearCoverageMission();
 }
 
 function coverageSelectRecommendedResults() {
   const results = Array.isArray(tempSearchResults) ? tempSearchResults : [];
+  const checks = typeof getVisibleSearchChecks === 'function'
+    ? getVisibleSearchChecks()
+    : [...document.querySelectorAll('.search-check')];
   const recommended = results
     .map((c, i) => ({ c, i }))
-    .filter(({ c }) => c.email && !leads.some(l => !l.archived && isSameBusiness({ ...c, company: c.name }, l)) && (c.opportunityScore || c.score || 0) >= 35)
+    .filter(({ c, i }) => {
+      const visible = checks.some(ch => parseInt(ch.getAttribute('data-index'), 10) === i);
+      const passes = typeof searchResultPassesFilters === 'function' ? searchResultPassesFilters(c) : true;
+      return visible && passes && c.email && !leads.some(l => !l.archived && isSameBusiness({ ...c, company: c.name }, l)) && (c.opportunityScore || c.score || 0) >= 35;
+    })
     .slice(0, 20)
     .map(x => x.i);
-  document.querySelectorAll('.search-check').forEach(ch => {
+  checks.forEach(ch => {
     const idx = parseInt(ch.getAttribute('data-index'), 10);
     ch.checked = recommended.includes(idx);
   });
@@ -1608,18 +1898,21 @@ function installCoverageSearchResultHooks() {
       const lead = originalBuildLead.apply(this, arguments);
       const mission = getCoverageActiveMission();
       const loc = normalizeCoverageLocation(location);
-      if (mission && normalizeCoverageLocation(mission.location) === loc) {
+      const sector = c?.sourceSector || segment;
+      const missionSectors = Array.isArray(mission?.sectors) ? mission.sectors : [mission?.sector].filter(Boolean);
+      const sameMissionSector = !missionSectors.length || missionSectors.includes(sector) || mission?.sector === sector;
+      if (mission && normalizeCoverageLocation(mission.location) === loc && sameMissionSector) {
         lead.coverageMission = {
           id: mission.id,
           label: mission.label,
           location: mission.location,
-          sector: segment || mission.sector,
+          sector: sector || mission.sector,
         };
         lead.coverageMissionId = mission.id;
         lead.coverageMissionLabel = mission.label;
       }
       lead.coverageLocation = loc;
-      lead.coverageSector = segment;
+      lead.coverageSector = sector;
       lead.tags = [...new Set([...(lead.tags || []), 'cobertura'])];
       return lead;
     };
@@ -1663,6 +1956,9 @@ function installCoverageSearchResultHooks() {
     const original = saveCurrentSearch;
     saveCurrentSearch = function(results, segment, location, importedCount) {
       const out = original.apply(this, arguments);
+      const latestSearch = (typeof getSavedSearches === 'function' ? getSavedSearches() : [])
+        .find(s => normalizeCoverageLocation(s.location) === normalizeCoverageLocation(location)
+          && (s.segment === segment || segment === 'Multi-sector'));
       const sectors = inferCoverageSectors({ segment, location }, results || []);
       recordSearchCoverage({
         location,
@@ -1680,6 +1976,7 @@ function installCoverageSearchResultHooks() {
           searchedCount: stats.uniqueCount,
           readyCount: stats.readyCount,
           importedCount: Math.max(mission.importedCount || 0, importedCount || 0),
+          resultSearchId: latestSearch?.id || mission.resultSearchId,
         });
       }
       return out;

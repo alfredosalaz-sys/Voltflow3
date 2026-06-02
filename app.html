@@ -4,7 +4,46 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Voltium CRM</title>
+  <script>
+    window.GORDI_APP_BUILD = '2026.06.02.1200';
+    (function guardFreshBuild() {
+      try {
+        var current = window.GORDI_APP_BUILD;
+        var seen = localStorage.getItem('_gordi_app_build') || '';
+        localStorage.setItem('_gordi_app_build', current);
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(regs) {
+            regs.forEach(function(reg) { reg.unregister(); });
+          }).catch(function(){});
+        }
+        if (window.caches && caches.keys) {
+          caches.keys().then(function(keys) {
+            keys.forEach(function(key) {
+              if (/gordi|voltium|voltflow|progama/i.test(key)) caches.delete(key);
+            });
+          }).catch(function(){});
+        }
+        fetch('version.json?cacheBust=' + Date.now(), { cache: 'no-store' })
+          .then(function(res) { return res.ok ? res.json() : null; })
+          .then(function(info) {
+            if (!info || !info.build) return;
+            var remote = String(info.build);
+            var alreadyRetried = new URLSearchParams(location.search).get('build') === remote;
+            if (remote !== current && !alreadyRetried) {
+              var url = new URL(location.href);
+              url.searchParams.set('build', remote);
+              location.replace(url.toString());
+            } else if (remote === current && seen !== current) {
+              localStorage.setItem('_gordi_app_build', current);
+            }
+          }).catch(function(){});
+      } catch (e) {}
+    })();
+  </script>
 
   <!-- Fuentes -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,7 +55,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/themes/dark.min.css">
 
   <!-- CSS principal -->
-  <link rel="stylesheet" href="styles/main.css?v=6">
+  <link rel="stylesheet" href="styles/main.css?v=2026.06.02.1200">
 
   <!-- Librerías externas -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
@@ -623,6 +662,17 @@
 
   <!-- ======================== MAPA DE LEADS ======================== -->
   <section id="map-view" class="view">
+    <div class="map-command-panel">
+      <div>
+        <span>Mapa operativo</span>
+        <strong id="map-mode-title">Leads en mapa</strong>
+      </div>
+      <div class="map-mode-toggle">
+        <button id="map-mode-leads" class="active" onclick="setMapMode('leads')">Leads</button>
+        <button id="map-mode-coverage" onclick="setMapMode('coverage')">Cobertura</button>
+      </div>
+      <div class="map-legend" id="map-legend"></div>
+    </div>
     <div id="leads-map"></div>
   </section>
 
@@ -635,7 +685,6 @@
       </div>
       <div style="display:flex;gap:.6rem;flex-wrap:wrap">
         <button class="btn-outline" onclick="showView('planner')">Nueva busqueda</button>
-        <button class="btn-primary" onclick="addCurrentSearchAsCoverageTarget()">Anadir objetivo actual</button>
       </div>
     </div>
     <div id="coverage-root"></div>
@@ -1699,8 +1748,8 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
     <div class="glass-panel">
       <div class="panel-header"><h3>Gestión de Datos</h3></div>
       <div style="font-size:.8rem;color:var(--text-muted);padding:.6rem .8rem;background:rgba(10,132,255,.05);border:1px solid rgba(10,132,255,.15);border-radius:8px;margin-top:.75rem;line-height:1.6">
-        💡 <strong>Actualizaciones desde GitHub:</strong> GitHub debe usarse para actualizar los archivos, pero el trabajo diario debe abrirse siempre desde la misma URL local.<br>
-        URL recomendada: <strong>http://127.0.0.1:8765/app.html</strong>. Si trabajas desde GitHub Pages, localhost, file:// u otro puerto, el navegador usará otro almacén.
+        💡 <strong>Actualizaciones desde GitHub:</strong> GitHub debe usarse para actualizar los archivos, pero el trabajo diario debe abrirse siempre desde la misma URL de siempre.<br>
+        Si ya trabajas con <strong>app.html</strong> local, sigue con esa entrada. Si trabajas desde GitHub Pages, sigue con GitHub Pages. Cambiar entre GitHub Pages, localhost, file:// u otro puerto hace que el navegador use otro almacén.
       </div>
       <div style="display:flex;gap:1rem;margin-top:1rem;flex-wrap:wrap">
         <button class="btn-outline" onclick="exportFilteredData()">Exportar leads (CSV)</button>
@@ -2298,23 +2347,23 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
 
 <!-- ═══════════════════════════════════════════════════════
      MÓDULOS JS — orden de dependencia
-     v2.1.1 (Production Ready)
+     v2.5.1 (Production Ready)
 ═══════════════════════════════════════════════════════ -->
-<script src="modules/state.js?v=2" charset="UTF-8"></script>
-<script src="modules/email-templates.js?v=2" charset="UTF-8"></script>
-<script src="modules/scoring.js?v=2" charset="UTF-8"></script>
-<script src="modules/init.js?v=8" charset="UTF-8"></script>
-<script src="modules/search.js?v=17" charset="UTF-8"></script>
-<script src="modules/leads.js?v=9" charset="UTF-8"></script>
-<script src="modules/dashboard.js?v=6" charset="UTF-8"></script>
-<script src="modules/ai-email.js?v=3" charset="UTF-8"></script>
-<script src="modules/chat.js?v=5" charset="UTF-8"></script>
-<script src="modules/ui.js?v=7" charset="UTF-8"></script>
-<script src="modules/inbox.js?v=3" charset="UTF-8"></script>
-<script src="modules/ai-router.js?v=3" charset="UTF-8"></script>
-<script src="modules/coverage.js?v=6" charset="UTF-8"></script>
-<script src="modules/misc.js?v=2" charset="UTF-8"></script>
-<script src="modules/smart-import.js?v=4" charset="UTF-8"></script>
+<script src="modules/state.js?v=2026.06.02.1200" charset="UTF-8"></script>
+<script src="modules/email-templates.js?v=2026.06.02.1200" charset="UTF-8"></script>
+<script src="modules/scoring.js?v=2026.06.02.1200" charset="UTF-8"></script>
+<script src="modules/init.js?v=2026.06.02.1200" charset="UTF-8"></script>
+<script src="modules/search.js?v=2026.06.02.1200" charset="UTF-8"></script>
+<script src="modules/leads.js?v=2026.06.02.1200" charset="UTF-8"></script>
+<script src="modules/dashboard.js?v=2026.06.02.1200" charset="UTF-8"></script>
+<script src="modules/ai-email.js?v=2026.06.02.1200" charset="UTF-8"></script>
+<script src="modules/chat.js?v=2026.06.02.1200" charset="UTF-8"></script>
+<script src="modules/ui.js?v=2026.06.02.1200" charset="UTF-8"></script>
+<script src="modules/inbox.js?v=2026.06.02.1200" charset="UTF-8"></script>
+<script src="modules/ai-router.js?v=2026.06.02.1200" charset="UTF-8"></script>
+<script src="modules/coverage.js?v=2026.06.02.1200" charset="UTF-8"></script>
+<script src="modules/misc.js?v=2026.06.02.1200" charset="UTF-8"></script>
+<script src="modules/smart-import.js?v=2026.06.02.1200" charset="UTF-8"></script>
 
 </body>
 </html>
