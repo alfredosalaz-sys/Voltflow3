@@ -1,27 +1,27 @@
 {
-  "version": "2.5.1",
-  "build": "2026.06.02.1200",
+  "version": "2.6.1",
+  "build": "2026.06.02.1400",
   "date": "2026-06-02",
   "changelog": [
     {
-      "title": "Cobertura integrada con scraping, leads y mapa",
-      "desc": "Nueva pestaña de cobertura, mapa operativo por codigo postal, misiones activas y trazabilidad CP/sector."
+      "title": "Ayuda contextual en toda la app",
+      "desc": "Iconos de interrogacion explican dashboard, scraping, resultados, leads, cobertura, mapa, configuracion, salud y backups."
     },
     {
-      "title": "Actualizaciones locales sin perder datos",
-      "desc": "La app fuerza la comprobacion de version y limpia caches tecnicas sin borrar localStorage, leads, scraping ni API keys."
+      "title": "Asistente entrenado con manual operativo",
+      "desc": "El bot recibe el flujo completo actualizado: cobertura, scraping, leads, mapa, backups, APIs, localStorage y versionado local."
     },
     {
-      "title": "Filtro real de leads por origen",
-      "desc": "Los leads pueden abrirse desde cobertura por CP, sector y mision sin depender de busquedas de texto."
+      "title": "Workflow profesional integrado",
+      "desc": "Centro de mando diario, mision activa, cierre post-scraping, importacion recomendada, salud del sistema y backups inteligentes."
     },
     {
-      "title": "Busqueda multisectorial conectada a cobertura",
-      "desc": "Las busquedas individuales y multisector registran cobertura, errores y resultados utiles por sector."
+      "title": "No repetir trabajo",
+      "desc": "La app avisa si se intenta buscar un CP/sector ya trabajado y ofrece abrir cobertura, mapa o buscar igualmente."
     },
     {
-      "title": "Chinchetas visuales de cobertura",
-      "desc": "El mapa muestra codigos postales con colores por estado y acciones directas hacia cobertura, scraping y leads."
+      "title": "Embudo CP/sector hasta leads",
+      "desc": "Cobertura, mapa y leads muestran mejor la trazabilidad desde scraping hasta contacto."
     }
   ]
 }

@@ -77,8 +77,8 @@ Reglas:
 La version funcional actual usa:
 
 ```text
-version: 2.5.1
-build: 2026.06.02.1200
+version: 2.6.1
+build: 2026.06.02.1400
 ```
 
 Cada publicacion real debe mantener alineados:
@@ -93,8 +93,8 @@ Cada publicacion real debe mantener alineados:
 Ejemplo correcto:
 
 ```html
-<link rel="stylesheet" href="styles/main.css?v=2026.06.02.1200">
-<script src="modules/search.js?v=2026.06.02.1200"></script>
+<link rel="stylesheet" href="styles/main.css?v=2026.06.02.1400">
+<script src="modules/search.js?v=2026.06.02.1400"></script>
 ```
 
 Regla obligatoria:
@@ -161,6 +161,8 @@ gordi_coverage_daily_plan
 gordi_coverage_events
 gordi_coverage_view_mode
 gordi_coverage_active_mission
+gordi_workflow_restore_points
+gordi_workflow_audit_log
 gordi_coverage_lead_filter
 gordi_map_geocode_cache
 ```
