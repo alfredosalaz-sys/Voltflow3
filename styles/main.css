@@ -5158,3 +5158,327 @@ body.light-mode .panel-header { border-bottom-color: rgba(0,0,0,0.05) !important
   border-color: rgba(10,132,255,.5);
   color: var(--primary);
 }
+
+/* === COBERTURA SIMPLE === */
+.coverage-focus-shell {
+  display: grid;
+  gap: .85rem;
+}
+
+.coverage-hero-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .9rem 1rem;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: rgba(255,255,255,.035);
+}
+
+.coverage-hero-strip h3 {
+  margin: .1rem 0 .15rem;
+  font-size: 1.05rem;
+}
+
+.coverage-hero-strip p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: .82rem;
+}
+
+.coverage-hero-actions,
+.coverage-toolbar-simple .coverage-toolbar-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .45rem;
+}
+
+.coverage-focus-shell .coverage-search-panel {
+  align-items: center;
+  margin: 0;
+  padding: .75rem .85rem;
+}
+
+.coverage-focus-shell .coverage-search-panel h3 {
+  font-size: .95rem;
+  margin-bottom: .15rem;
+}
+
+.coverage-focus-shell .coverage-search-panel p {
+  font-size: .78rem;
+}
+
+.coverage-simple-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .55rem;
+}
+
+.coverage-simple-summary .coverage-kpi {
+  padding: .7rem .75rem;
+  border-radius: 9px;
+}
+
+.coverage-simple-summary .coverage-kpi-value {
+  font-size: 1.35rem;
+}
+
+.coverage-main-simple {
+  padding: .9rem;
+}
+
+.coverage-toolbar-simple {
+  padding-bottom: .7rem;
+  margin-bottom: .65rem;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.coverage-filter-bar-simple {
+  margin: 0 0 .6rem;
+  padding: .25rem;
+  border-radius: 9px;
+  background: rgba(255,255,255,.025);
+}
+
+.coverage-filter-bar-simple .coverage-filter {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: .42rem .58rem;
+}
+
+.coverage-legend-compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem .65rem;
+  margin: 0 0 .7rem;
+  color: var(--text-muted);
+  font-size: .72rem;
+}
+
+.coverage-legend-compact span {
+  display: inline-flex;
+  align-items: center;
+  gap: .28rem;
+}
+
+.coverage-advanced-panel {
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: rgba(255,255,255,.025);
+  overflow: hidden;
+}
+
+.coverage-advanced-panel > summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .8rem;
+  padding: .8rem .95rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.coverage-advanced-panel > summary::-webkit-details-marker {
+  display: none;
+}
+
+.coverage-advanced-panel > summary span {
+  font-weight: 800;
+}
+
+.coverage-advanced-panel > summary small {
+  color: var(--text-muted);
+  font-size: .74rem;
+  text-align: right;
+}
+
+.coverage-advanced-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, .8fr);
+  gap: .75rem;
+  padding: 0 .85rem .85rem;
+}
+
+.coverage-advanced-grid > .coverage-advanced-tools {
+  grid-column: 1 / -1;
+}
+
+.coverage-advanced-tools h3 {
+  margin: 0 0 .6rem;
+  font-size: .95rem;
+}
+
+.coverage-advanced-tools .coverage-filter-bar {
+  margin: 0;
+}
+
+.ops-collapsed-panel {
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: rgba(255,255,255,.025);
+  overflow: hidden;
+}
+
+.ops-collapsed-panel > summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .75rem;
+  padding: .75rem .85rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.ops-collapsed-panel > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ops-collapsed-panel > summary strong,
+.ops-collapsed-panel > summary span {
+  display: block;
+}
+
+.ops-collapsed-panel > p {
+  margin: 0;
+  padding: 0 .85rem .65rem;
+  color: var(--text-muted);
+  font-size: .78rem;
+}
+
+.ops-collapsed-panel .ops-funnel-grid {
+  padding: 0 .85rem .85rem;
+}
+
+/* === TOUR GUIADO DE COBERTURA === */
+.coverage-tour-active {
+  overflow-x: hidden;
+}
+
+.coverage-tour-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  pointer-events: none;
+}
+
+.coverage-tour-dim,
+.coverage-tour-mask {
+  position: fixed;
+  z-index: 100000;
+  background: rgba(2, 6, 23, .72);
+  backdrop-filter: blur(3px);
+}
+
+.coverage-tour-dim {
+  inset: 0;
+}
+
+.coverage-tour-spot {
+  position: fixed;
+  z-index: 100001;
+  border: 2px solid rgba(10,132,255,.95);
+  border-radius: 12px;
+  background: rgba(10,132,255,.035);
+  box-shadow: 0 0 0 8px rgba(10,132,255,.14), 0 20px 60px rgba(0,0,0,.4);
+  pointer-events: none;
+  transition: all .22s ease;
+}
+
+.coverage-tour-card {
+  position: fixed;
+  z-index: 100002;
+  pointer-events: auto;
+  border: 1px solid rgba(148,163,184,.35);
+  border-radius: 12px;
+  background: rgba(15,23,42,.98);
+  color: var(--text);
+  padding: .95rem;
+  box-shadow: 0 22px 60px rgba(0,0,0,.5);
+}
+
+.coverage-tour-card h3 {
+  margin: .25rem 0 .4rem;
+  font-size: 1rem;
+}
+
+.coverage-tour-card p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+  font-size: .82rem;
+}
+
+.coverage-tour-kicker {
+  color: var(--primary);
+  font-size: .68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.coverage-tour-progress {
+  display: flex;
+  gap: .25rem;
+  margin: .8rem 0;
+}
+
+.coverage-tour-progress i {
+  height: 4px;
+  flex: 1;
+  border-radius: 99px;
+  background: rgba(148,163,184,.25);
+}
+
+.coverage-tour-progress i.active {
+  background: var(--primary);
+}
+
+.coverage-tour-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: .45rem;
+}
+
+@media (max-width: 700px) {
+  .coverage-tour-card {
+    left: 12px !important;
+    right: 12px;
+    top: auto !important;
+    bottom: 12px;
+    width: auto !important;
+    transform: none !important;
+  }
+
+  .coverage-tour-actions {
+    justify-content: stretch;
+  }
+
+  .coverage-tour-actions button {
+    flex: 1;
+  }
+}
+
+@media (max-width: 900px) {
+  .coverage-hero-strip,
+  .coverage-toolbar-simple,
+  .coverage-advanced-panel > summary,
+  .ops-collapsed-panel > summary {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .coverage-simple-summary,
+  .coverage-advanced-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .coverage-advanced-grid > .coverage-advanced-tools {
+    grid-column: auto;
+  }
+
+  .coverage-advanced-panel > summary small {
+    text-align: left;
+  }
+}

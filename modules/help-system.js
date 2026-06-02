@@ -2,7 +2,9 @@
 (function () {
   'use strict';
 
-  const HELP_BUILD = '2026.06.02.1400';
+  const HELP_BUILD = window.GORDI_APP_BUILD || '2026.06.02.2000';
+  const COVERAGE_TOUR_KEY = 'gordi_coverage_update_tour';
+  const UPDATE_TOUR_KEY = 'gordi_professional_update_tour';
   const applied = new Set();
 
   const TOPICS = {
@@ -102,13 +104,21 @@
 
   function getTopicActions(topic) {
     if (topic === 'coverage') return [
+      { label: 'Ver guia', onclick: 'startCoverageTour && startCoverageTour(true)' },
+      { label: 'Novedades', onclick: 'startUpdateTour && startUpdateTour(true)' },
       { label: 'Abrir mapa', onclick: 'workflowOpenCoverageMap && workflowOpenCoverageMap()' },
       { label: 'Preguntar al asistente', onclick: "chatAsk('Explicame como usar la pestaña de cobertura')" }
     ];
+    if (topic === 'dashboard' || topic === 'map') return [
+      { label: 'Ver novedades', onclick: 'startUpdateTour && startUpdateTour(true)' },
+      { label: 'Preguntar', onclick: `chatAsk('Explicame las novedades de ${getTopicTitle(topic).replace(/'/g, '')}')` }
+    ];
     if (topic === 'search' || topic === 'searchControls') return [
+      { label: 'Ver novedades', onclick: 'startUpdateTour && startUpdateTour(true)' },
       { label: 'Preguntar scraping', onclick: "chatAsk('Como hago una busqueda correcta y como importo los resultados?')" }
     ];
     if (topic === 'leads') return [
+      { label: 'Ver novedades', onclick: 'startUpdateTour && startUpdateTour(true)' },
       { label: 'Priorizar leads', onclick: "chatExecute('topLeads')" },
       { label: 'Preguntar flujo', onclick: "chatAsk('Como gestiono leads desde scraping hasta pipeline?')" }
     ];
@@ -197,6 +207,364 @@ MANUAL OPERATIVO ACTUAL DE LA APP, BUILD ${HELP_BUILD}:
     el.insertBefore(btn, el.firstChild);
   }
 
+  const COVERAGE_TOUR_STEPS = [
+    {
+      selector: '#coverage-view .page-header h1',
+      title: 'Cobertura es tu memoria de trabajo',
+      text: 'Aqui ves que codigos postales y sectores ya buscaste, cuando lo hiciste y que queda pendiente. La idea es no repetir trabajo.'
+    },
+    {
+      selector: '#coverage-root .coverage-search-panel',
+      title: 'Busca un CP o zona',
+      text: 'Escribe un codigo postal como 28001 o una zona. La pantalla te dira si ya se busco y en que sectores.'
+    },
+    {
+      selector: '#coverage-root .coverage-simple-summary',
+      title: 'Resumen en cuatro datos',
+      text: 'CP visibles, combinaciones ya buscadas, pendientes y elementos para revisar. Si solo miras una linea, mira esta.'
+    },
+    {
+      selector: '#coverage-root .coverage-filter-bar-simple',
+      title: 'Filtra lo importante',
+      text: 'Usa Pendientes, Caducadas, Errores o Revisar para convertir la cobertura en una lista de trabajo.'
+    },
+    {
+      selector: '#coverage-root .coverage-main-simple',
+      title: 'La matriz es el mapa principal',
+      text: 'Cada fila es un CP o zona. Cada columna es un sector. Cada celda te dice si esta hecho, pendiente o necesita revision.'
+    },
+    {
+      selector: '#coverage-root .coverage-cell, #coverage-root .coverage-sector-location',
+      title: 'Pulsa una celda para actuar',
+      text: 'Desde una celda puedes relanzar busqueda, ver resultados, ver leads o abrir el timeline de ese CP.'
+    },
+    {
+      selector: '#coverage-root .coverage-toolbar-actions .btn-primary',
+      title: 'Siguiente busqueda recomendada',
+      text: 'Si no sabes por donde seguir, este boton elige el siguiente CP/sector mas util segun lo pendiente y lo caducado.'
+    },
+    {
+      selector: '#coverage-root .coverage-advanced-panel',
+      title: 'Opciones avanzadas sin ruido',
+      text: 'Objetivos, ruta diaria, filtros completos y embudo siguen disponibles aqui, pero plegados para que la vista principal sea limpia.'
+    },
+    {
+      selector: '#map-mode-coverage, #workflow-coverage-funnel-board',
+      title: 'Mapa y flujo con leads',
+      text: 'Cuando quieras verlo visualmente, abre el mapa de cobertura. Las chinchetas muestran CP buscados, parciales, pendientes o con errores.'
+    }
+  ];
+
+  function getTourTarget(step) {
+    if (!step?.selector) return null;
+    return step.selector
+      .split(',')
+      .map(selector => document.querySelector(selector.trim()))
+      .filter(Boolean)
+      .filter(isTourElementVisible)
+      .find(Boolean) || null;
+  }
+
+  function isTourElementVisible(el) {
+    if (!el) return false;
+    const rect = el.getBoundingClientRect();
+    const style = window.getComputedStyle(el);
+    return rect.width > 8 && rect.height > 8 && style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+  }
+
+  function ensureCoverageTourView() {
+    if (typeof showView === 'function') showView('coverage');
+    if (typeof renderCoverage === 'function') renderCoverage();
+    if (typeof renderWorkflowPanels === 'function') renderWorkflowPanels();
+    setTimeout(renderHelpSystem, 50);
+  }
+
+  function waitUntilNoBlockingModal(callback, tries = 0) {
+    const blocking = [...document.querySelectorAll('.modal-overlay, .coverage-modal, .ops-modal-overlay, #tutorial-overlay')]
+      .find(isTourElementVisible);
+    if (!blocking) return callback();
+    if (tries > 20) return;
+    setTimeout(() => waitUntilNoBlockingModal(callback, tries + 1), 500);
+  }
+
+  function startCoverageTour(force = false) {
+    if (!force && hasSeenCoverageTour()) return;
+    waitUntilNoBlockingModal(() => {
+      ensureCoverageTourView();
+      setTimeout(() => renderCoverageTourStep(0), 260);
+    });
+  }
+
+  function closeCoverageTour(markSeen = true) {
+    document.getElementById('coverage-tour-layer')?.remove();
+    document.body.classList.remove('coverage-tour-active');
+    if (markSeen) saveCoverageTourSeen(true);
+  }
+
+  function getTourCardPosition(rect) {
+    const width = Math.min(360, window.innerWidth - 24);
+    if (!rect) return `left:50%;top:50%;width:${width}px;transform:translate(-50%,-50%)`;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow > 250 ? rect.bottom + 18 : Math.max(12, rect.top - 230);
+    const left = Math.min(window.innerWidth - width - 12, Math.max(12, rect.left + rect.width / 2 - width / 2));
+    return `left:${left}px;top:${top}px;width:${width}px`;
+  }
+
+  function getTourSpotRect(rect, margin) {
+    if (!rect) return null;
+    const left = Math.max(8, rect.left - margin);
+    const top = Math.max(8, rect.top - margin);
+    const right = Math.min(window.innerWidth - 8, rect.right + margin);
+    const bottom = Math.min(window.innerHeight - 8, rect.bottom + margin);
+    return { left, top, width: right - left, height: bottom - top, right, bottom };
+  }
+
+  function renderTourMasks(spot) {
+    if (!spot) return '<div class="coverage-tour-dim"></div>';
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const panels = [
+      `left:0;top:0;width:${vw}px;height:${spot.top}px`,
+      `left:0;top:${spot.bottom}px;width:${vw}px;height:${Math.max(0, vh - spot.bottom)}px`,
+      `left:0;top:${spot.top}px;width:${spot.left}px;height:${spot.height}px`,
+      `left:${spot.right}px;top:${spot.top}px;width:${Math.max(0, vw - spot.right)}px;height:${spot.height}px`
+    ];
+    return panels.map(style => `<div class="coverage-tour-mask" style="${style}"></div>`).join('');
+  }
+
+  function renderCoverageTourStep(index) {
+    const safeIndex = Math.max(0, Math.min(index, COVERAGE_TOUR_STEPS.length - 1));
+    const step = COVERAGE_TOUR_STEPS[safeIndex];
+    let layer = document.getElementById('coverage-tour-layer');
+    if (!layer) {
+      layer = document.createElement('div');
+      layer.id = 'coverage-tour-layer';
+      layer.className = 'coverage-tour-layer';
+      document.body.appendChild(layer);
+    }
+    document.body.classList.add('coverage-tour-active');
+
+    const target = getTourTarget(step);
+    if (!target && step.selector && safeIndex < COVERAGE_TOUR_STEPS.length - 1) {
+      renderCoverageTourStep(safeIndex + 1);
+      return;
+    }
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+
+    setTimeout(() => {
+      const rect = target ? target.getBoundingClientRect() : null;
+      const margin = 10;
+      const spot = getTourSpotRect(rect, margin);
+      const spotStyle = spot
+        ? `left:${spot.left}px;top:${spot.top}px;width:${spot.width}px;height:${spot.height}px`
+        : 'left:50%;top:50%;width:1px;height:1px';
+      const cardPos = getTourCardPosition(rect);
+      layer.innerHTML = `
+        ${renderTourMasks(spot)}
+        <div class="coverage-tour-spot" style="${spotStyle}"></div>
+        <div class="coverage-tour-card" style="${cardPos}">
+          <div class="coverage-tour-kicker">Guia rapida de Cobertura ${safeIndex + 1}/${COVERAGE_TOUR_STEPS.length}</div>
+          <h3>${esc(step.title)}</h3>
+          <p>${esc(step.text)}</p>
+          <div class="coverage-tour-progress">
+            ${COVERAGE_TOUR_STEPS.map((_, i) => `<i class="${i <= safeIndex ? 'active' : ''}"></i>`).join('')}
+          </div>
+          <div class="coverage-tour-actions">
+            <button class="btn-outline btn-sm" onclick="closeCoverageTour(true)">Saltar</button>
+            <button class="btn-outline btn-sm" onclick="renderCoverageTourStep(${safeIndex - 1})" ${safeIndex ? '' : 'disabled'}>Atras</button>
+            <button class="btn-primary btn-sm" onclick="${safeIndex === COVERAGE_TOUR_STEPS.length - 1 ? 'closeCoverageTour(true)' : `renderCoverageTourStep(${safeIndex + 1})`}">${safeIndex === COVERAGE_TOUR_STEPS.length - 1 ? 'Entendido' : 'Siguiente'}</button>
+          </div>
+        </div>
+      `;
+    }, target ? 260 : 0);
+  }
+
+  function maybeStartCoverageTour() {
+    if (!hasSeenUpdateTour()) return;
+    if (hasSeenCoverageTour() || sessionStorage.getItem('gordi_coverage_update_tour_snoozed')) return;
+    setTimeout(() => startCoverageTour(false), 1800);
+  }
+
+  function hasSeenCoverageTour() {
+    try {
+      const data = JSON.parse(localStorage.getItem(COVERAGE_TOUR_KEY) || 'null');
+      return !!data && data.feature === 'coverage_simplified' && data.build === HELP_BUILD && data.completed;
+    } catch {
+      return false;
+    }
+  }
+
+  function saveCoverageTourSeen(completed) {
+    localStorage.setItem(COVERAGE_TOUR_KEY, JSON.stringify({
+      feature: 'coverage_simplified',
+      version: getHelpAppVersion(),
+      build: HELP_BUILD,
+      completed: !!completed,
+      seenAt: new Date().toISOString()
+    }));
+  }
+
+  const UPDATE_TOUR_STEPS = [
+    {
+      view: 'dashboard',
+      selector: '#workflow-command-center',
+      title: 'Dashboard: centro de mando diario',
+      text: 'La novedad principal es que el panel ya no solo muestra datos: te propone la siguiente accion entre cobertura, scraping y leads.'
+    },
+    {
+      view: 'dashboard',
+      selector: '#daily-copilot-panel',
+      title: 'Dashboard: agenda comercial',
+      text: 'El copiloto diario convierte tus leads y tareas en una lista practica para trabajar sin pensar por donde empezar.'
+    },
+    {
+      view: 'planner',
+      selector: '#planner-view .search-engine-bar',
+      title: 'Buscar Empresas: busqueda guiada',
+      text: 'Sector, CP/zona, radio, resultados y enriquecimiento quedan en una sola barra para lanzar scraping con precision.'
+    },
+    {
+      view: 'planner',
+      selector: '#multi-sector-toolbar',
+      title: 'Buscar Empresas: multibusqueda',
+      text: 'Ahora puedes buscar varios sectores en el mismo CP o zona y registrar cada sector en Cobertura automaticamente.'
+    },
+    {
+      view: 'planner',
+      selector: '#workflow-post-scraping-panel, #search-results-panel',
+      title: 'Buscar Empresas: cierre post-scraping',
+      text: 'Cuando haya resultados, la herramienta detecta utiles, duplicados y contactos listos para volcar a Leads.'
+    },
+    {
+      view: 'leads',
+      selector: '#workflow-lead-origin-summary',
+      title: 'Leads: origen real del contacto',
+      text: 'Los leads importados desde scraping conservan CP y sector, para saber de donde vienen y volver a Cobertura cuando haga falta.'
+    },
+    {
+      view: 'leads',
+      selector: '#leads-sf-bar',
+      title: 'Leads: filtros mas rapidos',
+      text: 'La gestion de leads tiene busqueda, orden y filtros para trabajar solo los contactos que importan en ese momento.'
+    },
+    {
+      view: 'map',
+      before: () => { if (typeof setMapMode === 'function') setMapMode('leads'); },
+      selector: '#map-view .map-command-panel',
+      title: 'Mapa: modo operativo',
+      text: 'El mapa ya no es solo una vista: permite alternar entre leads y cobertura para entender el territorio trabajado.'
+    },
+    {
+      view: 'map',
+      before: () => { if (typeof setMapMode === 'function') setMapMode('coverage'); },
+      selector: '#map-mode-coverage, #leads-map',
+      title: 'Mapa: cobertura por colores',
+      text: 'El modo Cobertura muestra CP buscados, parciales, pendientes o con errores para decidir la siguiente zona.'
+    }
+  ];
+
+  function ensureUpdateTourStep(step) {
+    if (step?.view && typeof showView === 'function') showView(step.view);
+    if (typeof renderWorkflowPanels === 'function') renderWorkflowPanels();
+    if (typeof renderHelpSystem === 'function') setTimeout(renderHelpSystem, 50);
+    if (typeof step?.before === 'function') {
+      try { step.before(); } catch {}
+    }
+  }
+
+  function startUpdateTour(force = false) {
+    if (!force && hasSeenUpdateTour()) return;
+    waitUntilNoBlockingModal(() => {
+      setTimeout(() => renderUpdateTourStep(0), 260);
+    });
+  }
+
+  function closeUpdateTour(markSeen = true) {
+    document.getElementById('coverage-tour-layer')?.remove();
+    document.body.classList.remove('coverage-tour-active');
+    if (markSeen) saveUpdateTourSeen(true);
+  }
+
+  function renderUpdateTourStep(index) {
+    const safeIndex = Math.max(0, Math.min(index, UPDATE_TOUR_STEPS.length - 1));
+    const step = UPDATE_TOUR_STEPS[safeIndex];
+    ensureUpdateTourStep(step);
+
+    let layer = document.getElementById('coverage-tour-layer');
+    if (!layer) {
+      layer = document.createElement('div');
+      layer.id = 'coverage-tour-layer';
+      layer.className = 'coverage-tour-layer';
+      document.body.appendChild(layer);
+    }
+    document.body.classList.add('coverage-tour-active');
+
+    setTimeout(() => {
+      const target = getTourTarget(step);
+      if (!target && step.selector && safeIndex < UPDATE_TOUR_STEPS.length - 1) {
+        renderUpdateTourStep(safeIndex + 1);
+        return;
+      }
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      setTimeout(() => {
+        const rect = target ? target.getBoundingClientRect() : null;
+        const spot = getTourSpotRect(rect, 10);
+        const spotStyle = spot
+          ? `left:${spot.left}px;top:${spot.top}px;width:${spot.width}px;height:${spot.height}px`
+          : 'left:50%;top:50%;width:1px;height:1px';
+        const cardPos = getTourCardPosition(rect);
+        layer.innerHTML = `
+          ${renderTourMasks(spot)}
+          <div class="coverage-tour-spot" style="${spotStyle}"></div>
+          <div class="coverage-tour-card" style="${cardPos}">
+            <div class="coverage-tour-kicker">Novedades de la herramienta ${safeIndex + 1}/${UPDATE_TOUR_STEPS.length}</div>
+            <h3>${esc(step.title)}</h3>
+            <p>${esc(step.text)}</p>
+            <div class="coverage-tour-progress">
+              ${UPDATE_TOUR_STEPS.map((_, i) => `<i class="${i <= safeIndex ? 'active' : ''}"></i>`).join('')}
+            </div>
+            <div class="coverage-tour-actions">
+              <button class="btn-outline btn-sm" onclick="closeUpdateTour(true)">Saltar</button>
+              <button class="btn-outline btn-sm" onclick="renderUpdateTourStep(${safeIndex - 1})" ${safeIndex ? '' : 'disabled'}>Atras</button>
+              <button class="btn-primary btn-sm" onclick="${safeIndex === UPDATE_TOUR_STEPS.length - 1 ? 'closeUpdateTour(true)' : `renderUpdateTourStep(${safeIndex + 1})`}">${safeIndex === UPDATE_TOUR_STEPS.length - 1 ? 'Entendido' : 'Siguiente'}</button>
+            </div>
+          </div>
+        `;
+      }, target ? 260 : 0);
+    }, 220);
+  }
+
+  function maybeStartUpdateTour() {
+    if (hasSeenUpdateTour() || sessionStorage.getItem('gordi_professional_update_tour_snoozed')) return;
+    setTimeout(() => startUpdateTour(false), 2400);
+  }
+
+  function hasSeenUpdateTour() {
+    try {
+      const data = JSON.parse(localStorage.getItem(UPDATE_TOUR_KEY) || 'null');
+      return !!data && data.feature === 'professional_update_tour' && data.build === HELP_BUILD && data.completed;
+    } catch {
+      return false;
+    }
+  }
+
+  function saveUpdateTourSeen(completed) {
+    localStorage.setItem(UPDATE_TOUR_KEY, JSON.stringify({
+      feature: 'professional_update_tour',
+      version: getHelpAppVersion(),
+      build: HELP_BUILD,
+      completed: !!completed,
+      seenAt: new Date().toISOString()
+    }));
+  }
+
+  function getHelpAppVersion() {
+    try {
+      if (typeof VOLTFLOW_VERSION !== 'undefined' && VOLTFLOW_VERSION) return VOLTFLOW_VERSION;
+    } catch {}
+    return '2.6.7';
+  }
+
   function renderHelpSystem() {
     addHelpToStaticUi();
     addHelpToDynamicUi();
@@ -206,6 +574,8 @@ MANUAL OPERATIVO ACTUAL DE LA APP, BUILD ${HELP_BUILD}:
 
   function bootHelp() {
     renderHelpSystem();
+    maybeStartUpdateTour();
+    maybeStartCoverageTour();
     setInterval(renderHelpSystem, 1200);
     document.addEventListener('click', event => {
       const pop = document.getElementById('help-popover');
@@ -220,4 +590,10 @@ MANUAL OPERATIVO ACTUAL DE LA APP, BUILD ${HELP_BUILD}:
 
   window.renderHelpSystem = renderHelpSystem;
   window.buildOperationalHelpManual = buildOperationalManual;
+  window.startCoverageTour = startCoverageTour;
+  window.closeCoverageTour = closeCoverageTour;
+  window.renderCoverageTourStep = renderCoverageTourStep;
+  window.startUpdateTour = startUpdateTour;
+  window.closeUpdateTour = closeUpdateTour;
+  window.renderUpdateTourStep = renderUpdateTourStep;
 })();

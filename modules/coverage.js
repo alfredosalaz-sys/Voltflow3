@@ -517,54 +517,115 @@ function renderCoverage() {
   const pending = cells.filter(c => c.status === 'pending').length;
   const errors = cells.filter(c => c.status === 'error').length;
   const stale = cells.filter(c => c.status === 'stale').length;
+  const best = getCoverageBestNextCell(model);
+  const bestLabel = best ? `${coverageEscapeHtml(best.location)} - ${coverageEscapeHtml(getCoverageSectorLabel(best.sector))}` : 'Sin siguiente busqueda';
 
   root.innerHTML = `
-    ${renderCoverageSearchPanel()}
-    ${renderCoverageCommandDeck(model)}
-    ${renderCoverageFilterBar(allCells)}
-    ${renderCoverageSearchResult(allCells, queryLocations)}
-    ${renderCoverageNarrative(cells, visibleLocations)}
-    <div class="coverage-summary">
-      ${coverageSummaryCard('Zonas', visibleLocations.length, query || coverageSmartFilter !== 'all' ? 'visibles con filtros' : 'CP/zonas controladas')}
-      ${coverageSummaryCard('Buscadas', searched, 'combinaciones con historial')}
-      ${coverageSummaryCard('Rentables', complete, 'con leads listos/importados')}
-      ${coverageSummaryCard('Pendientes', pending, 'objetivos sin buscar')}
-      ${coverageSummaryCard('Caducadas', stale, `mas de ${COVERAGE_STALE_DAYS} dias`)}
-      ${coverageSummaryCard('Revisar', partial + errors, 'parciales o con error')}
-    </div>
-    <div class="coverage-layout">
-      <div class="coverage-main glass-panel">
-        <div class="coverage-toolbar">
+    <div class="coverage-focus-shell">
+      <div class="coverage-hero-strip">
+        <div>
+          <span class="coverage-eyebrow">Cobertura</span>
+          <h3>CP x sector: buscado, cuando y que falta</h3>
+          <p>${visibleLocations.length ? `${visibleLocations.length} CP visibles - ${searched} combinaciones buscadas - ${pending} pendientes.` : 'Empieza buscando o anadiendo objetivos de CP/sector.'}</p>
+        </div>
+        <div class="coverage-hero-actions">
+          <button class="btn-outline" onclick="showView('planner')">Nueva busqueda</button>
+          <button class="btn-outline" onclick="typeof workflowOpenCoverageMap === 'function' && workflowOpenCoverageMap()">Mapa</button>
+        </div>
+      </div>
+
+      ${renderCoverageSearchPanel()}
+      ${renderCoverageSearchResult(allCells, queryLocations)}
+      ${renderCoverageSimpleSummary(cells, visibleLocations)}
+
+      <div class="coverage-main glass-panel coverage-main-simple">
+        <div class="coverage-toolbar coverage-toolbar-simple">
           <div>
-            <h3>${coverageViewMode === 'sector' ? 'Vista por sector' : 'Mapa CP x sector'}</h3>
-            <p>${visibleLocations.length ? 'Cada fila resume CP, fecha, sectores buscados y pendientes.' : 'No hay CP/zonas que coincidan con la busqueda o filtro.'}</p>
+            <span class="coverage-eyebrow">Vista principal</span>
+            <h3>${coverageViewMode === 'sector' ? 'Sectores por CP' : 'Codigos postales y sectores'}</h3>
+            <p>${visibleLocations.length ? 'Lee cada fila como un CP/zona y cada columna como un sector.' : 'No hay CP/zonas que coincidan con la busqueda o filtro.'}</p>
           </div>
           <div class="coverage-toolbar-actions">
+            <button class="btn-primary btn-sm" onclick="runCoverageBestNext()" ${best ? '' : 'disabled'} title="${bestLabel}">Siguiente busqueda</button>
             <div class="coverage-view-toggle">
               <button class="${coverageViewMode === 'cp' ? 'active' : ''}" onclick="setCoverageViewMode('cp')">Por CP</button>
               <button class="${coverageViewMode === 'sector' ? 'active' : ''}" onclick="setCoverageViewMode('sector')">Por sector</button>
             </div>
-            <div class="coverage-legend">
-              ${[
-                ['complete', 'No tocar'],
-                ['searched', 'Revisar'],
-                ['partial', 'Completar'],
-                ['stale', 'Refrescar'],
-                ['error', 'Reintentar'],
-                ['pending', 'Buscar'],
-              ].map(([s, action]) => {
-                const meta = coverageStatusMeta(s);
-                return `<span><i class="${meta.cls}"></i>${meta.label}: ${action}</span>`;
-              }).join('')}
-            </div>
           </div>
         </div>
+        ${renderCoverageEssentialFilters(allCells)}
+        ${renderCoverageCompactLegend()}
         ${coverageViewMode === 'sector' ? renderCoverageSectorView(matrixModel, cells) : renderCoverageMatrix(matrixModel, cells)}
       </div>
-      <div class="coverage-side">
-        ${renderCoverageTargetPanel(model)}
-      </div>
+
+      ${renderCoverageAdvancedPanel(model, allCells)}
     </div>`;
+}
+
+function renderCoverageSimpleSummary(cells, visibleLocations) {
+  const searched = cells.filter(c => c.entry).length;
+  const pending = cells.filter(c => c.status === 'pending').length;
+  const stale = cells.filter(c => c.status === 'stale').length;
+  const review = cells.filter(c => c.status === 'partial' || c.status === 'searched' || c.status === 'error').length;
+  const lastDates = cells
+    .map(c => c.entry?.lastSearchedAt || c.entry?.updatedAt || c.entry?.date)
+    .filter(Boolean)
+    .sort();
+  const lastDate = lastDates.length ? new Date(lastDates[lastDates.length - 1]).toLocaleDateString('es-ES') : 'Nunca';
+  return `<div class="coverage-simple-summary">
+    ${coverageSummaryCard('CP visibles', visibleLocations.length, 'zonas en pantalla')}
+    ${coverageSummaryCard('Buscado', searched, 'CP/sector con historial')}
+    ${coverageSummaryCard('Pendiente', pending, 'sin buscar todavia')}
+    ${coverageSummaryCard('Revisar', review + stale, `ultimo ${coverageEscapeHtml(lastDate)}`)}
+  </div>`;
+}
+
+function renderCoverageEssentialFilters(cells) {
+  const filters = [
+    ['all', 'Todo', cells.length],
+    ['pending', 'Pendientes', cells.filter(c => c.status === 'pending').length],
+    ['stale', 'Caducadas', cells.filter(c => c.status === 'stale').length],
+    ['errors', 'Errores', cells.filter(c => c.status === 'error').length],
+    ['partial', 'Revisar', cells.filter(c => c.status === 'partial' || c.status === 'searched').length],
+  ];
+  return `<div class="coverage-filter-bar coverage-filter-bar-simple">
+    ${filters.map(([id, label, count]) => `<button class="coverage-filter ${coverageSmartFilter === id ? 'active' : ''}" onclick="setCoverageSmartFilter('${id}')">
+      <span>${label}</span><b>${count}</b>
+    </button>`).join('')}
+  </div>`;
+}
+
+function renderCoverageCompactLegend() {
+  return `<div class="coverage-legend coverage-legend-compact">
+    ${[
+      ['complete', 'Hecho'],
+      ['searched', 'Buscado'],
+      ['partial', 'Revisar'],
+      ['stale', 'Caducado'],
+      ['error', 'Error'],
+      ['pending', 'Pendiente'],
+    ].map(([s, label]) => {
+      const meta = coverageStatusMeta(s);
+      return `<span><i class="${meta.cls}"></i>${label}</span>`;
+    }).join('')}
+  </div>`;
+}
+
+function renderCoverageAdvancedPanel(model, allCells) {
+  return `<details class="coverage-advanced-panel">
+    <summary>
+      <span>Opciones avanzadas</span>
+      <small>Objetivos, ruta diaria, embudo, rentabilidad y filtros completos</small>
+    </summary>
+    <div class="coverage-advanced-grid">
+      ${renderCoverageCommandDeck(model)}
+      ${renderCoverageTargetPanel(model)}
+      <div class="glass-panel coverage-advanced-tools">
+        <h3>Filtros completos</h3>
+        ${renderCoverageFilterBar(allCells)}
+      </div>
+    </div>
+  </details>`;
 }
 
 function renderCoverageNarrative(cells, visibleLocations) {

@@ -77,8 +77,8 @@ Reglas:
 La version funcional actual usa:
 
 ```text
-version: 2.6.1
-build: 2026.06.02.1400
+version: 2.6.7
+build: 2026.06.02.2000
 ```
 
 Cada publicacion real debe mantener alineados:
@@ -93,16 +93,31 @@ Cada publicacion real debe mantener alineados:
 Ejemplo correcto:
 
 ```html
-<link rel="stylesheet" href="styles/main.css?v=2026.06.02.1400">
-<script src="modules/search.js?v=2026.06.02.1400"></script>
+<link rel="stylesheet" href="styles/main.css?v=2026.06.02.2000">
+<script src="modules/search.js?v=2026.06.02.2000"></script>
 ```
 
 Regla obligatoria:
 
 - No dejar assets internos con versiones sueltas antiguas como `?v=7`, `?v=18`, `?v=2`.
 - En cada release, todos los assets internos deben usar el mismo build.
+- El tour de novedades debe quedar ligado al build real de `app.html`. Si cambia `window.GORDI_APP_BUILD`, el usuario debe ver una vez las novedades de esa publicacion.
+- Al publicar cambios visibles, actualizar `version.json` y revisar los pasos/textos de `UPDATE_TOUR_STEPS` en `modules/help-system.js` para explicar lo nuevo.
 
 Los meta tags anti-cache de `app.html` ayudan, pero no sustituyen al cache busting por build.
+
+## Tours De Novedades En Cada Actualizacion
+
+Regla permanente:
+
+- Cada actualizacion real debe tener un build nuevo.
+- `modules/help-system.js` debe leer `window.GORDI_APP_BUILD` como fuente del build del tour.
+- `gordi_professional_update_tour` guarda el ultimo build visto por el usuario.
+- Si el build cambia, el tour de novedades se muestra una vez.
+- Si el usuario lo termina o lo salta, no vuelve a mostrarse hasta el siguiente build.
+- El tour no debe borrar datos ni usar `localStorage.clear()`.
+- El tour debe esperar si hay un modal o tutorial principal abierto.
+- El tour debe saltar pasos con elementos ocultos o inexistentes.
 
 ## Service Workers Y CacheStorage
 
@@ -164,6 +179,8 @@ gordi_coverage_active_mission
 gordi_workflow_restore_points
 gordi_workflow_audit_log
 gordi_coverage_lead_filter
+gordi_coverage_update_tour
+gordi_professional_update_tour
 gordi_map_geocode_cache
 ```
 

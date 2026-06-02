@@ -3,7 +3,7 @@
 (function () {
   'use strict';
 
-  const BUILD = '2026.06.02.1400';
+  const BUILD = '2026.06.02.2000';
   const RESTORE_KEY = 'gordi_workflow_restore_points';
   const AUDIT_KEY = 'gordi_workflow_audit_log';
   const MAX_RESTORE_POINTS = 8;
@@ -490,29 +490,31 @@
     if (!host) return;
     const cells = activeCells().slice(0, 8);
     host.innerHTML = `
-      <div class="ops-header slim">
-        <div>
-          <span class="ops-eyebrow">Embudo operativo</span>
-          <h3>CP/sector hasta pipeline</h3>
-          <p>Compara lo buscado, lo importado a leads y lo ya contactado.</p>
+      <details class="ops-collapsed-panel">
+        <summary>
+          <div>
+            <span class="ops-eyebrow">Embudo operativo</span>
+            <strong>Ver recorrido CP/sector hasta pipeline</strong>
+          </div>
+          <button class="btn-outline btn-sm" onclick="event.preventDefault(); workflowOpenCoverageMap()">Abrir mapa</button>
+        </summary>
+        <p>Compara lo buscado, lo importado a leads y lo ya contactado sin cargar la vista principal.</p>
+        <div class="ops-funnel-grid">
+          ${cells.length ? cells.map(cell => {
+            const funnel = cellFunnel(cell.location, cell.sector);
+            return `<div class="ops-funnel-card">
+              <strong>${esc(cell.location || 'Zona')}</strong>
+              <span>${esc(cell.sector || 'Sector')}</span>
+              <div class="ops-bars">
+                <i style="--w:${Math.min(100, Number(cell.results || 0) * 4)}%"></i>
+                <i class="ok" style="--w:${Math.min(100, Number(funnel.imported || 0) * 8)}%"></i>
+                <i class="hot" style="--w:${Math.min(100, Number(funnel.contacted || 0) * 12)}%"></i>
+              </div>
+              <small>${Number(cell.results || 0)} encontrados / ${Number(funnel.imported || 0)} leads / ${Number(funnel.contacted || 0)} contacto</small>
+            </div>`;
+          }).join('') : '<div class="ops-empty">Sin cobertura registrada todavia.</div>'}
         </div>
-        <button class="btn-outline" onclick="workflowOpenCoverageMap()">Abrir mapa</button>
-      </div>
-      <div class="ops-funnel-grid">
-        ${cells.length ? cells.map(cell => {
-          const funnel = cellFunnel(cell.location, cell.sector);
-          return `<div class="ops-funnel-card">
-            <strong>${esc(cell.location || 'Zona')}</strong>
-            <span>${esc(cell.sector || 'Sector')}</span>
-            <div class="ops-bars">
-              <i style="--w:${Math.min(100, Number(cell.results || 0) * 4)}%"></i>
-              <i class="ok" style="--w:${Math.min(100, Number(funnel.imported || 0) * 8)}%"></i>
-              <i class="hot" style="--w:${Math.min(100, Number(funnel.contacted || 0) * 12)}%"></i>
-            </div>
-            <small>${Number(cell.results || 0)} encontrados / ${Number(funnel.imported || 0)} leads / ${Number(funnel.contacted || 0)} contacto</small>
-          </div>`;
-        }).join('') : '<div class="ops-empty">Sin cobertura registrada todavia.</div>'}
-      </div>`;
+      </details>`;
   }
 
   function renderLeadOriginSummary() {

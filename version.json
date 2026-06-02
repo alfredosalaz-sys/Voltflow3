@@ -1,8 +1,32 @@
 {
-  "version": "2.6.1",
-  "build": "2026.06.02.1400",
+  "version": "2.6.7",
+  "build": "2026.06.02.2000",
   "date": "2026-06-02",
   "changelog": [
+    {
+      "title": "Tours automaticos en cada actualizacion",
+      "desc": "El tour de novedades queda ligado al build real de app.html: cada nueva publicacion con build nuevo lo muestra una vez."
+    },
+    {
+      "title": "Tour de novedades profesional",
+      "desc": "Nuevo recorrido guiado para Dashboard, Buscar Empresas, Gestion de Leads y Mapa, comparado con la version funcional anterior."
+    },
+    {
+      "title": "Tour compatible con usuarios nuevos",
+      "desc": "El tour de Cobertura espera al tutorial general y salta elementos ocultos o inexistentes para evitar focos vacios."
+    },
+    {
+      "title": "Tour de Cobertura mas legible",
+      "desc": "El foco del tour deja visible la zona senalada y oscurece solo el exterior para que el usuario entienda que se esta explicando."
+    },
+    {
+      "title": "Guia inicial de Cobertura",
+      "desc": "La primera apertura de esta actualizacion muestra un tour con pasos, foco visual y explicaciones del nuevo flujo CP x sector."
+    },
+    {
+      "title": "Cobertura simplificada",
+      "desc": "La pestaña prioriza la matriz CP x sector, buscador y filtros esenciales; objetivos, embudo y filtros completos quedan en opciones avanzadas."
+    },
     {
       "title": "Ayuda contextual en toda la app",
       "desc": "Iconos de interrogacion explican dashboard, scraping, resultados, leads, cobertura, mapa, configuracion, salud y backups."
