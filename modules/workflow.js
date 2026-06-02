@@ -3,12 +3,13 @@
 (function () {
   'use strict';
 
-  const BUILD = '2026.06.02.2000';
+  const BUILD = '2026.06.02.2400';
   const RESTORE_KEY = 'gordi_workflow_restore_points';
   const AUDIT_KEY = 'gordi_workflow_audit_log';
   const MAX_RESTORE_POINTS = 8;
   const MAX_AUDIT = 120;
   let repeatBypassOnce = false;
+  let workflowRenderTimer = null;
 
   function readJson(key, fallback) {
     try {
@@ -137,7 +138,7 @@
       writeJson(RESTORE_KEY, points.slice(0, MAX_RESTORE_POINTS));
       logAudit('restore_point', point.reason);
       if (String(reason || '').startsWith('manual')) toast('Backup inteligente creado');
-      renderWorkflowPanels();
+      scheduleWorkflowPanels(80);
       return point;
     } catch (err) {
       console.warn('Workflow restore point failed', err);
@@ -337,7 +338,7 @@
     if (typeof importSelectedSearch === 'function') {
       await importSelectedSearch();
       logAudit('import_recommended', `${count} resultados`);
-      renderWorkflowPanels();
+      scheduleWorkflowPanels(80);
     }
   }
 
@@ -345,7 +346,7 @@
     createRestorePoint('before_campaign_from_search');
     selectRecommendedResults();
     if (typeof createProspectingCampaignFromSearch === 'function') createProspectingCampaignFromSearch();
-    renderWorkflowPanels();
+    scheduleWorkflowPanels(80);
   }
 
   function clearTechnicalCache() {
@@ -363,7 +364,7 @@
     }
     logAudit('technical_cache_clear', `${removed} local keys`);
     toast(`Cache tecnica limpiada: ${removed} claves locales`);
-    renderWorkflowPanels();
+    scheduleWorkflowPanels(80);
   }
 
   function renderKpi(label, value, tone) {
@@ -660,16 +661,33 @@
     renderRestorePanel();
   }
 
+  function scheduleWorkflowPanels(delay = 120) {
+    if (workflowRenderTimer) clearTimeout(workflowRenderTimer);
+    workflowRenderTimer = setTimeout(() => {
+      workflowRenderTimer = null;
+      renderWorkflowPanels();
+    }, delay);
+  }
+
   function wrapFunction(name, before, after) {
     const original = window[name];
     if (typeof original !== 'function' || original.__workflowWrapped) return;
-    const wrapped = async function (...args) {
+    const wrapped = function (...args) {
       if (before) {
         const decision = before(name, args);
         if (decision === false) return false;
       }
       try {
-        const result = await original.apply(this, args);
+        const result = original.apply(this, args);
+        if (result && typeof result.then === 'function') {
+          return result.then(value => {
+            if (after) after(name, args, value);
+            return value;
+          }).catch(err => {
+            logAudit('error', `${name}: ${err && err.message ? err.message : err}`);
+            throw err;
+          });
+        }
         if (after) after(name, args, result);
         return result;
       } catch (err) {
@@ -694,13 +712,13 @@
       return true;
     }, () => {
       logAudit('search_completed', JSON.stringify(searchStats()));
-      setTimeout(renderWorkflowPanels, 120);
+      scheduleWorkflowPanels(120);
     });
 
     ['searchBusinessesSingle', 'searchBusinessesMultiSector'].forEach(name => {
       wrapFunction(name, null, () => {
         logAudit(`${name}_completed`, JSON.stringify(searchStats()));
-        setTimeout(renderWorkflowPanels, 120);
+        scheduleWorkflowPanels(120);
       });
     });
 
@@ -709,22 +727,22 @@
       return true;
     }, () => {
       logAudit('import_selected', 'Resultados volcados a leads');
-      setTimeout(renderWorkflowPanels, 120);
+      scheduleWorkflowPanels(120);
     });
 
     wrapFunction('quickImportOne', () => {
       createRestorePoint('before_quick_import');
       return true;
-    }, () => setTimeout(renderWorkflowPanels, 120));
+    }, () => scheduleWorkflowPanels(120));
 
     wrapFunction('createProspectingCampaignFromSearch', () => {
       createRestorePoint('before_campaign_from_search');
       return true;
-    }, () => setTimeout(renderWorkflowPanels, 120));
+    }, () => scheduleWorkflowPanels(120));
 
     wrapFunction('renderSearchCards', null, () => setTimeout(renderWorkflowPostScrapingPanel, 40));
     wrapFunction('showResultsPanel', null, () => setTimeout(renderWorkflowPostScrapingPanel, 40));
-    wrapFunction('renderCoverage', null, () => setTimeout(renderWorkflowPanels, 80));
+    wrapFunction('renderCoverage', null, () => scheduleWorkflowPanels(80));
     wrapFunction('renderLeads', null, () => setTimeout(renderLeadOriginSummary, 60));
     wrapFunction('setMapMode', null, () => setTimeout(renderMapBrief, 60));
   }
@@ -760,7 +778,7 @@
     ensureWorkflowPanels();
     installWrappers();
     renderWorkflowPanels();
-    setTimeout(renderWorkflowPanels, 600);
+    scheduleWorkflowPanels(600);
   }
 
   if (document.readyState === 'loading') {

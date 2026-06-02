@@ -2,10 +2,17 @@
 (function () {
   'use strict';
 
-  const HELP_BUILD = window.GORDI_APP_BUILD || '2026.06.02.2000';
+  if (window.__gordiHelpSystemBooted) return;
+  window.__gordiHelpSystemBooted = true;
+
+  const HELP_BUILD = window.GORDI_APP_BUILD || '2026.06.02.2400';
   const COVERAGE_TOUR_KEY = 'gordi_coverage_update_tour';
   const UPDATE_TOUR_KEY = 'gordi_professional_update_tour';
-  const applied = new Set();
+  const MANUAL_STATE_KEY = 'gordi_manual_state';
+  const applied = new WeakSet();
+  let helpRenderTimer = null;
+  let helpObserver = null;
+  let activeTour = null;
 
   const TOPICS = {
     dashboard: 'Panel principal. Resume leads, prioridad, actividad y la siguiente accion recomendada para trabajar sin perder tiempo.',
@@ -109,7 +116,12 @@
       { label: 'Abrir mapa', onclick: 'workflowOpenCoverageMap && workflowOpenCoverageMap()' },
       { label: 'Preguntar al asistente', onclick: "chatAsk('Explicame como usar la pestaña de cobertura')" }
     ];
-    if (topic === 'dashboard' || topic === 'map') return [
+    if (topic === 'map') return [
+      { label: 'Ver novedades', onclick: 'startUpdateTour && startUpdateTour(true)' },
+      { label: 'Cobertura', onclick: "setMapMode && setMapMode('coverage')" },
+      { label: 'Leads', onclick: "setMapMode && setMapMode('leads')" }
+    ];
+    if (topic === 'dashboard') return [
       { label: 'Ver novedades', onclick: 'startUpdateTour && startUpdateTour(true)' },
       { label: 'Preguntar', onclick: `chatAsk('Explicame las novedades de ${getTopicTitle(topic).replace(/'/g, '')}')` }
     ];
@@ -125,10 +137,6 @@
     if (topic === 'health' || topic === 'restore') return [
       { label: 'Crear backup', onclick: "workflowCreateRestorePoint && workflowCreateRestorePoint('manual_help')" },
       { label: 'Diagnostico', onclick: "chatRunCommand('diagnostics')" }
-    ];
-    if (topic === 'map') return [
-      { label: 'Cobertura', onclick: "setMapMode && setMapMode('coverage')" },
-      { label: 'Leads', onclick: "setMapMode && setMapMode('leads')" }
     ];
     return [
       { label: 'Preguntar', onclick: `chatAsk('Explicame ${getTopicTitle(topic).replace(/'/g, '')}')` }
@@ -211,47 +219,56 @@ MANUAL OPERATIVO ACTUAL DE LA APP, BUILD ${HELP_BUILD}:
     {
       selector: '#coverage-view .page-header h1',
       title: 'Cobertura es tu memoria de trabajo',
-      text: 'Aqui ves que codigos postales y sectores ya buscaste, cuando lo hiciste y que queda pendiente. La idea es no repetir trabajo.'
+      text: 'Aqui ves que codigos postales y sectores ya buscaste, cuando lo hiciste y que queda pendiente. La idea es no repetir trabajo.',
+      manual: 'coverage'
     },
     {
       selector: '#coverage-root .coverage-search-panel',
       title: 'Busca un CP o zona',
-      text: 'Escribe un codigo postal como 28001 o una zona. La pantalla te dira si ya se busco y en que sectores.'
+      text: 'Escribe un codigo postal como 28001 o una zona. La pantalla te dira si ya se busco y en que sectores.',
+      manual: 'coverage'
     },
     {
       selector: '#coverage-root .coverage-simple-summary',
       title: 'Resumen en cuatro datos',
-      text: 'CP visibles, combinaciones ya buscadas, pendientes y elementos para revisar. Si solo miras una linea, mira esta.'
+      text: 'CP visibles, combinaciones ya buscadas, pendientes y elementos para revisar. Si solo miras una linea, mira esta.',
+      manual: 'coverage'
     },
     {
       selector: '#coverage-root .coverage-filter-bar-simple',
       title: 'Filtra lo importante',
-      text: 'Usa Pendientes, Caducadas, Errores o Revisar para convertir la cobertura en una lista de trabajo.'
+      text: 'Usa Pendientes, Caducadas, Errores o Revisar para convertir la cobertura en una lista de trabajo.',
+      manual: 'coverage'
     },
     {
       selector: '#coverage-root .coverage-main-simple',
       title: 'La matriz es el mapa principal',
-      text: 'Cada fila es un CP o zona. Cada columna es un sector. Cada celda te dice si esta hecho, pendiente o necesita revision.'
+      text: 'Cada fila es un CP o zona. Cada columna es un sector. Cada celda te dice si esta hecho, pendiente o necesita revision.',
+      manual: 'coverage'
     },
     {
       selector: '#coverage-root .coverage-cell, #coverage-root .coverage-sector-location',
       title: 'Pulsa una celda para actuar',
-      text: 'Desde una celda puedes relanzar busqueda, ver resultados, ver leads o abrir el timeline de ese CP.'
+      text: 'Desde una celda puedes relanzar busqueda, ver resultados, ver leads o abrir el timeline de ese CP.',
+      manual: 'coverage'
     },
     {
       selector: '#coverage-root .coverage-toolbar-actions .btn-primary',
       title: 'Siguiente busqueda recomendada',
-      text: 'Si no sabes por donde seguir, este boton elige el siguiente CP/sector mas util segun lo pendiente y lo caducado.'
+      text: 'Si no sabes por donde seguir, este boton elige el siguiente CP/sector mas util segun lo pendiente y lo caducado.',
+      manual: 'coverage'
     },
     {
       selector: '#coverage-root .coverage-advanced-panel',
       title: 'Opciones avanzadas sin ruido',
-      text: 'Objetivos, ruta diaria, filtros completos y embudo siguen disponibles aqui, pero plegados para que la vista principal sea limpia.'
+      text: 'Objetivos, ruta diaria, filtros completos y embudo siguen disponibles aqui, pero plegados para que la vista principal sea limpia.',
+      manual: 'coverage'
     },
     {
       selector: '#map-mode-coverage, #workflow-coverage-funnel-board',
       title: 'Mapa y flujo con leads',
-      text: 'Cuando quieras verlo visualmente, abre el mapa de cobertura. Las chinchetas muestran CP buscados, parciales, pendientes o con errores.'
+      text: 'Cuando quieras verlo visualmente, abre el mapa de cobertura. Las chinchetas muestran CP buscados, parciales, pendientes o con errores.',
+      manual: 'map'
     }
   ];
 
@@ -288,8 +305,10 @@ MANUAL OPERATIVO ACTUAL DE LA APP, BUILD ${HELP_BUILD}:
   }
 
   function startCoverageTour(force = false) {
+    if (activeTour && activeTour !== 'coverage') return;
     if (!force && hasSeenCoverageTour()) return;
     waitUntilNoBlockingModal(() => {
+      activeTour = 'coverage';
       ensureCoverageTourView();
       setTimeout(() => renderCoverageTourStep(0), 260);
     });
@@ -298,7 +317,13 @@ MANUAL OPERATIVO ACTUAL DE LA APP, BUILD ${HELP_BUILD}:
   function closeCoverageTour(markSeen = true) {
     document.getElementById('coverage-tour-layer')?.remove();
     document.body.classList.remove('coverage-tour-active');
+    activeTour = null;
     if (markSeen) saveCoverageTourSeen(true);
+  }
+
+  function snoozeCoverageTour() {
+    sessionStorage.setItem('gordi_coverage_update_tour_snoozed', '1');
+    closeCoverageTour(false);
   }
 
   function getTourCardPosition(rect) {
@@ -366,10 +391,12 @@ MANUAL OPERATIVO ACTUAL DE LA APP, BUILD ${HELP_BUILD}:
           <div class="coverage-tour-kicker">Guia rapida de Cobertura ${safeIndex + 1}/${COVERAGE_TOUR_STEPS.length}</div>
           <h3>${esc(step.title)}</h3>
           <p>${esc(step.text)}</p>
+          ${step.manual ? `<button class="coverage-tour-manual-link" onclick="openAppManual('${esc(step.manual)}')">Ver manual detallado</button>` : ''}
           <div class="coverage-tour-progress">
             ${COVERAGE_TOUR_STEPS.map((_, i) => `<i class="${i <= safeIndex ? 'active' : ''}"></i>`).join('')}
           </div>
           <div class="coverage-tour-actions">
+            <button class="btn-outline btn-sm" onclick="snoozeCoverageTour()">Ahora no</button>
             <button class="btn-outline btn-sm" onclick="closeCoverageTour(true)">Saltar</button>
             <button class="btn-outline btn-sm" onclick="renderCoverageTourStep(${safeIndex - 1})" ${safeIndex ? '' : 'disabled'}>Atras</button>
             <button class="btn-primary btn-sm" onclick="${safeIndex === COVERAGE_TOUR_STEPS.length - 1 ? 'closeCoverageTour(true)' : `renderCoverageTourStep(${safeIndex + 1})`}">${safeIndex === COVERAGE_TOUR_STEPS.length - 1 ? 'Entendido' : 'Siguiente'}</button>
@@ -404,62 +431,220 @@ MANUAL OPERATIVO ACTUAL DE LA APP, BUILD ${HELP_BUILD}:
     }));
   }
 
+  const APP_MANUAL_SECTIONS = [
+    {
+      id: 'workflow',
+      title: 'Flujo completo',
+      intro: 'La herramienta funciona como un circuito: Cobertura decide donde trabajar, Buscar Empresas ejecuta scraping, Resultados selecciona oportunidades, Leads gestiona contactos y Mapa ayuda a entender el territorio.',
+      points: [
+        'Empieza revisando Cobertura o Dashboard para no repetir CP y sectores ya trabajados.',
+        'Lanza una busqueda individual o multisector desde Buscar Empresas.',
+        'Revisa los resultados, descarta duplicados y vuelca solo oportunidades utiles a Leads.',
+        'Gestiona los leads por estado, prioridad, siguiente contacto y origen CP/sector.',
+        'Usa el mapa para ver visualmente donde hay trabajo hecho, parcial, pendiente o con error.'
+      ],
+      tips: 'La regla de oro es no buscar a ciegas: primero mira cobertura, despues busca, luego importa y finalmente gestiona.'
+    },
+    {
+      id: 'dashboard',
+      title: 'Dashboard',
+      intro: 'El Dashboard es el punto de entrada diario. Su mision es decirte que hacer a continuacion sin tener que revisar toda la aplicacion manualmente.',
+      points: [
+        'El Centro de mando diario cruza leads, cobertura, busquedas pendientes y resultados listos.',
+        'El boton Ejecutar siguiente intenta llevarte al punto mas util del flujo: continuar una mision, buscar una celda pendiente o importar resultados.',
+        'Los KPIs resumen leads, cobertura, pendientes CP/sector, resultados listos y alta prioridad.',
+        'El Copiloto diario genera una agenda comercial con tareas concretas para el dia.',
+        'Las secciones de conversion y rendimiento ayudan a detectar que sectores producen mejores oportunidades.'
+      ],
+      tips: 'Usalo al empezar la jornada. Si no sabes por donde seguir, el Dashboard debe darte la siguiente accion.'
+    },
+    {
+      id: 'search',
+      title: 'Buscar Empresas',
+      intro: 'Buscar Empresas es el motor de scraping. Permite buscar empresas reales por sector y CP/zona, enriquecer datos y preparar leads utiles.',
+      points: [
+        'Sector define el tipo de empresa que quieres encontrar.',
+        'Ciudad, zona o CP define el territorio de busqueda. Para trabajar ordenado, usa codigos postales concretos.',
+        'Radio controla el alcance. Un radio pequeno es mas preciso; uno grande encuentra mas empresas pero puede mezclar zonas.',
+        'Resultados limita cuantas empresas se intentan rescatar.',
+        'Enriquecimiento decide si se intenta completar web, email, telefono y datos adicionales.',
+        'La multibusqueda permite lanzar varios sectores sobre el mismo CP/zona y registrar cobertura por cada sector.',
+        'Despues del scraping, el cierre post-scraping detecta resultados utiles, duplicados y contactos listos para Leads.'
+      ],
+      tips: 'Para trabajar profesionalmente, usa CP + sector, revisa resultados, importa recomendados y mira Cobertura antes de repetir.'
+    },
+    {
+      id: 'coverage',
+      title: 'Cobertura',
+      intro: 'Cobertura es la memoria visual de lo buscado. Responde a tres preguntas: que CP he buscado, que sectores he buscado y que queda pendiente.',
+      points: [
+        'El buscador de CP te dice si una zona ya tiene historial.',
+        'El resumen muestra CP visibles, combinaciones buscadas, pendientes y elementos para revisar.',
+        'La matriz CP x sector es la vista principal: filas son CP/zonas y columnas son sectores.',
+        'Cada celda indica estado: hecho, buscado, revisar, caducado, error o pendiente.',
+        'Al pulsar una celda puedes relanzar busqueda, ver resultados, ver leads o abrir timeline.',
+        'Siguiente busqueda recomienda una accion util para avanzar sin repetir trabajo.',
+        'Opciones avanzadas conserva objetivos, rutas diarias, filtros completos y embudo.'
+      ],
+      tips: 'Antes de buscar, mira Cobertura. Es la forma mas rapida de saber donde ya trabajaste y que falta.'
+    },
+    {
+      id: 'leads',
+      title: 'Gestion de Leads',
+      intro: 'Gestion de Leads es donde se trabaja comercialmente cada contacto importado o creado manualmente.',
+      points: [
+        'Los leads importados desde scraping pueden conservar CP, sector y mision de origen.',
+        'El resumen de origen muestra cuantos leads tienen trazabilidad real desde Cobertura o busqueda.',
+        'El buscador y los filtros permiten localizar contactos por empresa, email, sector, estado o prioridad.',
+        'El score ayuda a priorizar, pero la gestion real se hace con estado, proximo contacto, notas y seguimiento.',
+        'Desde un lead se puede revisar informacion, preparar emails, cambiar estado y mantener historial.',
+        'El pipeline usa los estados para entender en que fase esta cada oportunidad.'
+      ],
+      tips: 'No basta con importar leads. Cada lead debe tener estado, siguiente accion y notas claras.'
+    },
+    {
+      id: 'map',
+      title: 'Mapa',
+      intro: 'El Mapa convierte leads y cobertura en una vista territorial. Sirve para entender donde hay oportunidades y donde falta trabajar.',
+      points: [
+        'Modo Leads muestra contactos geolocalizados y ayuda a ver concentraciones de oportunidades.',
+        'Modo Cobertura muestra CP/zonas por estado: completas, parciales, pendientes, caducadas o con error.',
+        'La leyenda explica los colores y evita interpretar el mapa a ojo.',
+        'El mapa ayuda a decidir si conviene trabajar una zona cercana, completar sectores pendientes o revisar errores.',
+        'Cuando una busqueda importa leads con coordenadas, el mapa conserva esa informacion para visualizacion posterior.'
+      ],
+      tips: 'Usa el mapa para tomar decisiones por territorio, no para sustituir la gestion detallada de Cobertura o Leads.'
+    },
+    {
+      id: 'settings',
+      title: 'Configuracion y datos',
+      intro: 'Configuracion controla perfil, API keys, backups y salud del sistema. Es la zona que protege la continuidad de trabajo.',
+      points: [
+        'Las API keys permiten Google Places, enriquecimiento, IA y servicios externos.',
+        'Los datos se guardan en localStorage del mismo navegador y mismo origen.',
+        'Si abres desde otro navegador, otro perfil o otra URL, puede parecer que los datos desaparecieron.',
+        'Los backups y puntos de restauracion permiten proteger leads, cobertura, historial y claves antes de cambios importantes.',
+        'La salud del sistema muestra build, origen, datos locales y posibles problemas de configuracion.'
+      ],
+      tips: 'Antes de publicar o actualizar, confirma build alineado y no cambies el origen desde el que el usuario abre la app.'
+    }
+  ];
+
+  function getManualSection(id) {
+    return APP_MANUAL_SECTIONS.find(section => section.id === id) || APP_MANUAL_SECTIONS[0];
+  }
+
+  function openAppManual(sectionId = 'workflow') {
+    const current = getManualSection(sectionId);
+    saveManualState(current.id);
+    let modal = document.getElementById('app-manual-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'app-manual-modal';
+      modal.className = 'app-manual-modal';
+      document.body.appendChild(modal);
+    }
+    modal.onclick = event => {
+      if (event.target === modal) modal.remove();
+    };
+    modal.innerHTML = `
+      <div class="app-manual-box">
+        <button class="app-manual-close" onclick="document.getElementById('app-manual-modal')?.remove()">x</button>
+        <aside class="app-manual-nav">
+          <span>Manual de la herramienta</span>
+          ${APP_MANUAL_SECTIONS.map(section => `<button class="${section.id === current.id ? 'active' : ''}" onclick="openAppManual('${esc(section.id)}')">${esc(section.title)}</button>`).join('')}
+        </aside>
+        <main class="app-manual-content">
+          <div class="app-manual-kicker">Explicacion detallada</div>
+          <h2>${esc(current.title)}</h2>
+          <p class="app-manual-intro">${esc(current.intro)}</p>
+          <div class="app-manual-list">
+            ${current.points.map((point, idx) => `<div><b>${idx + 1}</b><p>${esc(point)}</p></div>`).join('')}
+          </div>
+          <div class="app-manual-tip"><strong>Uso recomendado:</strong> ${esc(current.tips)}</div>
+        </main>
+      </div>`;
+  }
+
+  function saveManualState(sectionId) {
+    try {
+      const previous = JSON.parse(localStorage.getItem(MANUAL_STATE_KEY) || '{}');
+      const readSections = Array.from(new Set([...(previous.readSections || []), sectionId]));
+      localStorage.setItem(MANUAL_STATE_KEY, JSON.stringify({
+        version: getHelpAppVersion(),
+        build: HELP_BUILD,
+        lastSection: sectionId,
+        openedAt: new Date().toISOString(),
+        readSections
+      }));
+    } catch {}
+  }
+
   const UPDATE_TOUR_STEPS = [
     {
       view: 'dashboard',
       selector: '#workflow-command-center',
       title: 'Dashboard: centro de mando diario',
-      text: 'La novedad principal es que el panel ya no solo muestra datos: te propone la siguiente accion entre cobertura, scraping y leads.'
+      text: 'La novedad principal es que el panel ya no solo muestra datos: te propone la siguiente accion entre cobertura, scraping y leads.',
+      manual: 'dashboard'
     },
     {
       view: 'dashboard',
       selector: '#daily-copilot-panel',
       title: 'Dashboard: agenda comercial',
-      text: 'El copiloto diario convierte tus leads y tareas en una lista practica para trabajar sin pensar por donde empezar.'
+      text: 'El copiloto diario convierte tus leads y tareas en una lista practica para trabajar sin pensar por donde empezar.',
+      manual: 'dashboard'
     },
     {
       view: 'planner',
       selector: '#planner-view .search-engine-bar',
       title: 'Buscar Empresas: busqueda guiada',
-      text: 'Sector, CP/zona, radio, resultados y enriquecimiento quedan en una sola barra para lanzar scraping con precision.'
+      text: 'Sector, CP/zona, radio, resultados y enriquecimiento quedan en una sola barra para lanzar scraping con precision.',
+      manual: 'search'
     },
     {
       view: 'planner',
       selector: '#multi-sector-toolbar',
       title: 'Buscar Empresas: multibusqueda',
-      text: 'Ahora puedes buscar varios sectores en el mismo CP o zona y registrar cada sector en Cobertura automaticamente.'
+      text: 'Ahora puedes buscar varios sectores en el mismo CP o zona y registrar cada sector en Cobertura automaticamente.',
+      manual: 'search'
     },
     {
       view: 'planner',
       selector: '#workflow-post-scraping-panel, #search-results-panel',
       title: 'Buscar Empresas: cierre post-scraping',
-      text: 'Cuando haya resultados, la herramienta detecta utiles, duplicados y contactos listos para volcar a Leads.'
+      text: 'Cuando haya resultados, la herramienta detecta utiles, duplicados y contactos listos para volcar a Leads.',
+      manual: 'search'
     },
     {
       view: 'leads',
       selector: '#workflow-lead-origin-summary',
       title: 'Leads: origen real del contacto',
-      text: 'Los leads importados desde scraping conservan CP y sector, para saber de donde vienen y volver a Cobertura cuando haga falta.'
+      text: 'Los leads importados desde scraping conservan CP y sector, para saber de donde vienen y volver a Cobertura cuando haga falta.',
+      manual: 'leads'
     },
     {
       view: 'leads',
       selector: '#leads-sf-bar',
       title: 'Leads: filtros mas rapidos',
-      text: 'La gestion de leads tiene busqueda, orden y filtros para trabajar solo los contactos que importan en ese momento.'
+      text: 'La gestion de leads tiene busqueda, orden y filtros para trabajar solo los contactos que importan en ese momento.',
+      manual: 'leads'
     },
     {
       view: 'map',
       before: () => { if (typeof setMapMode === 'function') setMapMode('leads'); },
       selector: '#map-view .map-command-panel',
       title: 'Mapa: modo operativo',
-      text: 'El mapa ya no es solo una vista: permite alternar entre leads y cobertura para entender el territorio trabajado.'
+      text: 'El mapa ya no es solo una vista: permite alternar entre leads y cobertura para entender el territorio trabajado.',
+      manual: 'map'
     },
     {
       view: 'map',
       before: () => { if (typeof setMapMode === 'function') setMapMode('coverage'); },
       selector: '#map-mode-coverage, #leads-map',
       title: 'Mapa: cobertura por colores',
-      text: 'El modo Cobertura muestra CP buscados, parciales, pendientes o con errores para decidir la siguiente zona.'
+      text: 'El modo Cobertura muestra CP buscados, parciales, pendientes o con errores para decidir la siguiente zona.',
+      manual: 'map'
     }
   ];
 
@@ -473,8 +658,10 @@ MANUAL OPERATIVO ACTUAL DE LA APP, BUILD ${HELP_BUILD}:
   }
 
   function startUpdateTour(force = false) {
+    if (activeTour && activeTour !== 'update') return;
     if (!force && hasSeenUpdateTour()) return;
     waitUntilNoBlockingModal(() => {
+      activeTour = 'update';
       setTimeout(() => renderUpdateTourStep(0), 260);
     });
   }
@@ -482,7 +669,13 @@ MANUAL OPERATIVO ACTUAL DE LA APP, BUILD ${HELP_BUILD}:
   function closeUpdateTour(markSeen = true) {
     document.getElementById('coverage-tour-layer')?.remove();
     document.body.classList.remove('coverage-tour-active');
+    activeTour = null;
     if (markSeen) saveUpdateTourSeen(true);
+  }
+
+  function snoozeUpdateTour() {
+    sessionStorage.setItem('gordi_professional_update_tour_snoozed', '1');
+    closeUpdateTour(false);
   }
 
   function renderUpdateTourStep(index) {
@@ -520,10 +713,12 @@ MANUAL OPERATIVO ACTUAL DE LA APP, BUILD ${HELP_BUILD}:
             <div class="coverage-tour-kicker">Novedades de la herramienta ${safeIndex + 1}/${UPDATE_TOUR_STEPS.length}</div>
             <h3>${esc(step.title)}</h3>
             <p>${esc(step.text)}</p>
+            ${step.manual ? `<button class="coverage-tour-manual-link" onclick="openAppManual('${esc(step.manual)}')">Ver manual detallado</button>` : ''}
             <div class="coverage-tour-progress">
               ${UPDATE_TOUR_STEPS.map((_, i) => `<i class="${i <= safeIndex ? 'active' : ''}"></i>`).join('')}
             </div>
             <div class="coverage-tour-actions">
+              <button class="btn-outline btn-sm" onclick="snoozeUpdateTour()">Ahora no</button>
               <button class="btn-outline btn-sm" onclick="closeUpdateTour(true)">Saltar</button>
               <button class="btn-outline btn-sm" onclick="renderUpdateTourStep(${safeIndex - 1})" ${safeIndex ? '' : 'disabled'}>Atras</button>
               <button class="btn-primary btn-sm" onclick="${safeIndex === UPDATE_TOUR_STEPS.length - 1 ? 'closeUpdateTour(true)' : `renderUpdateTourStep(${safeIndex + 1})`}">${safeIndex === UPDATE_TOUR_STEPS.length - 1 ? 'Entendido' : 'Siguiente'}</button>
@@ -562,7 +757,7 @@ MANUAL OPERATIVO ACTUAL DE LA APP, BUILD ${HELP_BUILD}:
     try {
       if (typeof VOLTFLOW_VERSION !== 'undefined' && VOLTFLOW_VERSION) return VOLTFLOW_VERSION;
     } catch {}
-    return '2.6.7';
+    return '2.7.1';
   }
 
   function renderHelpSystem() {
@@ -572,16 +767,45 @@ MANUAL OPERATIVO ACTUAL DE LA APP, BUILD ${HELP_BUILD}:
     addChatSuggestions();
   }
 
+  function scheduleHelpRender(delay = 90) {
+    if (helpRenderTimer) clearTimeout(helpRenderTimer);
+    helpRenderTimer = setTimeout(() => {
+      helpRenderTimer = null;
+      renderHelpSystem();
+    }, delay);
+  }
+
+  function installHelpObserver() {
+    if (helpObserver || typeof MutationObserver === 'undefined') return;
+    const target = document.getElementById('app-content') || document.body;
+    if (!target) return;
+    helpObserver = new MutationObserver(mutations => {
+      if (mutations.some(mutation => mutation.addedNodes && mutation.addedNodes.length)) {
+        scheduleHelpRender(120);
+      }
+    });
+    helpObserver.observe(target, { childList: true, subtree: true });
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) scheduleHelpRender(120);
+    });
+  }
+
   function bootHelp() {
     renderHelpSystem();
+    installHelpObserver();
     maybeStartUpdateTour();
     maybeStartCoverageTour();
-    setInterval(renderHelpSystem, 1200);
+    setInterval(() => {
+      if (!document.hidden) scheduleHelpRender(0);
+    }, 8000);
     document.addEventListener('click', event => {
       const pop = document.getElementById('help-popover');
       if (!pop) return;
       if (event.target.closest('.help-tip-btn') || event.target.closest('#help-popover')) return;
       pop.remove();
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') document.getElementById('app-manual-modal')?.remove();
     });
   }
 
@@ -593,7 +817,10 @@ MANUAL OPERATIVO ACTUAL DE LA APP, BUILD ${HELP_BUILD}:
   window.startCoverageTour = startCoverageTour;
   window.closeCoverageTour = closeCoverageTour;
   window.renderCoverageTourStep = renderCoverageTourStep;
+  window.snoozeCoverageTour = snoozeCoverageTour;
   window.startUpdateTour = startUpdateTour;
   window.closeUpdateTour = closeUpdateTour;
   window.renderUpdateTourStep = renderUpdateTourStep;
+  window.snoozeUpdateTour = snoozeUpdateTour;
+  window.openAppManual = openAppManual;
 })();

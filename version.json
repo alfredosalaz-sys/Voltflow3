@@ -1,8 +1,24 @@
 {
-  "version": "2.6.7",
-  "build": "2026.06.02.2000",
+  "version": "2.7.1",
+  "build": "2026.06.02.2400",
   "date": "2026-06-02",
   "changelog": [
+    {
+      "title": "Correcciones de bugs de tours y workflow",
+      "desc": "Se evitan tours simultaneos, se anade posponer, se corrigen acciones del mapa y se preservan retornos sincronicos del workflow."
+    },
+    {
+      "title": "Fluidez y rendimiento",
+      "desc": "La ayuda contextual y el workflow reducen re-renderizados constantes y agrupan actualizaciones para una experiencia mas agil."
+    },
+    {
+      "title": "Estado del manual guardado",
+      "desc": "El manual recuerda la ultima seccion consultada y queda registrado como dato persistente controlado."
+    },
+    {
+      "title": "Manual detallado conectado al tour",
+      "desc": "Cada tarjeta del tour incluye un acceso a un manual completo por seccion para profundizar sin perder el contexto."
+    },
     {
       "title": "Tours automaticos en cada actualizacion",
       "desc": "El tour de novedades queda ligado al build real de app.html: cada nueva publicacion con build nuevo lo muestra una vez."

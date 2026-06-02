@@ -77,8 +77,8 @@ Reglas:
 La version funcional actual usa:
 
 ```text
-version: 2.6.7
-build: 2026.06.02.2000
+version: 2.7.1
+build: 2026.06.02.2400
 ```
 
 Cada publicacion real debe mantener alineados:
@@ -93,8 +93,8 @@ Cada publicacion real debe mantener alineados:
 Ejemplo correcto:
 
 ```html
-<link rel="stylesheet" href="styles/main.css?v=2026.06.02.2000">
-<script src="modules/search.js?v=2026.06.02.2000"></script>
+<link rel="stylesheet" href="styles/main.css?v=2026.06.02.2400">
+<script src="modules/search.js?v=2026.06.02.2400"></script>
 ```
 
 Regla obligatoria:
@@ -118,6 +118,8 @@ Regla permanente:
 - El tour no debe borrar datos ni usar `localStorage.clear()`.
 - El tour debe esperar si hay un modal o tutorial principal abierto.
 - El tour debe saltar pasos con elementos ocultos o inexistentes.
+- Cada tarjeta del tour debe mantener texto breve y ofrecer acceso a un manual detallado cuando el usuario quiera profundizar.
+- El manual detallado debe vivir dentro de la app, no depender de internet ni cambiar de origen.
 
 ## Service Workers Y CacheStorage
 
@@ -181,6 +183,7 @@ gordi_workflow_audit_log
 gordi_coverage_lead_filter
 gordi_coverage_update_tour
 gordi_professional_update_tour
+gordi_manual_state
 gordi_map_geocode_cache
 ```
 
