@@ -3,13 +3,14 @@
 (function () {
   'use strict';
 
-  const BUILD = '2026.06.02.2400';
+  const BUILD = '2026.06.03.0600';
   const RESTORE_KEY = 'gordi_workflow_restore_points';
   const AUDIT_KEY = 'gordi_workflow_audit_log';
   const MAX_RESTORE_POINTS = 8;
   const MAX_AUDIT = 120;
   let repeatBypassOnce = false;
   let workflowRenderTimer = null;
+  let workflowBooted = false;
 
   function readJson(key, fallback) {
     try {
@@ -24,6 +25,14 @@
 
   function writeJson(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
+  }
+
+  function idle(fn, timeout = 2000) {
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(fn, { timeout });
+    } else {
+      setTimeout(fn, 80);
+    }
   }
 
   function esc(value) {
@@ -650,6 +659,7 @@
   }
 
   function renderWorkflowPanels() {
+    if (document.hidden) return;
     ensureWorkflowPanels();
     renderWorkflowCommandCenter();
     renderMissionBar();
@@ -665,7 +675,7 @@
     if (workflowRenderTimer) clearTimeout(workflowRenderTimer);
     workflowRenderTimer = setTimeout(() => {
       workflowRenderTimer = null;
-      renderWorkflowPanels();
+      idle(renderWorkflowPanels, 1800);
     }, delay);
   }
 
@@ -749,12 +759,12 @@
 
   window.addEventListener('error', event => {
     logAudit('browser_error', event.message || 'error');
-    renderHealthCenter();
+    if (workflowBooted) scheduleWorkflowPanels(250);
   });
   window.addEventListener('unhandledrejection', event => {
     const reason = event.reason && event.reason.message ? event.reason.message : String(event.reason || 'promise');
     logAudit('promise_error', reason);
-    renderHealthCenter();
+    if (workflowBooted) scheduleWorkflowPanels(250);
   });
 
   window.workflowContinueMission = continueMission;
@@ -777,8 +787,8 @@
   function bootWorkflow() {
     ensureWorkflowPanels();
     installWrappers();
-    renderWorkflowPanels();
-    scheduleWorkflowPanels(600);
+    workflowBooted = true;
+    scheduleWorkflowPanels(2200);
   }
 
   if (document.readyState === 'loading') {
@@ -787,3 +797,4 @@
     bootWorkflow();
   }
 })();
+

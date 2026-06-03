@@ -1,13 +1,13 @@
-﻿// VOLTFLOW ASSISTANT â€” Chat de ayuda con IA (Gemini)
+﻿// VOLTFLOW ASSISTANT — Chat de ayuda con IA (Gemini)
 // Conoce la app completa y puede guiar al usuario paso a paso
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------------------
 
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// VOLTFLOW ASSISTANT â€” Funciones avanzadas del chat
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------------------
+// VOLTFLOW ASSISTANT — Funciones avanzadas del chat
+// ------------------------------------------------------------------------------
 
-// â”€â”€ MEJORA 1: Briefing diario â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── MEJORA 1: Briefing diario ─────────────────────────────────────────────────
 function chatShowDailyBriefing() {
   const today = new Date(); today.setHours(0,0,0,0);
 
@@ -39,64 +39,64 @@ function chatShowDailyBriefing() {
   const dayName = today.toLocaleDateString('es-ES', { weekday:'long' });
   const dateStr = today.toLocaleDateString('es-ES', { day:'numeric', month:'long' });
 
-  let html = `â˜€ï¸ <strong>Buenos dÃ­as â€” ${dayName} ${dateStr}</strong><br><br>`;
+  let html = `☀️ <strong>Buenos días — ${dayName} ${dateStr}</strong><br><br>`;
 
   // Urgentes
   if (overdue.length > 0) {
-    html += `ðŸ”´ <strong>${overdue.length} seguimiento${overdue.length>1?'s':''} vencido${overdue.length>1?'s':''}</strong>:<br>`;
+    html += `🔴 <strong>${overdue.length} seguimiento${overdue.length>1?'s':''} vencido${overdue.length>1?'s':''}</strong>:<br>`;
     overdue.slice(0,3).forEach(l => {
       const days = Math.floor((today - new Date(l.next_contact)) / 86400000);
-      html += `&nbsp;&nbsp;â€¢ ${l.company} <span style="color:var(--danger)">+${days}d</span><br>`;
+      html += `&nbsp;&nbsp;• ${l.company} <span style="color:var(--danger)">+${days}d</span><br>`;
     });
-    if (overdue.length > 3) html += `&nbsp;&nbsp;â€¢ â€¦ y ${overdue.length-3} mÃ¡s<br>`;
+    if (overdue.length > 3) html += `&nbsp;&nbsp;• … y ${overdue.length-3} más<br>`;
     html += '<br>';
   }
 
   // Oportunidades calientes
   if (hot.length > 0) {
-    html += `ðŸ”¥ <strong>${hot.length} lead${hot.length>1?'s':''} caliente${hot.length>1?'s':''} sin contactar</strong>:<br>`;
+    html += `🔥 <strong>${hot.length} lead${hot.length>1?'s':''} caliente${hot.length>1?'s':''} sin contactar</strong>:<br>`;
     hot.forEach(l => {
-      html += `&nbsp;&nbsp;â€¢ <a href="#" onclick="openAiEmailModal('${l.id}');toggleChat();return false"
-        style="color:var(--primary);text-decoration:none">${l.company}</a> â€” ${l.score}pts Â· ${l.segment}<br>`;
+      html += `&nbsp;&nbsp;• <a href="#" onclick="openAiEmailModal('${l.id}');toggleChat();return false"
+        style="color:var(--primary);text-decoration:none">${l.company}</a> — ${l.score}pts · ${l.segment}<br>`;
     });
     html += '<br>';
   }
 
   // Progreso semanal
-  html += `ðŸ“Š <strong>Esta semana:</strong> ${emailsWeek} email${emailsWeek!==1?'s':''} enviado${emailsWeek!==1?'s':''}`;
+  html += `📊 <strong>Esta semana:</strong> ${emailsWeek} email${emailsWeek!==1?'s':''} enviado${emailsWeek!==1?'s':''}`;
   if (objEmails > 0) {
     const pct = Math.min(100, Math.round(emailsWeek / objEmails * 100));
     html += ` de ${objEmails} objetivo (${pct}%)`;
   }
   html += `<br>`;
 
-  if (newToday > 0) html += `âœ¨ <strong>${newToday} lead${newToday>1?'s':''} nuevo${newToday>1?'s':''} hoy</strong><br>`;
+  if (newToday > 0) html += `✨ <strong>${newToday} lead${newToday>1?'s':''} nuevo${newToday>1?'s':''} hoy</strong><br>`;
 
   if (overdue.length === 0 && hot.length === 0) {
-    html += `<br>âœ… <strong>Todo al dÃ­a</strong> â€” sin seguimientos vencidos ni urgencias pendientes.`;
+    html += `<br>✅ <strong>Todo al día</strong> — sin seguimientos vencidos ni urgencias pendientes.`;
   }
 
-  html += `<br><small style="color:var(--text-dim)">Dime quÃ© quieres hacer o pregÃºntame lo que necesites.</small>`;
+  html += `<br><small style="color:var(--text-dim)">Dime qué quieres hacer o pregúntame lo que necesites.</small>`;
 
   chatAddMessage('bot', html);
 }
 
-// â”€â”€ MEJORA 2: Acciones ejecutables desde el chat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── MEJORA 2: Acciones ejecutables desde el chat ──────────────────────────────
 function chatExecute(action, param) {
   switch(action) {
     case 'topLeads': {
       const hot = leads.filter(l => !l.archived && l.status === 'Pendiente')
         .sort((a,b) => b.score - a.score).slice(0, 5);
-      if (!hot.length) { chatAddMessage('bot', 'ðŸ˜Š No tienes leads pendientes sin contactar.'); return; }
-      let html = `ðŸ”¥ <strong>Top ${hot.length} leads por score sin contactar:</strong><br><br>`;
+      if (!hot.length) { chatAddMessage('bot', '😊 No tienes leads pendientes sin contactar.'); return; }
+      let html = `🔥 <strong>Top ${hot.length} leads por score sin contactar:</strong><br><br>`;
       hot.forEach((l,i) => {
         html += `${i+1}. <a href="#" onclick="openAiEmailModal('${l.id}');toggleChat();return false"
           style="color:var(--primary);text-decoration:none;font-weight:600">${l.company}</a>
-          â€” ${l.score}pts Â· ${l.segment}
-          ${l.rating ? `Â· â­${l.rating}` : ''}
+          — ${l.score}pts · ${l.segment}
+          ${l.rating ? `· ⭐${l.rating}` : ''}
           <button onclick="openAiEmailModal('${l.id}');toggleChat()" 
             style="margin-left:.4rem;font-size:.68rem;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);
-            color:#a78bfa;border-radius:5px;padding:.1rem .4rem;cursor:pointer">âœ¨ Email IA</button><br>`;
+            color:#a78bfa;border-radius:5px;padding:.1rem .4rem;cursor:pointer">✨ Email IA</button><br>`;
       });
       chatAddMessage('bot', html);
       break;
@@ -107,13 +107,13 @@ function chatExecute(action, param) {
         if (l.archived || !l.next_contact) return false;
         return new Date(l.next_contact) < today;
       }).sort((a,b) => new Date(a.next_contact) - new Date(b.next_contact));
-      if (!overdue.length) { chatAddMessage('bot', 'âœ… No tienes seguimientos vencidos. Â¡Al dÃ­a!'); return; }
-      let html = `â° <strong>${overdue.length} seguimiento${overdue.length>1?'s':''} vencido${overdue.length>1?'s':''}:</strong><br><br>`;
+      if (!overdue.length) { chatAddMessage('bot', '✅ No tienes seguimientos vencidos. ¡Al día!'); return; }
+      let html = `⏰ <strong>${overdue.length} seguimiento${overdue.length>1?'s':''} vencido${overdue.length>1?'s':''}:</strong><br><br>`;
       overdue.slice(0,6).forEach(l => {
         const days = Math.floor((today - new Date(l.next_contact)) / 86400000);
-        html += `â€¢ <a href="#" onclick="openLeadDetail('${l.id}');toggleChat();return false"
+        html += `• <a href="#" onclick="openLeadDetail('${l.id}');toggleChat();return false"
           style="color:var(--primary);text-decoration:none">${l.company}</a>
-          <span style="color:var(--danger);font-size:.78rem">+${days}d vencido</span> Â· ${l.status}<br>`;
+          <span style="color:var(--danger);font-size:.78rem">+${days}d vencido</span> · ${l.status}<br>`;
       });
       chatAddMessage('bot', html);
       break;
@@ -125,27 +125,27 @@ function chatExecute(action, param) {
       const newLeadsW = leads.filter(l => l.date && new Date(l.date) >= weekStart).length;
       const closedW = leads.filter(l => l.status_date && new Date(l.status_date) >= weekStart && l.status === 'Cerrado').length;
       const contacted = [...new Set(emailHistory.filter(e => e.date && new Date(e.date) >= weekStart).map(e => e.email))].length;
-      const html = `ðŸ“Š <strong>Resumen de esta semana:</strong><br><br>
-        ðŸ“§ Emails enviados: <strong>${emailsW}</strong><br>
-        ðŸ‘¤ Empresas contactadas: <strong>${contacted}</strong><br>
-        âœ¨ Leads nuevos: <strong>${newLeadsW}</strong><br>
-        ðŸ† Cerrados: <strong>${closedW}</strong>`;
+      const html = `📊 <strong>Resumen de esta semana:</strong><br><br>
+        📧 Emails enviados: <strong>${emailsW}</strong><br>
+        👤 Empresas contactadas: <strong>${contacted}</strong><br>
+        ✨ Leads nuevos: <strong>${newLeadsW}</strong><br>
+        🏆 Cerrados: <strong>${closedW}</strong>`;
       chatAddMessage('bot', html);
       break;
     }
     case 'funnelAnalysis': {
-      chatAsk('Analiza mi embudo de ventas: Â¿por quÃ© no estoy cerrando mÃ¡s leads? Dame conclusiones concretas y accionables basadas en mis datos reales.');
+      chatAsk('Analiza mi embudo de ventas: ¿por qué no estoy cerrando más leads? Dame conclusiones concretas y accionables basadas en mis datos reales.');
       break;
     }
   }
 }
 
-// â”€â”€ MEJORA 3: Contexto enriquecido con datos reales de la sesiÃ³n â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── MEJORA 3: Contexto enriquecido con datos reales de la sesión ──────────────
 function buildRichAppContext() {
   const today = new Date(); today.setHours(0,0,0,0);
   const weekStart = new Date(today); weekStart.setDate(today.getDate() - today.getDay() + 1);
 
-  // EstadÃ­sticas bÃ¡sicas
+  // Estadísticas básicas
   const totalLeads = leads.filter(l => !l.archived).length;
   const byStatus = {};
   leads.filter(l => !l.archived).forEach(l => {
@@ -172,16 +172,16 @@ function buildRichAppContext() {
     .sort((a,b) => b.score - a.score).slice(0, 5)
     .map(l => `${l.company} (${l.score}pts, ${l.segment})`).join(', ');
 
-  // Leads en seguimiento largo (>14 dÃ­as en "Visita")
+  // Leads en seguimiento largo (>14 días en "Visita")
   const stale = leads.filter(l => {
     if (l.archived || l.status !== 'Visita') return false;
     const d = l.status_date ? Math.floor((Date.now() - new Date(l.status_date)) / 86400000) : 0;
     return d > 14;
   }).length;
 
-  // Ãšltimos emails enviados
+  // Últimos emails enviados
   const recentEmails = emailHistory.slice(0, 5).map(e =>
-    `${e.company} (${e.segment || '?'}) â€” ${new Date(e.date).toLocaleDateString('es-ES')}`
+    `${e.company} (${e.segment || '?'}) — ${new Date(e.date).toLocaleDateString('es-ES')}`
   ).join('; ');
 
   // Objetivos
@@ -192,25 +192,25 @@ Total leads activos: ${totalLeads}
 Por estado: ${Object.entries(byStatus).map(([k,v]) => k+': '+v).join(', ')}
 Por segmento: ${Object.entries(bySegment).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([k,v]) => k+': '+v).join(', ')}
 Emails enviados (total): ${emailsTotal} | Esta semana: ${emailsWeek}
-Empresas contactadas (Ãºnicas): ${contactedCompanies}
+Empresas contactadas (únicas): ${contactedCompanies}
 Seguimientos vencidos: ${overdue}
-Leads en "Visita" >14 dÃ­as sin avance: ${stale}
+Leads en "Visita" >14 días sin avance: ${stale}
 Top leads por score sin contactar: ${topLeads || 'ninguno'}
-Ãšltimos emails enviados: ${recentEmails || 'ninguno'}
+Últimos emails enviados: ${recentEmails || 'ninguno'}
 ${obj.emails ? 'Objetivo semanal emails: ' + obj.emails : ''}
-APIs activas: Google(${localStorage.getItem('gordi_api_key')?'SÃ­':'No'}) Gemini(${getGeminiKey()?'SÃ­':'No'}) Hunter(${localStorage.getItem('gordi_hunter_key')?'SÃ­':'No'}) Apollo(${localStorage.getItem('gordi_apollo_key')?'SÃ­':'No'})`;
+APIs activas: Google(${localStorage.getItem('gordi_api_key')?'Sí':'No'}) Gemini(${getGeminiKey()?'Sí':'No'}) Hunter(${localStorage.getItem('gordi_hunter_key')?'Sí':'No'}) Apollo(${localStorage.getItem('gordi_apollo_key')?'Sí':'No'})`;
 }
 
-// â”€â”€ MEJORA 4: AnÃ¡lisis de embudo inteligente â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── MEJORA 4: Análisis de embudo inteligente ──────────────────────────────────
 function isAnalysisRequest(text) {
   const lower = text.toLowerCase();
-  return /por quÃ©|anÃ¡lisis|analiza|embudo|conversiÃ³n|cierra|cerrando|tasa|patrÃ³n|sector|funciona|rendimiento|resultados/.test(lower);
+  return /por qué|análisis|analiza|embudo|conversión|cierra|cerrando|tasa|patrón|sector|funciona|rendimiento|resultados/.test(lower);
 }
 
-// â”€â”€ MEJORA 5: Entrenador de ventas â€” pegar respuesta de lead â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── MEJORA 5: Entrenador de ventas — pegar respuesta de lead ─────────────────
 function isSalesCoachRequest(text) {
   const lower = text.toLowerCase();
-  return /respuesta|contestÃ³|respondiÃ³|dijo|escribiÃ³|me mandÃ³|recibÃ­|reply|email de|quÃ© respondo|cÃ³mo respondo|ayÃºdame a responder/.test(lower);
+  return /respuesta|contestó|respondió|dijo|escribió|me mandó|recibí|reply|email de|qué respondo|cómo respondo|ayúdame a responder/.test(lower);
 }
 
 function buildSalesCoachContext(text) {
@@ -228,21 +228,21 @@ function buildSalesCoachContext(text) {
 CONTEXTO DEL LEAD MENCIONADO:
 Empresa: ${mentionedLead.company} | Sector: ${mentionedLead.segment}
 Estado: ${mentionedLead.status} | Score: ${mentionedLead.score}
-SeÃ±ales: ${(mentionedLead.signals || []).slice(0,3).join('; ')}
+Señales: ${(mentionedLead.signals || []).slice(0,3).join('; ')}
 Emails previos: ${history.length}
-${history.length ? 'Historial: ' + history.map(h => new Date(h.date).toLocaleDateString('es-ES') + ' â€” "' + (h.subject||'email') + '"').join('; ') : ''}`;
+${history.length ? 'Historial: ' + history.map(h => new Date(h.date).toLocaleDateString('es-ES') + ' — "' + (h.subject||'email') + '"').join('; ') : ''}`;
   }
   return ctx;
 }
 
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸŽ™ï¸ MEJORA 1: CONTROL POR VOZ en el chat
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------------------
+// 🎙️ MEJORA 1: CONTROL POR VOZ en el chat
+// ------------------------------------------------------------------------------
 function toggleChatVoice() {
   if (_chatVoiceActive) { stopChatVoice(); return; }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { showToast('âš ï¸ Usa Chrome para reconocimiento de voz'); return; }
+  if (!SR) { showToast('⚠️ Usa Chrome para reconocimiento de voz'); return; }
 
   _chatVoiceRecog = new SR();
   _chatVoiceRecog.lang = 'es-ES';
@@ -255,7 +255,7 @@ function toggleChatVoice() {
   const inputEl = document.getElementById('chat-input');
 
   micBtn.classList.add('listening');
-  micBtn.textContent = 'ðŸ”´';
+  micBtn.textContent = '🔴';
   voiceBar.classList.add('active');
   _chatVoiceActive = true;
 
@@ -280,7 +280,7 @@ function toggleChatVoice() {
 
   _chatVoiceRecog.onerror = (e) => {
     stopChatVoice();
-    if (e.error !== 'no-speech') showToast('Error de micrÃ³fono: ' + e.error);
+    if (e.error !== 'no-speech') showToast('Error de micrófono: ' + e.error);
   };
 
   _chatVoiceRecog.start();
@@ -291,34 +291,34 @@ function stopChatVoice() {
   if (_chatVoiceRecog) { try { _chatVoiceRecog.stop(); } catch(e) {} _chatVoiceRecog = null; }
   const micBtn = document.getElementById('chat-mic-btn');
   const voiceBar = document.getElementById('chat-voice-bar');
-  if (micBtn) { micBtn.classList.remove('listening'); micBtn.textContent = 'ðŸŽ™ï¸'; }
+  if (micBtn) { micBtn.classList.remove('listening'); micBtn.textContent = '🎙️'; }
   if (voiceBar) voiceBar.classList.remove('active');
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸ§  MEJORA 2: MEMORIA PERSISTENTE entre sesiones
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------------------
+// 🧠 MEJORA 2: MEMORIA PERSISTENTE entre sesiones
+// ------------------------------------------------------------------------------
 function extractAndSaveMemory(userMsg, botReply) {
   // Extract key preferences and facts from the conversation
   const lower = userMsg.toLowerCase();
 
   // Sector preferences
-  const sectorMatch = lower.match(/sector (hotelero|restauraciÃ³n|retail|educativo|industrial|oficinas|sanidad|logÃ­stica|dental|mÃ©dico|estÃ©tico)/);
+  const sectorMatch = lower.match(/sector (hotelero|restauración|retail|educativo|industrial|oficinas|sanidad|logística|dental|médico|estético)/);
   if (sectorMatch) {
     chatMemory.preferredSector = sectorMatch[1];
   }
 
   // Tone preferences
-  if (lower.includes('mÃ¡s corto') || lower.includes('mÃ¡s breve')) chatMemory.emailTone = 'conciso';
-  if (lower.includes('mÃ¡s formal')) chatMemory.emailTone = 'formal';
-  if (lower.includes('mÃ¡s cercano') || lower.includes('mÃ¡s informal')) chatMemory.emailTone = 'cercano';
+  if (lower.includes('más corto') || lower.includes('más breve')) chatMemory.emailTone = 'conciso';
+  if (lower.includes('más formal')) chatMemory.emailTone = 'formal';
+  if (lower.includes('más cercano') || lower.includes('más informal')) chatMemory.emailTone = 'cercano';
 
   // Track what actions were taken
   if (!chatMemory.actionHistory) chatMemory.actionHistory = [];
   if (lower.includes('email') || lower.includes('correo')) {
     chatMemory.actionHistory.unshift({ type: 'email', date: new Date().toISOString() });
   }
-  if (lower.includes('buscar') || lower.includes('bÃºsqueda')) {
+  if (lower.includes('buscar') || lower.includes('búsqueda')) {
     chatMemory.actionHistory.unshift({ type: 'search', date: new Date().toISOString() });
   }
   chatMemory.actionHistory = chatMemory.actionHistory.slice(0, 20);
@@ -338,22 +338,22 @@ function buildMemoryContext() {
   if (chatMemory.totalMessages) parts.push(`Ha usado el asistente ${chatMemory.totalMessages} veces.`);
   if (chatMemory.lastSeen) {
     const days = Math.floor((Date.now() - new Date(chatMemory.lastSeen)) / 86400000);
-    if (days > 0) parts.push(`Su Ãºltima sesiÃ³n fue hace ${days} dÃ­a${days>1?'s':''}.`);
+    if (days > 0) parts.push(`Su última sesión fue hace ${days} día${days>1?'s':''}.`);
   }
   if (!parts.length) return '';
   return '\n\nMEMORIA DE SESIONES ANTERIORES:\n' + parts.join(' ');
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸ“Š MEJORA 3: RESPUESTAS CON MINI-GRÃFICOS en el chat
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------------------
+// 📊 MEJORA 3: RESPUESTAS CON MINI-GRÁFICOS en el chat
+// ------------------------------------------------------------------------------
 function renderChatChart(type, data) {
   const el = document.createElement('div');
   el.style.cssText = 'margin-top:.6rem;padding:.75rem;background:var(--bg3);border:1px solid var(--glass-border);border-radius:10px;font-size:.75rem';
 
   if (type === 'funnel') {
     const max = Math.max(...data.map(d => d.value), 1);
-    el.innerHTML = `<div style="font-weight:700;color:var(--text);margin-bottom:.6rem;font-size:.78rem">ðŸ“Š Tu embudo actual</div>` +
+    el.innerHTML = `<div style="font-weight:700;color:var(--text);margin-bottom:.6rem;font-size:.78rem">📊 Tu embudo actual</div>` +
       data.map(d => `
         <div style="margin-bottom:.4rem">
           <div style="display:flex;justify-content:space-between;margin-bottom:.2rem">
@@ -368,7 +368,7 @@ function renderChatChart(type, data) {
 
   if (type === 'bars') {
     const max = Math.max(...data.map(d => d.value), 1);
-    el.innerHTML = `<div style="font-weight:700;color:var(--text);margin-bottom:.6rem;font-size:.78rem">${data.title||'ðŸ“Š Datos'}</div>
+    el.innerHTML = `<div style="font-weight:700;color:var(--text);margin-bottom:.6rem;font-size:.78rem">${data.title||'📊 Datos'}</div>
       <div style="display:flex;align-items:flex-end;gap:.4rem;height:60px">` +
       data.items.map(d => `
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.2rem">
@@ -381,7 +381,7 @@ function renderChatChart(type, data) {
 
   if (type === 'donut') {
     const total = data.items.reduce((s,d) => s+d.value, 0) || 1;
-    el.innerHTML = `<div style="font-weight:700;color:var(--text);margin-bottom:.6rem;font-size:.78rem">${data.title||'DistribuciÃ³n'}</div>` +
+    el.innerHTML = `<div style="font-weight:700;color:var(--text);margin-bottom:.6rem;font-size:.78rem">${data.title||'Distribución'}</div>` +
       data.items.map(d => `
         <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem">
           <div style="width:10px;height:10px;border-radius:2px;background:${d.color||'var(--primary)'};flex-shrink:0"></div>
@@ -416,15 +416,15 @@ function appendChatCharts(msgEl, lead_data) {
   if (topSegs.length > 1) {
     const segColors = ['#6366f1','#0A84FF','#f59e0b','#10d97c','#a78bfa'];
     msgEl.appendChild(renderChatChart('donut', {
-      title: 'ðŸ¢ Leads por sector',
+      title: '🏢 Leads por sector',
       items: topSegs.map(([label,value],i) => ({ label, value, color: segColors[i] }))
     }));
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸ¤– MEJORA 4: MODO AUTÃ“NOMO â€” el asistente actÃºa sin que le pidas
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------------------
+// 🤖 MEJORA 4: MODO AUTÓNOMO — el asistente actúa sin que le pidas
+// ------------------------------------------------------------------------------
 let _proactiveShown = false;
 
 function runProactiveCheck() {
@@ -454,28 +454,28 @@ function runProactiveCheck() {
 
   if (hotUncontacted) {
     proactiveMsg = {
-      text: `ðŸ”¥ <strong>${hotUncontacted.company}</strong> lleva ${Math.floor((today - new Date(hotUncontacted.date||0))/86400000)} dÃ­as sin contactar y tiene score <strong>${hotUncontacted.score}pts</strong>. Â¿Genero el email IA ahora?`,
+      text: `🔥 <strong>${hotUncontacted.company}</strong> lleva ${Math.floor((today - new Date(hotUncontacted.date||0))/86400000)} días sin contactar y tiene score <strong>${hotUncontacted.score}pts</strong>. ¿Genero el email IA ahora?`,
       actions: [
-        { label: 'âœ¨ SÃ­, generar email', fn: () => { openAiEmailModal(hotUncontacted.id); toggleChat(); } },
-        { label: 'ðŸ“‹ Ver lead', fn: () => { openLeadDetail(hotUncontacted.id); toggleChat(); } },
-        { label: 'âœ• Ahora no', fn: null }
+        { label: '✨ Sí, generar email', fn: () => { openAiEmailModal(hotUncontacted.id); toggleChat(); } },
+        { label: '📋 Ver lead', fn: () => { openLeadDetail(hotUncontacted.id); toggleChat(); } },
+        { label: '✕ Ahora no', fn: null }
       ]
     };
   } else if (stuckLead) {
     const days = Math.floor((Date.now() - new Date(stuckLead.status_date)) / 86400000);
     proactiveMsg = {
-      text: `â° <strong>${stuckLead.company}</strong> lleva <strong>${days} dÃ­as</strong> en estado "Visita" sin avance. Â¿Quieres que genere un seguimiento personalizado?`,
+      text: `⏰ <strong>${stuckLead.company}</strong> lleva <strong>${days} días</strong> en estado "Visita" sin avance. ¿Quieres que genere un seguimiento personalizado?`,
       actions: [
-        { label: 'ðŸ’¬ Generar seguimiento', fn: () => { openAiEmailModal(stuckLead.id); toggleChat(); } },
-        { label: 'âœ• Ignorar', fn: null }
+        { label: '💬 Generar seguimiento', fn: () => { openAiEmailModal(stuckLead.id); toggleChat(); } },
+        { label: '✕ Ignorar', fn: null }
       ]
     };
   } else if (overdueCount >= 3) {
     proactiveMsg = {
-      text: `ðŸ“… Tienes <strong>${overdueCount} seguimientos vencidos</strong>. Â¿Los revisamos ahora?`,
+      text: `📅 Tienes <strong>${overdueCount} seguimientos vencidos</strong>. ¿Los revisamos ahora?`,
       actions: [
-        { label: 'â° Ver vencidos', fn: () => { chatExecute('overdueLeads'); } },
-        { label: 'âœ• Luego', fn: null }
+        { label: '⏰ Ver vencidos', fn: () => { chatExecute('overdueLeads'); } },
+        { label: '✕ Luego', fn: null }
       ]
     };
   }
@@ -492,7 +492,7 @@ function runProactiveCheck() {
     // Store for when chat opens
     window._pendingProactiveMsg = proactiveMsg;
     // Send email alert for urgent leads
-    if (hotUncontacted) sendProactiveAlert(hotUncontacted, 'Lead caliente sin contactar ' + Math.floor((new Date()-new Date(hotUncontacted.date||0))/86400000) + ' dÃ­as').catch(()=>{});
+    if (hotUncontacted) sendProactiveAlert(hotUncontacted, 'Lead caliente sin contactar ' + Math.floor((new Date()-new Date(hotUncontacted.date||0))/86400000) + ' días').catch(()=>{});
   }
 }
 
@@ -527,19 +527,19 @@ function showPendingProactive() {
   }, 600);
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸŽ¯ MEJORA 5: PLAN SEMANAL â€” lunes por la maÃ±ana
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------------------
+// 🎯 MEJORA 5: PLAN SEMANAL — lunes por la mañana
+// ------------------------------------------------------------------------------
 async function generateWeeklyPlan() {
   const claudeKey = getGeminiKey();
   if (!claudeKey) {
-    chatAddMessage('bot', 'âš ï¸ Necesitas la API key de Gemini para generar el plan semanal.');
+    chatAddMessage('bot', '⚠️ Necesitas la API key de Gemini para generar el plan semanal.');
     chatToggleCommands(true);
     renderChatDiagnostics();
     return;
   }
 
-  chatAddMessage('bot', 'â³ Analizando tus datos y generando el plan semanal...');
+  chatAddMessage('bot', '⏳ Analizando tus datos y generando el plan semanal...');
   chatShowTyping();
 
   try {
@@ -549,20 +549,20 @@ async function generateWeeklyPlan() {
 
     const prompt = `${ctx}
 
-Eres un coach de ventas senior. Genera un plan de acciÃ³n semanal concreto y motivador para este comercial de Voltium Madrid.
+Eres un coach de ventas senior. Genera un plan de acción semanal concreto y motivador para este comercial de Voltium Madrid.
 
 Hoy es ${dayName}. Analiza los datos reales de su cuenta y genera:
-1. Un diagnÃ³stico rÃ¡pido de la semana pasada (2 frases, con nÃºmeros reales)
+1. Un diagnóstico rápido de la semana pasada (2 frases, con números reales)
 2. Exactamente 5 tareas prioritarias para esta semana, ordenadas por impacto, cada una con:
-   - Empresa/acciÃ³n concreta (usa nombres reales de los leads si los hay)
-   - Por quÃ© esta semana (urgencia o oportunidad)
+   - Empresa/acción concreta (usa nombres reales de los leads si los hay)
+   - Por qué esta semana (urgencia o oportunidad)
    - Resultado esperado
-3. Un objetivo numÃ©rico realista para la semana (emails enviados)
-4. Una frase motivadora personalizada (sin clichÃ©s genÃ©ricos)
+3. Un objetivo numérico realista para la semana (emails enviados)
+4. Una frase motivadora personalizada (sin clichés genéricos)
 
-Responde SOLO en JSON vÃ¡lido:
+Responde SOLO en JSON válido:
 {
-  "diagnosis": "texto del diagnÃ³stico",
+  "diagnosis": "texto del diagnóstico",
   "tasks": [
     {"priority": 1, "action": "...", "why": "...", "expected": "...", "leadId": null},
     ...
@@ -591,14 +591,14 @@ Responde SOLO en JSON vÃ¡lido:
 
     // Build the weekly plan message
     const msgEl = chatAddMessage('bot',
-      `ðŸ—“ï¸ <strong>Plan semanal â€” ${today.toLocaleDateString('es-ES', {day:'numeric',month:'long'})}</strong><br><br>` +
+      `🗓️ <strong>Plan semanal — ${today.toLocaleDateString('es-ES', {day:'numeric',month:'long'})}</strong><br><br>` +
       `<em style="color:var(--text-dim);font-size:.77rem">${plan.diagnosis}</em>`
     );
 
     // Tasks card
     const card = document.createElement('div');
     card.className = 'chat-week-card';
-    card.innerHTML = '<div style="font-weight:700;font-size:.8rem;margin-bottom:.5rem;color:var(--text)">ðŸŽ¯ Tus 5 tareas esta semana:</div>';
+    card.innerHTML = '<div style="font-weight:700;font-size:.8rem;margin-bottom:.5rem;color:var(--text)">🎯 Tus 5 tareas esta semana:</div>';
 
     (plan.tasks || []).forEach((t, i) => {
       const row = document.createElement('div');
@@ -608,7 +608,7 @@ Responde SOLO en JSON vÃ¡lido:
         <div style="flex:1">
           <div style="font-weight:600;font-size:.8rem;color:var(--text)">${t.action}</div>
           <div style="font-size:.72rem;color:var(--text-dim);margin-top:.1rem">${t.why}</div>
-          <div style="font-size:.7rem;color:var(--success);margin-top:.1rem">â†’ ${t.expected}</div>
+          <div style="font-size:.7rem;color:var(--success);margin-top:.1rem">-> ${t.expected}</div>
         </div>`;
 
       // If there's a lead associated, find and add email button
@@ -616,7 +616,7 @@ Responde SOLO en JSON vÃ¡lido:
       if (matchedLead) {
         const btn = document.createElement('button');
         btn.style.cssText = 'background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a78bfa;border-radius:5px;padding:.15rem .4rem;font-size:.68rem;cursor:pointer;flex-shrink:0';
-        btn.textContent = 'âœ¨';
+        btn.textContent = '✨';
         btn.title = 'Email IA para ' + matchedLead.company;
         btn.onclick = () => { openAiEmailModal(matchedLead.id); toggleChat(); };
         row.appendChild(btn);
@@ -627,7 +627,7 @@ Responde SOLO en JSON vÃ¡lido:
     if (plan.weekGoal) {
       const goal = document.createElement('div');
       goal.style.cssText = 'margin-top:.6rem;padding:.5rem .65rem;background:rgba(16,217,124,.07);border-radius:6px;font-size:.75rem';
-      goal.innerHTML = `ðŸŽ¯ <strong>Objetivo:</strong> ${plan.weekGoal.emails} emails esta semana â€” ${plan.weekGoal.reason}`;
+      goal.innerHTML = `🎯 <strong>Objetivo:</strong> ${plan.weekGoal.emails} emails esta semana — ${plan.weekGoal.reason}`;
       card.appendChild(goal);
     }
 
@@ -636,7 +636,7 @@ Responde SOLO en JSON vÃ¡lido:
     if (plan.motivation) {
       const mot = document.createElement('div');
       mot.style.cssText = 'margin-top:.5rem;font-size:.77rem;color:var(--primary);font-style:italic;padding:.4rem .6rem;border-left:3px solid var(--primary)';
-      mot.textContent = 'ðŸ’ª ' + plan.motivation;
+      mot.textContent = '💪 ' + plan.motivation;
       msgEl.appendChild(mot);
     }
 
@@ -644,8 +644,8 @@ Responde SOLO en JSON vÃ¡lido:
     const actRow = document.createElement('div');
     actRow.style.cssText = 'display:flex;gap:.4rem;margin-top:.65rem;flex-wrap:wrap';
     [
-      { label:'ðŸ”¥ Ver leads hot', fn: () => chatExecute('topLeads') },
-      { label:'ðŸ“Š Stats semana', fn: () => chatExecute('weekStats') },
+      { label:'🔥 Ver leads hot', fn: () => chatExecute('topLeads') },
+      { label:'📊 Stats semana', fn: () => chatExecute('weekStats') },
     ].forEach(a => {
       const btn = document.createElement('button');
       btn.className = 'btn-outline';
@@ -664,7 +664,7 @@ Responde SOLO en JSON vÃ¡lido:
   } catch(e) {
     chatRemoveTyping();
     console.error('Weekly plan error:', e);
-    chatAddMessage('bot', 'âŒ Error generando el plan. Verifica tu API key de Gemini.');
+    chatAddMessage('bot', '❌ Error generando el plan. Verifica tu API key de Gemini.');
   }
 }
 
@@ -680,36 +680,36 @@ function shouldShowWeeklyPlan() {
 }
 
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸ” Smart Filter System â€” panel toggle + chips
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------------------
+// 🔍 Smart Filter System — panel toggle + chips
+// ------------------------------------------------------------------------------
 
 // Config: which filters each section has
 const SF_CONFIG = {
   leads: [
-    { id:'filter-segment',    label: v => v ? 'ðŸ¢ '+v : null },
-    { id:'filter-status',     label: v => v ? 'ðŸ“Œ '+v : null },
-    { id:'filter-source',     label: v => v === 'search' ? 'ðŸ”µ BÃºsqueda' : v === 'import' ? 'ðŸŸ¡ Importado' : v === 'manual' ? 'ðŸŸ¢ Manual' : null },
-    { id:'filter-score-min',  label: v => v ? 'â­ Score '+v+'+' : null },
-    { id:'filter-date-range', label: v => ({ today:'ðŸ“… Hoy', week:'ðŸ“… Esta semana', month:'ðŸ“… Este mes', '3months':'ðŸ“… 3 meses' })[v] || null },
-    { id:'filter-next-contact', label: v => ({ overdue:'âš ï¸ Vencidos', today:'ðŸ“… Seguimiento hoy', week:'ðŸ“… Seg. esta semana', none:'ðŸš« Sin fecha' })[v] || null },
+    { id:'filter-segment',    label: v => v ? '🏢 '+v : null },
+    { id:'filter-status',     label: v => v ? '📌 '+v : null },
+    { id:'filter-source',     label: v => v === 'search' ? '🔵 Búsqueda' : v === 'import' ? '🟡 Importado' : v === 'manual' ? '🟢 Manual' : null },
+    { id:'filter-score-min',  label: v => v ? '⭐ Score '+v+'+' : null },
+    { id:'filter-date-range', label: v => ({ today:'📅 Hoy', week:'📅 Esta semana', month:'📅 Este mes', '3months':'📅 3 meses' })[v] || null },
+    { id:'filter-next-contact', label: v => ({ overdue:'⚠️ Vencidos', today:'📅 Seguimiento hoy', week:'📅 Seg. esta semana', none:'🚫 Sin fecha' })[v] || null },
   ],
   kanban: [
-    { id:'kanban-filter-seg',   label: v => v ? 'ðŸ¢ '+v : null },
-    { id:'kanban-filter-score', label: v => v ? 'â­ Score '+v+'+' : null },
-    { id:'kanban-filter-overdue', label: v => v ? 'âš ï¸ Solo vencidos' : null, type:'checkbox' },
+    { id:'kanban-filter-seg',   label: v => v ? '🏢 '+v : null },
+    { id:'kanban-filter-score', label: v => v ? '⭐ Score '+v+'+' : null },
+    { id:'kanban-filter-overdue', label: v => v ? '⚠️ Solo vencidos' : null, type:'checkbox' },
   ],
   tracking: [
-    { id:'tracking-filter-seg',     label: v => v ? 'ðŸ¢ '+v : null },
-    { id:'tracking-filter-channel', label: v => ({ email:'ðŸ“§ Email', whatsapp:'ðŸ’¬ WhatsApp' })[v] || null },
-    { id:'tracking-filter-date',    label: v => ({ today:'ðŸ“… Hoy', week:'ðŸ“… Esta semana', month:'ðŸ“… Este mes', '3months':'ðŸ“… 3 meses' })[v] || null },
+    { id:'tracking-filter-seg',     label: v => v ? '🏢 '+v : null },
+    { id:'tracking-filter-channel', label: v => ({ email:'📧 Email', whatsapp:'💬 WhatsApp' })[v] || null },
+    { id:'tracking-filter-date',    label: v => ({ today:'📅 Hoy', week:'📅 Esta semana', month:'📅 Este mes', '3months':'📅 3 meses' })[v] || null },
   ],
   campaigns: [
-    { id:'campaigns-filter-seg',    label: v => v ? 'ðŸ¢ '+v : null },
-    { id:'campaigns-filter-status', label: v => ({ active:'âœ… Con envÃ­os', empty:'âŒ Sin envÃ­os', complete:'ðŸ’¯ Completadas' })[v] || null },
+    { id:'campaigns-filter-seg',    label: v => v ? '🏢 '+v : null },
+    { id:'campaigns-filter-status', label: v => ({ active:'✅ Con envíos', empty:'❌ Sin envíos', complete:'💯 Completadas' })[v] || null },
   ],
   search: [
-    { id:'search-results-has', label: v => ({ email:'âœ‰ï¸ Con email', phone:'ðŸ“ž Con tel.', web:'ðŸŒ Con web', social:'ðŸ“± Con redes', decision:'ðŸ‘¤ Con decisor', whatsapp:'ðŸ’¬ Con WhatsApp' })[v] || null },
+    { id:'search-results-has', label: v => ({ email:'✉️ Con email', phone:'📞 Con tel.', web:'🌐 Con web', social:'📱 Con redes', decision:'👤 Con decisor', whatsapp:'💬 Con WhatsApp' })[v] || null },
   ],
 };
 
@@ -753,13 +753,13 @@ function sfUpdateChips(section) {
   };
   const searchEl = document.getElementById(searchInputs[section]);
   if (searchEl && searchEl.value.trim()) {
-    chips.push({ label: 'ðŸ” "' + searchEl.value.trim().slice(0,20) + '"', id: searchInputs[section], type: 'text' });
+    chips.push({ label: '🔍 "' + searchEl.value.trim().slice(0,20) + '"', id: searchInputs[section], type: 'text' });
   }
 
   chipsEl.innerHTML = chips.map(c => `
     <span class="sf-chip">
       ${c.label}
-      <button onclick="sfRemoveFilter('${section}','${c.id}','${c.type||'select'}')" title="Quitar filtro">Ã—</button>
+      <button onclick="sfRemoveFilter('${section}','${c.id}','${c.type||'select'}')" title="Quitar filtro">×</button>
     </span>`).join('');
 
   const count = chips.length;
@@ -777,25 +777,25 @@ function sfRemoveFilter(section, filterId, type) {
 }
 
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸ¤– AGENTE VOLTFLOW â€” 5 Superpoderes
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------------------
+// 🤖 AGENTE VOLTFLOW — 5 Superpoderes
+// ------------------------------------------------------------------------------
 
 let agentModeActive = false;
 let agentQueue = []; // pending tasks the agent prepared
 
-// â”€â”€â”€ TOGGLE AGENT MODE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TOGGLE AGENT MODE ────────────────────────────────────────────────────────
 function toggleAgentMode() {
   agentModeActive = !agentModeActive;
   const btn = document.getElementById('agent-mode-btn');
   const statusLabel = document.getElementById('chat-status-label');
   if (agentModeActive) {
     if (btn) { btn.style.background = 'rgba(99,102,241,.2)'; btn.style.color = 'var(--primary)'; btn.style.borderColor = 'rgba(99,102,241,.5)'; }
-    if (statusLabel) statusLabel.innerHTML = '<span style="color:var(--primary)">âš¡ Modo Agente activo</span>';
+    if (statusLabel) statusLabel.innerHTML = '<span style="color:var(--primary)">⚡ Modo Agente activo</span>';
     runAgentScan();
   } else {
     if (btn) { btn.style.background = 'none'; btn.style.color = 'var(--text-muted)'; btn.style.borderColor = 'rgba(99,102,241,.3)'; }
-    if (statusLabel) statusLabel.innerHTML = 'â— Online â€” Listo para ayudarte';
+    if (statusLabel) statusLabel.innerHTML = '● Online — Listo para ayudarte';
     const msgEl = document.getElementById('chat-messages');
     if (msgEl) {
       const panel = msgEl.querySelector('.agent-panel');
@@ -804,12 +804,12 @@ function toggleAgentMode() {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸ”„ MEJORA 1: BUCLE DE SEGUIMIENTO AUTÃ“NOMO
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------------------
+// 🔄 MEJORA 1: BUCLE DE SEGUIMIENTO AUTÓNOMO
+// ------------------------------------------------------------------------------
 async function runAgentScan() {
   const claudeKey = getGeminiKey();
-  chatAddMessage('bot', 'âš¡ <strong>Modo Agente activado</strong> â€” Escaneando leads y preparando acciones...');
+  chatAddMessage('bot', '⚡ <strong>Modo Agente activado</strong> — Escaneando leads y preparando acciones...');
   chatShowTyping();
 
   const today = new Date(); today.setHours(0,0,0,0);
@@ -821,7 +821,7 @@ async function runAgentScan() {
     const lastEmail = emailHistory.filter(e => e.leadId == l.id || e.email === l.email)
       .sort((a,b) => new Date(b.date) - new Date(a.date))[0];
     if (!lastEmail) {
-      // Never contacted â€” if added >3 days ago and score > 40
+      // Never contacted — if added >3 days ago and score > 40
       const daysOld = Math.floor((Date.now() - new Date(l.date||0)) / 86400000);
       return daysOld >= 3 && (l.score||0) >= 40;
     }
@@ -833,13 +833,13 @@ async function runAgentScan() {
   // Also check objections queue
   const objectionLeads = leads.filter(l => {
     if (l.archived) return false;
-    return l.notes && /no interesa|no es el momento|ya tenemos|muy caro|otro proveedor|mÃ¡s adelante/i.test(l.notes);
+    return l.notes && /no interesa|no es el momento|ya tenemos|muy caro|otro proveedor|más adelante/i.test(l.notes);
   }).slice(0, 3);
 
   chatRemoveTyping();
 
   if (!followupLeads.length && !objectionLeads.length) {
-    chatAddMessage('bot', 'âœ… <strong>Todo al dÃ­a.</strong> No hay leads urgentes pendientes de seguimiento en este momento. Vuelve maÃ±ana para el siguiente ciclo.');
+    chatAddMessage('bot', '✅ <strong>Todo al día.</strong> No hay leads urgentes pendientes de seguimiento en este momento. Vuelve mañana para el siguiente ciclo.');
     return;
   }
 
@@ -848,12 +848,12 @@ async function runAgentScan() {
   panel.className = 'agent-panel';
 
   let html = `<div class="agent-panel-header">
-    <h3>ðŸ¤– Cola del Agente â€” ${followupLeads.length + objectionLeads.length} acciones preparadas</h3>
-    <button onclick="agentExecuteAll()" class="btn-primary" style="font-size:.72rem;padding:.25rem .75rem">âš¡ Ejecutar todo</button>
+    <h3>🤖 Cola del Agente — ${followupLeads.length + objectionLeads.length} acciones preparadas</h3>
+    <button onclick="agentExecuteAll()" class="btn-primary" style="font-size:.72rem;padding:.25rem .75rem">⚡ Ejecutar todo</button>
   </div>`;
 
   if (followupLeads.length) {
-    html += `<div style="font-size:.72rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">ðŸ“¬ Seguimientos pendientes</div>`;
+    html += `<div style="font-size:.72rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">📬 Seguimientos pendientes</div>`;
     followupLeads.forEach(l => {
       const lastEmail = emailHistory.filter(e => e.leadId == l.id || e.email === l.email)
         .sort((a,b) => new Date(b.date) - new Date(a.date))[0];
@@ -863,19 +863,19 @@ async function runAgentScan() {
       const label = lastEmail ? `${daysSince}d sin respuesta` : `${daysSince}d sin contactar`;
       html += `<div class="agent-task-row" id="agent-row-${l.id}">
         <div class="agent-task-info">
-          <div class="agent-task-name">${l.company} <span style="font-size:.68rem;color:var(--text-dim);font-weight:400">Â· ${l.segment||''}</span></div>
-          <div class="agent-task-sub">Score ${l.score||0}pts Â· ${label} Â· ${l.status}</div>
+          <div class="agent-task-name">${l.company} <span style="font-size:.68rem;color:var(--text-dim);font-weight:400">· ${l.segment||''}</span></div>
+          <div class="agent-task-sub">Score ${l.score||0}pts · ${label} · ${l.status}</div>
         </div>
         <div class="agent-task-actions">
-          <button onclick="agentPrepareEmail(${l.id})" class="btn-primary" style="font-size:.7rem;padding:.2rem .55rem" title="Preparar email de seguimiento">âœ¨ Preparar</button>
-          <button onclick="agentSkipLead(${l.id})" style="background:none;border:1px solid var(--glass-border);border-radius:6px;padding:.2rem .45rem;font-size:.7rem;color:var(--text-dim);cursor:pointer" title="Saltar este lead">âœ•</button>
+          <button onclick="agentPrepareEmail(${l.id})" class="btn-primary" style="font-size:.7rem;padding:.2rem .55rem" title="Preparar email de seguimiento">✨ Preparar</button>
+          <button onclick="agentSkipLead(${l.id})" style="background:none;border:1px solid var(--glass-border);border-radius:6px;padding:.2rem .45rem;font-size:.7rem;color:var(--text-dim);cursor:pointer" title="Saltar este lead">✕</button>
         </div>
       </div>`;
     });
   }
 
   if (objectionLeads.length) {
-    html += `<div style="font-size:.72rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .4rem">ðŸ’¬ Leads con objeciÃ³n detectada</div>`;
+    html += `<div style="font-size:.72rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .4rem">💬 Leads con objeción detectada</div>`;
     objectionLeads.forEach(l => {
       html += `<div class="agent-task-row" id="agent-row-obj-${l.id}">
         <div class="agent-task-info">
@@ -883,7 +883,7 @@ async function runAgentScan() {
           <div class="agent-task-sub">Nota: "${(l.notes||'').slice(0,60)}..."</div>
         </div>
         <div class="agent-task-actions">
-          <button onclick="agentHandleObjection(${l.id})" class="btn-outline" style="font-size:.7rem;padding:.2rem .55rem">ðŸ¥Š Rebatir</button>
+          <button onclick="agentHandleObjection(${l.id})" class="btn-outline" style="font-size:.7rem;padding:.2rem .55rem">🥊 Rebatir</button>
         </div>
       </div>`;
     });
@@ -912,9 +912,9 @@ function updateAgentBadge() {
 async function agentPrepareEmail(leadId) {
   const row = document.getElementById(`agent-row-${leadId}`);
   if (row) {
-    row.querySelector('.agent-task-actions').innerHTML = '<span style="font-size:.72rem;color:var(--success)">âœ… Preparando...</span>';
+    row.querySelector('.agent-task-actions').innerHTML = '<span style="font-size:.72rem;color:var(--success)">✅ Preparando...</span>';
   }
-  // Open the AI email modal directly â€” agent does the work
+  // Open the AI email modal directly — agent does the work
   openAiEmailModal(leadId);
   agentQueue = agentQueue.filter(id => id !== leadId);
   updateAgentBadge();
@@ -929,19 +929,19 @@ function agentSkipLead(leadId) {
 
 async function agentExecuteAll() {
   if (!agentQueue.length) return;
-  chatAddMessage('bot', `ðŸ¤– Ejecutando cola completa â€” preparando email para <strong>${agentQueue[0]}</strong>...`);
+  chatAddMessage('bot', `🤖 Ejecutando cola completa — preparando email para <strong>${agentQueue[0]}</strong>...`);
   // Execute first in queue, then user can continue manually
   agentPrepareEmail(agentQueue[0]);
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸ§¬ MEJORA 2: PERFIL PSICOLÃ“GICO DE CADA LEAD
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------------------
+// 🧬 MEJORA 2: PERFIL PSICOLÓGICO DE CADA LEAD
+// ------------------------------------------------------------------------------
 async function generateLeadProfile(leadId) {
   const lead = leads.find(l => l.id == leadId);
   if (!lead) return;
   const claudeKey = getGeminiKey();
-  if (!claudeKey) { showToast('âš ï¸ Necesitas la API key de Gemini'); return; }
+  if (!claudeKey) { showToast('⚠️ Necesitas la API key de Gemini'); return; }
 
   // Check cache (regenerate if >7 days)
   if (lead.psychProfile && lead.psychProfile._generated) {
@@ -950,37 +950,37 @@ async function generateLeadProfile(leadId) {
   }
 
   const profileEl = document.getElementById(`psych-profile-${leadId}`);
-  if (profileEl) profileEl.innerHTML = '<div style="font-size:.75rem;color:var(--text-dim)">ðŸ§¬ Analizando perfil...</div>';
+  if (profileEl) profileEl.innerHTML = '<div style="font-size:.75rem;color:var(--text-dim)">🧬 Analizando perfil...</div>';
 
   const prevEmails = emailHistory.filter(e => e.leadId == leadId || e.email === lead.email);
   const emailSummary = prevEmails.slice(0,5).map(e =>
     `- ${new Date(e.date).toLocaleDateString('es-ES')}: "${e.subject||'Sin asunto'}" (${e.status})`
-  ).join('\n') || 'Sin emails enviados aÃºn';
+  ).join('\n') || 'Sin emails enviados aún';
 
-  const prompt = `Analiza este lead B2B y genera un perfil psicolÃ³gico/comercial breve.
+  const prompt = `Analiza este lead B2B y genera un perfil psicológico/comercial breve.
 
 DATOS DEL LEAD:
 - Empresa: ${lead.company}
 - Sector: ${lead.segment}
 - Estado pipeline: ${lead.status}
 - Score: ${lead.score}pts
-- DÃ­as en estado actual: ${lead.status_date ? Math.floor((Date.now()-new Date(lead.status_date))/86400000) : '?'}
+- Días en estado actual: ${lead.status_date ? Math.floor((Date.now()-new Date(lead.status_date))/86400000) : '?'}
 - Notas: ${lead.notes || 'Sin notas'}
-- SeÃ±al detectada: ${lead.signal || 'Ninguna'}
-- Presupuesto estimado: ${lead.budget ? lead.budget+'â‚¬' : 'Desconocido'}
+- Señal detectada: ${lead.signal || 'Ninguna'}
+- Presupuesto estimado: ${lead.budget ? lead.budget+'€' : 'Desconocido'}
 
 HISTORIAL DE CONTACTO:
 ${emailSummary}
 
-Responde SOLO en JSON vÃ¡lido:
+Responde SOLO en JSON válido:
 {
-  "bestTime": "cuÃ¡ndo contactar (dÃ­a/hora si hay patrones, si no 'Sin datos suficientes')",
-  "communicationStyle": "formal/informal/tÃ©cnico/directo â€” 1 palabra con explicaciÃ³n breve",
-  "mainObjection": "objeciÃ³n mÃ¡s probable basada en datos",
-  "nextBestAction": "acciÃ³n concreta recomendada con argumento",
-  "tags": ["3-4 tags descriptivos como 'responde rÃ¡pido', 'sensible al precio', 'decisor tÃ©cnico'"],
-  "urgency": "alta/media/baja con razÃ³n",
-  "briefing": "2 frases: quÃ© sabe de esta empresa y quÃ© argumento usar en el prÃ³ximo contacto"
+  "bestTime": "cuándo contactar (día/hora si hay patrones, si no 'Sin datos suficientes')",
+  "communicationStyle": "formal/informal/técnico/directo — 1 palabra con explicación breve",
+  "mainObjection": "objeción más probable basada en datos",
+  "nextBestAction": "acción concreta recomendada con argumento",
+  "tags": ["3-4 tags descriptivos como 'responde rápido', 'sensible al precio', 'decisor técnico'"],
+  "urgency": "alta/media/baja con razón",
+  "briefing": "2 frases: qué sabe de esta empresa y qué argumento usar en el próximo contacto"
 }`;
 
   try {
@@ -1009,18 +1009,18 @@ function renderLeadPsychProfile(lead) {
   const p = lead.psychProfile;
   const urgColors = { alta:'var(--danger)', media:'var(--warning)', baja:'var(--success)' };
   profileEl.innerHTML = `
-    <h4>ðŸ§¬ Perfil IA</h4>
+    <h4>🧬 Perfil IA</h4>
     <div style="margin-bottom:.4rem;font-size:.75rem;line-height:1.6;color:var(--text)">${p.briefing||''}</div>
     <div style="margin-bottom:.4rem">
-      ${(p.tags||[]).map(t => `<span class="psych-tag">ðŸ· ${t}</span>`).join('')}
-      <span class="psych-tag" style="background:rgba(239,68,68,.1);color:${urgColors[p.urgency]||'var(--text)'}">âš¡ Urgencia ${p.urgency||'?'}</span>
+      ${(p.tags||[]).map(t => `<span class="psych-tag">🏷 ${t}</span>`).join('')}
+      <span class="psych-tag" style="background:rgba(239,68,68,.1);color:${urgColors[p.urgency]||'var(--text)'}">⚡ Urgencia ${p.urgency||'?'}</span>
     </div>
-    <div style="font-size:.73rem;color:var(--text-dim)">ðŸ• <strong>Mejor momento:</strong> ${p.bestTime||'Sin datos'}</div>
-    <div style="font-size:.73rem;color:var(--text-dim)">ðŸ›¡ <strong>ObjeciÃ³n probable:</strong> ${p.mainObjection||'Desconocida'}</div>
-    <div style="font-size:.73rem;color:var(--primary);margin-top:.35rem">â†’ <strong>${p.nextBestAction||''}</strong></div>
+    <div style="font-size:.73rem;color:var(--text-dim)">🕐 <strong>Mejor momento:</strong> ${p.bestTime||'Sin datos'}</div>
+    <div style="font-size:.73rem;color:var(--text-dim)">🛡 <strong>Objeción probable:</strong> ${p.mainObjection||'Desconocida'}</div>
+    <div style="font-size:.73rem;color:var(--primary);margin-top:.35rem">-> <strong>${p.nextBestAction||''}</strong></div>
     <div style="margin-top:.5rem;text-align:right;font-size:.65rem;color:var(--text-dim)">
       Actualizado ${new Date(p._generated).toLocaleDateString('es-ES')}
-      <button onclick="lead_forceProfileRegen(${lead.id})" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:.65rem;margin-left:.3rem">â†º</button>
+      <button onclick="lead_forceProfileRegen(${lead.id})" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:.65rem;margin-left:.3rem">↺</button>
     </div>`;
 }
 
@@ -1029,41 +1029,41 @@ function lead_forceProfileRegen(leadId) {
   if (lead) { delete lead.psychProfile; generateLeadProfile(leadId); }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸ“¡ MEJORA 3: VIGILANCIA DE OPORTUNIDADES â€” noticias de leads
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------------------
+// 📡 MEJORA 3: VIGILANCIA DE OPORTUNIDADES — noticias de leads
+// ------------------------------------------------------------------------------
 async function scanLeadOpportunities() {
   const claudeKey = getGeminiKey();
-  if (!claudeKey) { chatAddMessage('bot','âš ï¸ Necesitas la API key de Gemini para escanear oportunidades.'); return; }
+  if (!claudeKey) { chatAddMessage('bot','⚠️ Necesitas la API key de Gemini para escanear oportunidades.'); return; }
 
   const hotLeads = leads.filter(l => !l.archived && (l.score||0) >= 60).slice(0, 6);
   if (!hotLeads.length) { chatAddMessage('bot','No hay leads con score suficiente para vigilar.'); return; }
 
-  chatAddMessage('bot', `ðŸ“¡ Buscando oportunidades en noticias para tus ${hotLeads.length} leads principales...`);
+  chatAddMessage('bot', `📡 Buscando oportunidades en noticias para tus ${hotLeads.length} leads principales...`);
   chatShowTyping();
 
   const companyList = hotLeads.map(l => `${l.company} (${l.segment})`).join(', ');
 
   const prompt = `Eres un agente de inteligencia comercial. 
-Para las siguientes empresas, genera seÃ±ales de oportunidad de venta simuladas y realistas basadas en el tipo de empresa y sector.
+Para las siguientes empresas, genera señales de oportunidad de venta simuladas y realistas basadas en el tipo de empresa y sector.
 
 EMPRESAS: ${companyList}
 
-Cada seÃ±al debe ser un evento real que podrÃ­a pasar: nueva sede, renovaciÃ³n, obra, expansiÃ³n, cambio de directivo, licitaciÃ³n, etc.
+Cada señal debe ser un evento real que podría pasar: nueva sede, renovación, obra, expansión, cambio de directivo, licitación, etc.
 
 Responde SOLO JSON:
 {
   "opportunities": [
     {
       "company": "nombre exacto de la empresa",
-      "signal": "evento especÃ­fico detectado",
+      "signal": "evento específico detectado",
       "source": "tipo de fuente (LinkedIn, BOE, prensa local, etc.)",
-      "emailHook": "primera frase del email aprovechando esta seÃ±al",
+      "emailHook": "primera frase del email aprovechando esta señal",
       "urgency": "alta/media"
     }
   ]
 }
-Genera 3-4 oportunidades para las empresas con mÃ¡s potencial.`;
+Genera 3-4 oportunidades para las empresas con más potencial.`;
 
   try {
     const res = await fetch(
@@ -1080,16 +1080,16 @@ Genera 3-4 oportunidades para las empresas con mÃ¡s potencial.`;
 
     const panel = document.createElement('div');
     panel.className = 'agent-panel';
-    panel.innerHTML = `<div class="agent-panel-header"><h3>ðŸ“¡ Oportunidades detectadas</h3></div>` +
+    panel.innerHTML = `<div class="agent-panel-header"><h3>📡 Oportunidades detectadas</h3></div>` +
       (result.opportunities||[]).map(op => {
         const lead = leads.find(l => l.company.toLowerCase().includes(op.company.toLowerCase().slice(0,8)));
         return `<div class="agent-task-row">
           <div class="agent-task-info">
             <div class="agent-task-name">${op.company} <span style="font-size:.65rem;background:${op.urgency==='alta'?'rgba(239,68,68,.15)':'rgba(245,158,11,.12)'};color:${op.urgency==='alta'?'var(--danger)':'var(--warning)'};border-radius:5px;padding:.1rem .35rem">${op.urgency}</span></div>
-            <div class="agent-task-sub">ðŸ“° ${op.signal} â€” <em>${op.source}</em></div>
-            <div style="font-size:.72rem;color:var(--primary);margin-top:.2rem">ðŸ’¬ "${op.emailHook}"</div>
+            <div class="agent-task-sub">📰 ${op.signal} — <em>${op.source}</em></div>
+            <div style="font-size:.72rem;color:var(--primary);margin-top:.2rem">💬 "${op.emailHook}"</div>
           </div>
-          ${lead ? `<button onclick="agentPrepareEmailWithHook(${lead.id},'${op.emailHook.replace(/'/g,"\'")}'); " class="btn-primary" style="font-size:.7rem;padding:.2rem .55rem;flex-shrink:0">âœ¨ Email</button>` : ''}
+          ${lead ? `<button onclick="agentPrepareEmailWithHook(${lead.id},'${op.emailHook.replace(/'/g,"\'")}'); " class="btn-primary" style="font-size:.7rem;padding:.2rem .55rem;flex-shrink:0">✨ Email</button>` : ''}
         </div>`;
       }).join('');
 
@@ -1097,7 +1097,7 @@ Genera 3-4 oportunidades para las empresas con mÃ¡s potencial.`;
     if (msgEl) { msgEl.appendChild(panel); msgEl.scrollTop = msgEl.scrollHeight; }
   } catch(e) {
     chatRemoveTyping();
-    chatAddMessage('bot','âŒ Error al escanear oportunidades. Verifica tu API key.');
+    chatAddMessage('bot','❌ Error al escanear oportunidades. Verifica tu API key.');
   }
 }
 
@@ -1106,32 +1106,32 @@ async function agentPrepareEmailWithHook(leadId, hook) {
   if (!lead) return;
   // Inject hook into lead signal temporarily for context
   const originalSignal = lead.signal;
-  lead.signal = hook + (lead.signal ? ' Â· ' + lead.signal : '');
+  lead.signal = hook + (lead.signal ? ' · ' + lead.signal : '');
   openAiEmailModal(leadId);
   setTimeout(() => { lead.signal = originalSignal; }, 5000);
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸŽ¯ MEJORA 4: NEGOCIADOR DE OBJECIONES
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------------------
+// 🎯 MEJORA 4: NEGOCIADOR DE OBJECIONES
+// ------------------------------------------------------------------------------
 async function agentHandleObjection(leadId) {
   const lead = leads.find(l => l.id == leadId);
   if (!lead) return;
   const claudeKey = getGeminiKey();
-  if (!claudeKey) { chatAddMessage('bot','âš ï¸ Necesitas API key de Gemini'); return; }
+  if (!claudeKey) { chatAddMessage('bot','⚠️ Necesitas API key de Gemini'); return; }
 
   const objection = lead.notes || '';
-  chatAddMessage('bot', `ðŸ¥Š Analizando objeciÃ³n de <strong>${lead.company}</strong>...`);
+  chatAddMessage('bot', `🥊 Analizando objeción de <strong>${lead.company}</strong>...`);
   chatShowTyping();
 
-  const prompt = `Eres un negociador de ventas experto en instalaciones elÃ©ctricas industriales.
+  const prompt = `Eres un negociador de ventas experto en instalaciones eléctricas industriales.
 
 LEAD: ${lead.company} (${lead.segment})
-OBJECIÃ“N DETECTADA: "${objection}"
+OBJECIÓN DETECTADA: "${objection}"
 ESTADO: ${lead.status}
 HISTORIAL: ${emailHistory.filter(e => e.leadId == leadId || e.email === lead.email).length} emails enviados
 
-Genera 3 estrategias de respuesta distintas a esta objeciÃ³n.
+Genera 3 estrategias de respuesta distintas a esta objeción.
 
 Responde SOLO JSON:
 {
@@ -1140,7 +1140,7 @@ Responde SOLO JSON:
       "name": "nombre de la estrategia",
       "approach": "rebate/siembra/cierra",
       "subject": "asunto del email",
-      "body": "texto completo del email en primera persona, listo para enviar (4-6 lÃ­neas)",
+      "body": "texto completo del email en primera persona, listo para enviar (4-6 líneas)",
       "risk": "bajo/medio/alto",
       "recommended": true/false
     }
@@ -1163,14 +1163,14 @@ Responde SOLO JSON:
     const panel = document.createElement('div');
     panel.className = 'agent-panel';
     const approachColors = { rebate:'var(--danger)', siembra:'var(--primary)', cierra:'var(--success)' };
-    panel.innerHTML = `<div class="agent-panel-header"><h3>ðŸ¥Š Estrategias para rebatir â€” ${lead.company}</h3></div>` +
+    panel.innerHTML = `<div class="agent-panel-header"><h3>🥊 Estrategias para rebatir — ${lead.company}</h3></div>` +
       (result.strategies||[]).map((s,i) => `
         <div class="agent-task-row" style="${s.recommended ? 'border-color:rgba(16,217,124,.4)' : ''}">
           <div class="agent-task-info">
-            <div class="agent-task-name">${s.recommended ? 'â­ ' : ''}${s.name}
+            <div class="agent-task-name">${s.recommended ? '⭐ ' : ''}${s.name}
               <span style="font-size:.65rem;background:rgba(99,102,241,.1);color:${approachColors[s.approach]||'var(--primary)'};border-radius:5px;padding:.1rem .35rem;margin-left:.3rem">${s.approach}</span>
             </div>
-            <div class="agent-task-sub">Riesgo: ${s.risk} Â· Asunto: "${s.subject}"</div>
+            <div class="agent-task-sub">Riesgo: ${s.risk} · Asunto: "${s.subject}"</div>
             <div style="font-size:.72rem;color:var(--text-dim);margin-top:.2rem;line-height:1.5">${s.body.slice(0,120)}...</div>
           </div>
           <button onclick="agentUseStrategy(${lead.id}, ${i}, ${JSON.stringify(JSON.stringify(result.strategies))})"
@@ -1181,7 +1181,7 @@ Responde SOLO JSON:
     if (msgEl) { msgEl.appendChild(panel); msgEl.scrollTop = msgEl.scrollHeight; }
   } catch(e) {
     chatRemoveTyping();
-    chatAddMessage('bot','âŒ Error generando estrategias. Verifica tu API key.');
+    chatAddMessage('bot','❌ Error generando estrategias. Verifica tu API key.');
   }
 }
 
@@ -1205,18 +1205,18 @@ function agentUseStrategy(leadId, stratIdx, strategiesJson) {
   } catch(e) { console.error('Strategy apply error:', e); }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸ¤ MEJORA 5: MODO DELEGADO â€” el agente ejecuta acciones en masa
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------------------
+// 🤝 MEJORA 5: MODO DELEGADO — el agente ejecuta acciones en masa
+// ------------------------------------------------------------------------------
 async function agentBatchPrepare(criteria) {
   const claudeKey = getGeminiKey();
-  if (!claudeKey) { chatAddMessage('bot','âš ï¸ Necesitas API key de Gemini'); return; }
+  if (!claudeKey) { chatAddMessage('bot','⚠️ Necesitas API key de Gemini'); return; }
 
   // Parse criteria from natural language or use defaults
   let targetLeads = [];
   const lower = (criteria||'').toLowerCase();
 
-  if (lower.includes('hotel') || lower.includes('hotelerÃ­a')) {
+  if (lower.includes('hotel') || lower.includes('hotelería')) {
     targetLeads = leads.filter(l => !l.archived && l.segment === 'Hoteles');
   } else if (lower.includes('score')) {
     const scoreMatch = lower.match(/score[^0-9]*(\d+)/);
@@ -1234,7 +1234,7 @@ async function agentBatchPrepare(criteria) {
   }
 
   if (!targetLeads.length) {
-    chatAddMessage('bot','No encontrÃ© leads que cumplan ese criterio. Prueba con "leads con score 70+", "sector hotelerÃ­a", "seguimientos vencidos", etc.');
+    chatAddMessage('bot','No encontré leads que cumplan ese criterio. Prueba con "leads con score 70+", "sector hotelería", "seguimientos vencidos", etc.');
     return;
   }
 
@@ -1244,18 +1244,18 @@ async function agentBatchPrepare(criteria) {
   panel.className = 'agent-panel';
   panel.innerHTML = `
     <div class="agent-panel-header">
-      <h3>ðŸ¤ Cola delegada â€” ${targetLeads.length} leads listos</h3>
+      <h3>🤝 Cola delegada — ${targetLeads.length} leads listos</h3>
       <div style="display:flex;gap:.4rem">
-        <button onclick="agentBatchStart(${JSON.stringify(targetLeads.map(l=>l.id))})" class="btn-primary" style="font-size:.72rem;padding:.25rem .7rem">â–¶ Iniciar secuencia</button>
+        <button onclick="agentBatchStart(${JSON.stringify(targetLeads.map(l=>l.id))})" class="btn-primary" style="font-size:.72rem;padding:.25rem .7rem">▶ Iniciar secuencia</button>
       </div>
     </div>
-    <div style="font-size:.72rem;color:var(--text-dim);margin-bottom:.6rem">El agente abrirÃ¡ el email IA de cada lead en secuencia. TÃº revisas y envÃ­as con un click.</div>
+    <div style="font-size:.72rem;color:var(--text-dim);margin-bottom:.6rem">El agente abrirá el email IA de cada lead en secuencia. Tú revisas y envías con un click.</div>
     ${targetLeads.map((l,i) => `
       <div class="agent-task-row" id="batch-row-${l.id}">
         <div style="font-size:.75rem;font-weight:700;color:var(--text-dim);min-width:18px">${i+1}.</div>
         <div class="agent-task-info">
           <div class="agent-task-name">${l.company} <span style="font-size:.68rem;color:var(--text-dim)">${l.segment||''}</span></div>
-          <div class="agent-task-sub">Score ${l.score||0} Â· ${l.status}</div>
+          <div class="agent-task-sub">Score ${l.score||0} · ${l.status}</div>
         </div>
         <span id="batch-status-${l.id}" style="font-size:.7rem;color:var(--text-dim)">En cola</span>
       </div>`).join('')}`;
@@ -1275,19 +1275,19 @@ function agentBatchStart(ids) {
 
 function agentBatchNext() {
   if (_batchIdx >= _batchQueue.length) {
-    chatAddMessage('bot', `âœ… <strong>Secuencia completada</strong> â€” ${_batchQueue.length} emails preparados.`);
+    chatAddMessage('bot', `✅ <strong>Secuencia completada</strong> — ${_batchQueue.length} emails preparados.`);
     return;
   }
   const id = _batchQueue[_batchIdx];
   const statusEl = document.getElementById(`batch-status-${id}`);
-  if (statusEl) statusEl.innerHTML = '<span style="color:var(--primary)">âš¡ Preparando...</span>';
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--primary)">⚡ Preparando...</span>';
 
   openAiEmailModal(id);
 
   // Hook: when email modal closes, auto-advance to next
   const origClose = window.closeAiModal;
   window.closeAiModal = function() {
-    if (statusEl) statusEl.innerHTML = '<span style="color:var(--success)">âœ“ Listo</span>';
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--success)">✓ Listo</span>';
     window.closeAiModal = origClose;
     origClose();
     _batchIdx++;
@@ -1295,34 +1295,34 @@ function agentBatchNext() {
   };
 }
 
-// â”€â”€ Detect "do it for me" in chat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Detect "do it for me" in chat ────────────────────────────────────────────
 function isAgentDelegateRequest(text) {
-  return /hazlo tÃº|hazlo tu|ejecuta|prepara todos|en masa|por mi|por mÃ­|dÃ©lega|delega|todos los leads|secuencia/i.test(text);
+  return /hazlo tú|hazlo tu|ejecuta|prepara todos|en masa|por mi|por mí|délega|delega|todos los leads|secuencia/i.test(text);
 }
 
 function isOpportunityRequest(text) {
-  return /noticias|vigilancia|alerta|oportunidad|seÃ±al|novedad|actualidad/i.test(text);
+  return /noticias|vigilancia|alerta|oportunidad|señal|novedad|actualidad/i.test(text);
 }
 
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸ¤– LA CHACHA â€” 5 automatizaciones que trabajan por ti
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------------------
+// 🤖 LA CHACHA — 5 automatizaciones que trabajan por ti
+// ------------------------------------------------------------------------------
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// ðŸ“§ MEJORA 1: GMAIL ALERTAS â€” emails automÃ¡ticos a ti mismo
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
+// 📧 MEJORA 1: GMAIL ALERTAS — emails automáticos a ti mismo
+// ─────────────────────────────────────────────────────────────────────────────
 let _gmailToken = null;
 
 function saveGmailConfig() {
   const email = document.getElementById('gmail-alert-email')?.value.trim();
   const cid   = document.getElementById('gmail-client-id')?.value.trim();
   const csec  = document.getElementById('gmail-client-secret')?.value.trim();
-  if (!email || !cid) { setGmailStatus('âš ï¸ Rellena email y Client ID', 'var(--danger)'); return; }
+  if (!email || !cid) { setGmailStatus('⚠️ Rellena email y Client ID', 'var(--danger)'); return; }
   localStorage.setItem('gordi_gmail_email', email);
   localStorage.setItem('gordi_gmail_client_id', cid);
   if (csec) localStorage.setItem('gordi_gmail_client_secret', csec);
-  setGmailStatus('âœ“ Guardado â€” Conectando con Google...', 'var(--success)');
+  setGmailStatus('✓ Guardado — Conectando con Google...', 'var(--success)');
   gmailOAuthInit();
 }
 
@@ -1333,7 +1333,7 @@ function setGmailStatus(msg, color) {
 
 function toggleGmailAlerts(enabled) {
   localStorage.setItem('gordi_gmail_enabled', enabled ? 'true' : 'false');
-  showToast(enabled ? 'ðŸ”” Alertas Gmail activadas' : 'ðŸ”• Alertas Gmail desactivadas');
+  showToast(enabled ? '🔔 Alertas Gmail activadas' : '🔕 Alertas Gmail desactivadas');
 }
 
 function gmailOAuthInit() {
@@ -1354,8 +1354,8 @@ function gmailOAuthInit() {
         localStorage.setItem('gordi_gmail_token_ts', Date.now().toString());
         popup.close();
         clearInterval(check);
-        setGmailStatus('âœ… Gmail conectado correctamente', 'var(--success)');
-        showToast('âœ… Gmail conectado â€” alertas activadas');
+        setGmailStatus('✅ Gmail conectado correctamente', 'var(--success)');
+        showToast('✅ Gmail conectado — alertas activadas');
         localStorage.setItem('gordi_gmail_enabled', 'true');
         const cb = document.getElementById('gmail-alerts-enabled');
         if (cb) cb.checked = true;
@@ -1377,7 +1377,7 @@ async function sendGmailAlert(subject, htmlBody) {
   const token   = getGmailToken();
   const toEmail = localStorage.getItem('gordi_gmail_email');
   if (!token || !toEmail) {
-    showToast('âš ï¸ Token Gmail expirado â€” reconecta en ConfiguraciÃ³n');
+    showToast('⚠️ Token Gmail expirado — reconecta en Configuración');
     return false;
   }
   const message = [
@@ -1405,14 +1405,14 @@ async function sendGmailAlert(subject, htmlBody) {
 async function testGmailAlert() {
   setGmailStatus('Enviando email de prueba...', 'var(--text-muted)');
   const ok = await sendGmailAlert(
-    'ðŸ¤– Voltflow â€” Test de alertas',
+    '🤖 Voltflow — Test de alertas',
     `<div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:20px">
-      <h2 style="color:#6366f1">ðŸ¤– Voltflow Assistant</h2>
-      <p>Las alertas automÃ¡ticas funcionan correctamente.</p>
-      <p style="color:#666">RecibirÃ¡s emails cuando el agente detecte leads urgentes o seguimientos vencidos.</p>
+      <h2 style="color:#6366f1">🤖 Voltflow Assistant</h2>
+      <p>Las alertas automáticas funcionan correctamente.</p>
+      <p style="color:#666">Recibirás emails cuando el agente detecte leads urgentes o seguimientos vencidos.</p>
     </div>`
   );
-  setGmailStatus(ok ? 'âœ… Email enviado â€” revisa tu bandeja' : 'âŒ Error â€” verifica la configuraciÃ³n', ok ? 'var(--success)' : 'var(--danger)');
+  setGmailStatus(ok ? '✅ Email enviado — revisa tu bandeja' : '❌ Error — verifica la configuración', ok ? 'var(--success)' : 'var(--danger)');
 }
 
 function buildAlertEmail(title, items, ctaText) {
@@ -1426,19 +1426,19 @@ function buildAlertEmail(title, items, ctaText) {
     </tr>`).join('');
   return `<div style="font-family:Inter,sans-serif;max-width:540px;margin:0 auto;padding:24px;background:#f8f9ff">
     <div style="background:#fff;border-radius:14px;padding:24px;box-shadow:0 2px 16px rgba(99,102,241,.08)">
-      <h2 style="color:#6366f1;margin-top:0">ðŸ¤– Voltflow â€” ${title}</h2>
+      <h2 style="color:#6366f1;margin-top:0">🤖 Voltflow — ${title}</h2>
       <p style="color:#999;font-size:12px;margin-top:-10px">${new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'})}</p>
       <table style="width:100%;border-collapse:collapse">${rows}</table>
       <div style="margin-top:20px;text-align:center">
-        <a href="${window.location.href}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">${ctaText||'Abrir Voltflow â†’'}</a>
+        <a href="${window.location.href}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600">${ctaText||'Abrir Voltflow ->'}</a>
       </div>
     </div>
   </div>`;
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// â° MEJORA 2: PROGRAMADOR DE ACCIONES â€” scheduler automÃ¡tico
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
+// ⏰ MEJORA 2: PROGRAMADOR DE ACCIONES — scheduler automático
+// ─────────────────────────────────────────────────────────────────────────────
 let _schedulerInterval = null;
 
 function initScheduler() {
@@ -1494,41 +1494,41 @@ function getOverdueLeads() {
 async function schedulerSendDailyBriefing() {
   const hot = leads.filter(l => !l.archived && (l.score||0) >= 70).slice(0, 5);
   if (!hot.length) return;
-  const items = hot.map(l => ({ company: l.company, badge: `Score ${l.score}`, detail: `${l.status} Â· ${l.segment}` }));
-  await sendGmailAlert('â˜€ï¸ Briefing del dÃ­a', buildAlertEmail('Briefing del dÃ­a', items, 'Ver leads â†’'));
+  const items = hot.map(l => ({ company: l.company, badge: `Score ${l.score}`, detail: `${l.status} · ${l.segment}` }));
+  await sendGmailAlert('☀️ Briefing del día', buildAlertEmail('Briefing del día', items, 'Ver leads ->'));
 }
 
 async function schedulerSendOverdueAlert(overdue) {
   const items = overdue.slice(0, 6).map(l => ({
     company: l.company, badge: `Score ${l.score}`,
-    detail: `Vencido desde ${new Date(l.next_contact).toLocaleDateString('es-ES')} Â· ${l.status}`
+    detail: `Vencido desde ${new Date(l.next_contact).toLocaleDateString('es-ES')} · ${l.status}`
   }));
-  await sendGmailAlert(`âš ï¸ ${overdue.length} seguimiento${overdue.length>1?'s':''} vencido${overdue.length>1?'s':''}`,
-    buildAlertEmail('Seguimientos vencidos', items, 'Gestionar ahora â†’'));
+  await sendGmailAlert(`⚠️ ${overdue.length} seguimiento${overdue.length>1?'s':''} vencido${overdue.length>1?'s':''}`,
+    buildAlertEmail('Seguimientos vencidos', items, 'Gestionar ahora ->'));
 }
 
 async function schedulerSendWeeklySummary() {
   const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
   const items = [
     { company: 'Leads activos', badge: leads.filter(l=>!l.archived).length, detail: `${leads.filter(l=>new Date(l.date)>=weekAgo).length} nuevos esta semana` },
-    { company: 'Emails enviados', badge: emailHistory.length, detail: 'Total histÃ³rico' },
+    { company: 'Emails enviados', badge: emailHistory.length, detail: 'Total histórico' },
     { company: 'Leads calientes (70+)', badge: leads.filter(l=>!l.archived&&(l.score||0)>=70).length, detail: 'Score alto' },
     { company: 'Cerrados', badge: leads.filter(l=>!l.archived&&l.status==='Cerrado').length, detail: 'En pipeline' },
   ];
-  await sendGmailAlert('ðŸ“Š Resumen semanal', buildAlertEmail('Resumen semanal', items, 'Ver dashboard â†’'));
+  await sendGmailAlert('📊 Resumen semanal', buildAlertEmail('Resumen semanal', items, 'Ver dashboard ->'));
 }
 
 async function sendManualAlert(type) {
   const token = getGmailToken();
-  if (!token) { showToast('âš ï¸ Conecta Gmail primero en ConfiguraciÃ³n'); showView('settings'); return; }
-  if (type === 'overdue') { const o = getOverdueLeads(); if (!o.length) { showToast('No hay seguimientos vencidos'); return; } await schedulerSendOverdueAlert(o); showToast('ðŸ“§ Alerta enviada'); }
-  else if (type === 'summary') { await schedulerSendWeeklySummary(); showToast('ðŸ“§ Resumen enviado'); }
-  else if (type === 'hot') { await schedulerSendDailyBriefing(); showToast('ðŸ“§ Briefing enviado'); }
+  if (!token) { showToast('⚠️ Conecta Gmail primero en Configuración'); showView('settings'); return; }
+  if (type === 'overdue') { const o = getOverdueLeads(); if (!o.length) { showToast('No hay seguimientos vencidos'); return; } await schedulerSendOverdueAlert(o); showToast('📧 Alerta enviada'); }
+  else if (type === 'summary') { await schedulerSendWeeklySummary(); showToast('📧 Resumen enviado'); }
+  else if (type === 'hot') { await schedulerSendDailyBriefing(); showToast('📧 Briefing enviado'); }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// ðŸ—£ï¸ MEJORA 3: VOZ COMPLETA â€” el bot habla las respuestas
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
+// 🗣️ MEJORA 3: VOZ COMPLETA — el bot habla las respuestas
+// ─────────────────────────────────────────────────────────────────────────────
 let _ttsEnabled = localStorage.getItem('gordi_tts') === 'true';
 let _ttsVoice   = null;
 
@@ -1545,7 +1545,7 @@ function initTTS() {
 
 function speakText(text) {
   if (!_ttsEnabled || !window.speechSynthesis) return;
-  const clean = text.replace(/<[^>]+>/g,' ').replace(/[^\w\s.,;:!?Ã¡Ã©Ã­Ã³ÃºÃ¼Ã±ÃÃ‰ÃÃ“ÃšÃœÃ‘â€“-]/g,'').replace(/\s+/g,' ').trim().slice(0,300);
+  const clean = text.replace(/<[^>]+>/g,' ').replace(/[^\w\s.,;:!?áéíóúüñÁÉÍÓÚÜÑ–-]/g,'').replace(/\s+/g,' ').trim().slice(0,300);
   if (!clean) return;
   window.speechSynthesis.cancel();
   const utt = new SpeechSynthesisUtterance(clean);
@@ -1560,7 +1560,7 @@ function addTTSButton() {
   const ttsBtn = document.createElement('button');
   ttsBtn.id = 'tts-toggle-btn';
   ttsBtn.title = 'Activar/desactivar respuestas por voz';
-  ttsBtn.textContent = 'ðŸ”Š';
+  ttsBtn.textContent = '🔊';
   ttsBtn.onclick = () => {
     _ttsEnabled = !_ttsEnabled;
     localStorage.setItem('gordi_tts', _ttsEnabled ? 'true' : 'false');
@@ -1572,9 +1572,9 @@ function addTTSButton() {
   btn.parentNode.insertBefore(ttsBtn, btn);
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// ðŸ§¹ MEJORA 4: AUTO-MANTENIMIENTO DE LA BASE DE DATOS
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
+// 🧹 MEJORA 4: AUTO-MANTENIMIENTO DE LA BASE DE DATOS
+// ─────────────────────────────────────────────────────────────────────────────
 async function runAutoMaintenance(silent) {
   const report = { archived:0, duplicates:0, rescored:0, cleaned:0 };
 
@@ -1584,7 +1584,7 @@ async function runAutoMaintenance(silent) {
     if (!['Pendiente','No interesa'].includes(l.status)) return;
     const last = new Date(l.status_date || l.date || 0);
     if ((Date.now() - last) / 86400000 >= 90) {
-      l.archived = true; l.archive_reason = 'Auto: sin actividad 90 dÃ­as'; report.archived++;
+      l.archived = true; l.archive_reason = 'Auto: sin actividad 90 días'; report.archived++;
     }
   });
 
@@ -1618,16 +1618,16 @@ async function runAutoMaintenance(silent) {
 
   if (!silent) {
     const lines = [];
-    if (report.archived)   lines.push(`ðŸ“¦ ${report.archived} leads archivados (90d sin actividad)`);
-    if (report.duplicates) lines.push(`â™»ï¸ ${report.duplicates} duplicados eliminados`);
-    if (report.rescored)   lines.push(`â­ ${report.rescored} scores actualizados`);
-    if (report.cleaned)    lines.push(`ðŸ· ${report.cleaned} etiquetas limpias`);
+    if (report.archived)   lines.push(`📦 ${report.archived} leads archivados (90d sin actividad)`);
+    if (report.duplicates) lines.push(`♻️ ${report.duplicates} duplicados eliminados`);
+    if (report.rescored)   lines.push(`⭐ ${report.rescored} scores actualizados`);
+    if (report.cleaned)    lines.push(`🏷 ${report.cleaned} etiquetas limpias`);
     chatAddMessage('bot', total > 0
-      ? 'ðŸ§¹ <strong>Mantenimiento completado:</strong><br>' + lines.join('<br>')
-      : 'âœ… Base de datos en perfecto estado.');
+      ? '🧹 <strong>Mantenimiento completado:</strong><br>' + lines.join('<br>')
+      : '✅ Base de datos en perfecto estado.');
     if (total >= 3) {
-      const items = lines.map(l => ({company: l.replace(/[ðŸ“¦â™»ï¸â­ðŸ·] /,''), badge:'', detail:''}));
-      await sendGmailAlert('ðŸ§¹ Mantenimiento automÃ¡tico', buildAlertEmail('Mantenimiento DB', items, 'Ver base de datos â†’'));
+      const items = lines.map(l => ({company: l.replace(/[📦♻️⭐🏷] /,''), badge:'', detail:''}));
+      await sendGmailAlert('🧹 Mantenimiento automático', buildAlertEmail('Mantenimiento DB', items, 'Ver base de datos ->'));
     }
   }
   return report;
@@ -1645,33 +1645,33 @@ function scheduleWeeklyMaintenance() {
 
 async function sendProactiveAlert(lead, reason) {
   const items = [{ company: lead.company, badge: `Score ${lead.score}`, detail: reason }];
-  await sendGmailAlert(`ðŸš¨ AcciÃ³n urgente: ${lead.company}`, buildAlertEmail('Alerta urgente', items, 'Actuar ahora â†’'));
+  await sendGmailAlert(`🚨 Acción urgente: ${lead.company}`, buildAlertEmail('Alerta urgente', items, 'Actuar ahora ->'));
 }
 
 function isChacha(text) {
-  return /mant[ei]nimiento|limpia|duplicad|archiva.*auto|resumen.*email|env[iÃ­]a.*email|m[Ã¡a]ndame.*email|briefing.*email|alerta.*gmail/i.test(text);
+  return /mant[ei]nimiento|limpia|duplicad|archiva.*auto|resumen.*email|env[ií]a.*email|m[áa]ndame.*email|briefing.*email|alerta.*gmail/i.test(text);
 }
 
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸ”’ confirmStatusChange â€” siempre pregunta antes de cambiar estado
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------------------
+// 🔒 confirmStatusChange — siempre pregunta antes de cambiar estado
+// ------------------------------------------------------------------------------
 function confirmStatusChange(lead, newStatus, onConfirm) {
   if (lead.status === newStatus) { onConfirm(); return; }
   const modal = document.createElement('div');
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
   modal.innerHTML = `
     <div style="background:var(--bg2);border:1px solid var(--glass-border);border-radius:16px;padding:1.5rem;max-width:360px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.4)">
-      <div style="font-size:1.1rem;font-weight:700;margin-bottom:.5rem">Â¿Cambiar estado?</div>
+      <div style="font-size:1.1rem;font-weight:700;margin-bottom:.5rem">¿Cambiar estado?</div>
       <div style="font-size:.85rem;color:var(--text-muted);margin-bottom:1.25rem;line-height:1.5">
         <strong>${lead.company}</strong><br>
         <span style="color:var(--text-dim)">${lead.status}</span>
-        <span style="color:var(--primary);margin:0 .4rem">â†’</span>
+        <span style="color:var(--primary);margin:0 .4rem">-></span>
         <strong style="color:var(--text)">${newStatus}</strong>
       </div>
       <div style="display:flex;gap:.75rem">
-        <button id="csc-yes" class="btn-primary" style="flex:1">âœ“ SÃ­, cambiar</button>
-        <button id="csc-no" class="btn-outline" style="flex:1">âœ• Cancelar</button>
+        <button id="csc-yes" class="btn-primary" style="flex:1">✓ Sí, cambiar</button>
+        <button id="csc-no" class="btn-outline" style="flex:1">✕ Cancelar</button>
       </div>
     </div>`;
   document.body.appendChild(modal);
@@ -1681,9 +1681,9 @@ function confirmStatusChange(lead, newStatus, onConfirm) {
 }
 
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸ™ GITHUB SYNC â€” almacenamiento gratis e ilimitado en tu propio repo
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// --------------------------------------------------------------------------
+// 🐙 GITHUB SYNC — almacenamiento gratis e ilimitado en tu propio repo
+// --------------------------------------------------------------------------
 const GITHUB_DATA_FILE = 'voltflow-data.json';
 
 function getGithubConfig() {
@@ -1704,12 +1704,12 @@ function saveGithubConfig() {
   const user  = document.getElementById('gh-user-input')?.value.trim();
   const repo  = document.getElementById('gh-repo-input')?.value.trim();
   if (!token || !user || !repo) {
-    setGithubStatus('âš ï¸ Rellena los 3 campos', 'var(--danger)'); return;
+    setGithubStatus('⚠️ Rellena los 3 campos', 'var(--danger)'); return;
   }
   localStorage.setItem('gordi_gh_token', token);
   localStorage.setItem('gordi_gh_user',  user);
   localStorage.setItem('gordi_gh_repo',  repo);
-  setGithubStatus('Probando conexiÃ³n...', 'var(--text-muted)');
+  setGithubStatus('Probando conexión...', 'var(--text-muted)');
   githubPush(true).then(() => {
     document.getElementById('github-badge').style.display = 'inline-block';
     updateCloudPill();
@@ -1718,22 +1718,22 @@ function saveGithubConfig() {
 
 function toggleGithubAuto(enabled) {
   localStorage.setItem('gordi_gh_auto', enabled ? 'true' : 'false');
-  showToast(enabled ? 'ðŸ™ GitHub auto-sync activado' : 'ðŸ™ Auto-sync desactivado');
+  showToast(enabled ? '🐙 GitHub auto-sync activado' : '🐙 Auto-sync desactivado');
   updateCloudPill();
 }
 
-// â”€â”€ Push: write voltflow-data.json to repo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Push: write voltflow-data.json to repo ────────────────────────────────
 async function githubPush(showFeedback) {
   const { token, user, repo } = getGithubConfig();
   if (!token || !user || !repo) {
-    if (showFeedback) setGithubStatus('âš ï¸ Configura GitHub primero', 'var(--danger)');
+    if (showFeedback) setGithubStatus('⚠️ Configura GitHub primero', 'var(--danger)');
     return false;
   }
-  if (showFeedback) setGithubStatus('â¬† Subiendo...', 'var(--text-muted)');
+  if (showFeedback) setGithubStatus('⬆ Subiendo...', 'var(--text-muted)');
 
   try {
     const snapshot = exportDataSnapshot();
-    // Never store the GitHub token in the repo â€” strip it before upload
+    // Never store the GitHub token in the repo — strip it before upload
     const safeSnapshot = Object.assign({}, snapshot);
     delete safeSnapshot['gordi_gh_token'];
     const payload  = JSON.stringify({ voltflow: safeSnapshot, _updated: new Date().toISOString() }, null, 0);
@@ -1765,18 +1765,18 @@ async function githubPush(showFeedback) {
     localStorage.setItem('gordi_gh_last_push', new Date().toISOString());
     if (showFeedback) {
       const now = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
-      setGithubStatus(`âœ… Subido correctamente â€” ${now}`, 'var(--success)');
-      showToast('ðŸ™ Datos guardados en GitHub');
+      setGithubStatus(`✅ Subido correctamente — ${now}`, 'var(--success)');
+      showToast('🐙 Datos guardados en GitHub');
     }
     return true;
   } catch(e) {
     console.error('GitHub push error:', e);
-    if (showFeedback) setGithubStatus(`âŒ Error: ${e.message}`, 'var(--danger)');
+    if (showFeedback) setGithubStatus(`❌ Error: ${e.message}`, 'var(--danger)');
     return false;
   }
 }
 
-// â”€â”€ Get SHA of existing file (required for updates) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Get SHA of existing file (required for updates) ───────────────────────
 async function githubGetSHA(token, user, repo) {
   const remoteFile = await githubGetRemoteFile(token, user, repo);
   return remoteFile?.sha || null;
@@ -1802,11 +1802,11 @@ async function githubGetRemoteFile(token, user, repo) {
   } catch { return null; }
 }
 
-// â”€â”€ Pull: read voltflow-data.json from repo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Pull: read voltflow-data.json from repo ───────────────────────────────
 async function githubPull(showFeedback) {
   const { token, user, repo } = getGithubConfig();
   if (!token || !user || !repo) return false;
-  if (showFeedback) setGithubStatus('â¬‡ Descargando...', 'var(--text-muted)');
+  if (showFeedback) setGithubStatus('⬇ Descargando...', 'var(--text-muted)');
 
   try {
     const remoteFile = await githubGetRemoteFile(token, user, repo);
@@ -1836,7 +1836,7 @@ async function githubPull(showFeedback) {
 
     if (showFeedback && cloudLeads !== localLeads) {
       const warnings = snapshotValidation.warnings && snapshotValidation.warnings.length ? `\n\nAvisos:\n- ${snapshotValidation.warnings.join('\n- ')}` : '';
-      if (!confirm(`Â¿Descargar datos de GitHub?\n\nNube: ${cloudLeads} leads\nLocal: ${localLeads} leads${warnings}\n\nSe creara un snapshot de seguridad antes de reemplazar tus datos locales.`)) {
+      if (!confirm(`¿Descargar datos de GitHub?\n\nNube: ${cloudLeads} leads\nLocal: ${localLeads} leads${warnings}\n\nSe creara un snapshot de seguridad antes de reemplazar tus datos locales.`)) {
         setGithubStatus('Descarga cancelada', 'var(--text-dim)'); return false;
       }
     }
@@ -1855,18 +1855,18 @@ async function githubPull(showFeedback) {
     localStorage.setItem('gordi_gh_last_pull', new Date().toISOString());
     if (showFeedback) {
       const now = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
-      setGithubStatus(`âœ… Descargado correctamente â€” ${now}`, 'var(--success)');
-      showToast('ðŸ™ Datos restaurados desde GitHub');
+      setGithubStatus(`✅ Descargado correctamente — ${now}`, 'var(--success)');
+      showToast('🐙 Datos restaurados desde GitHub');
     }
     return true;
   } catch(e) {
     console.error('GitHub pull error:', e);
-    if (showFeedback) setGithubStatus(`âŒ Error: ${e.message}`, 'var(--danger)');
+    if (showFeedback) setGithubStatus(`❌ Error: ${e.message}`, 'var(--danger)');
     return false;
   }
 }
 
-// â”€â”€ Init: populate settings UI & auto-pull on load â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Init: populate settings UI & auto-pull on load ────────────────────────
 function initGithubSync() {
   const { token, user, repo } = getGithubConfig();
   const tokenEl = document.getElementById('gh-token-input');
@@ -1887,131 +1887,131 @@ function initGithubSync() {
   const hasLocal = !!(localStorage.getItem('gordi_leads') || localStorage.getItem('gordi_api_key'));
   if (!hasLocal && token && user && repo) {
     setTimeout(async () => {
-      showToast('ðŸ”„ Nuevo dispositivo â€” restaurando desde GitHub...');
+      showToast('🔄 Nuevo dispositivo — restaurando desde GitHub...');
       await githubPull(false);
-      showToast('âœ… Todo restaurado automÃ¡ticamente');
+      showToast('✅ Todo restaurado automáticamente');
     }, 1500);
   }
 }
 
-const GORDI_SYSTEM = `Eres Voltflow Assistant, el asistente inteligente integrado en Voltflow â€” app de prospecciÃ³n comercial B2B para Voltium Madrid (reformas integrales, eficiencia energÃ©tica y mantenimiento integral de naves industriales en Madrid).
+const GORDI_SYSTEM = `Eres Voltflow Assistant, el asistente inteligente integrado en Voltflow — app de prospección comercial B2B para Voltium Madrid (reformas integrales, eficiencia energética y mantenimiento integral de naves industriales en Madrid).
 
-TIENES DOS MODOS DE OPERACIÃ“N:
+TIENES DOS MODOS DE OPERACIÓN:
 
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-MODO 1: AYUDA Y EXPLICACIÃ“N
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-Responde preguntas sobre cÃ³mo usar la app. Explica funciones, guÃ­a paso a paso, resuelve dudas.
+---------------------------------------
+MODO 1: AYUDA Y EXPLICACIÓN
+---------------------------------------
+Responde preguntas sobre cómo usar la app. Explica funciones, guía paso a paso, resuelve dudas.
 
 CONOCES LA APP AL COMPLETO:
-- Dashboard: KPIs, scoring dinÃ¡mico, mÃ©tricas conversiÃ³n, inteligencia de zona, alertas prioridad
-- GestiÃ³n de Leads: CRUD manual de contactos B2B
-- Buscar Empresas: Google Places + scraping web + Hunter.io â†’ emails, telÃ©fonos, redes, decisor
-- Pipeline Kanban: columnas Pendienteâ†’Contactadoâ†’Respuesta del clienteâ†’Visitaâ†’Entrega de presupuestoâ†’Cerrado
+- Dashboard: KPIs, scoring dinámico, métricas conversión, inteligencia de zona, alertas prioridad
+- Gestión de Leads: CRUD manual de contactos B2B
+- Buscar Empresas: Google Places + scraping web + Hunter.io -> emails, teléfonos, redes, decisor
+- Pipeline Kanban: columnas Pendiente->Contactado->Respuesta del cliente->Visita->Entrega de presupuesto->Cerrado
 - Seguimiento: historial emails, exportar CSV
-- CampaÃ±as: email en masa por segmento
+- Campañas: email en masa por segmento
 - Plantillas: 8 templates por sector con copywriting PAS
 - Importar CSV: importar leads desde Excel
-- ConfiguraciÃ³n: perfil Voltium, APIs (Google, Hunter, Gemini)
-- Email IA (botÃ³n âœ¨): lee reseÃ±as Google â†’ Gemini genera email hiperpersonalizado con formato
+- Configuración: perfil Voltium, APIs (Google, Hunter, Gemini)
+- Email IA (botón ✨): lee reseñas Google -> Gemini genera email hiperpersonalizado con formato
 - Chat: este mismo asistente que puede mejorar la app en tiempo real
-- Control por voz: botÃ³n ðŸŽ™ï¸ en el chat para hablar directamente
+- Control por voz: botón 🎙️ en el chat para hablar directamente
 - Memoria persistente: recuerdas las preferencias del usuario entre sesiones
-- GrÃ¡ficos en chat: puedes mostrar grÃ¡ficos de embudo y sectores
-- Modo autÃ³nomo: detectas leads urgentes y alertas proactivas
-- Plan semanal: generas planes de acciÃ³n cada lunes con datos reales
-- Modo Agente: bucle autÃ³nomo de seguimientos, perfil psicolÃ³gico, vigilancia oportunidades, negociador objeciones, modo delegado
-- Gmail alertas: emails automÃ¡ticos al usuario (briefing diario 8h, vencidos 9h, resumen semanal lunes 10h, alertas proactivas)
-- Voz completa: botÃ³n ðŸ”Š para que el bot hable sus respuestas en espaÃ±ol
+- Gráficos en chat: puedes mostrar gráficos de embudo y sectores
+- Modo autónomo: detectas leads urgentes y alertas proactivas
+- Plan semanal: generas planes de acción cada lunes con datos reales
+- Modo Agente: bucle autónomo de seguimientos, perfil psicológico, vigilancia oportunidades, negociador objeciones, modo delegado
+- Gmail alertas: emails automáticos al usuario (briefing diario 8h, vencidos 9h, resumen semanal lunes 10h, alertas proactivas)
+- Voz completa: botón 🔊 para que el bot hable sus respuestas en español
 - Auto-mantenimiento: archiva leads muertos, elimina duplicados, actualiza scores cada domingo
-- Scheduler: programador automÃ¡tico de acciones sin intervenciÃ³n del usuario, perfil psicolÃ³gico de leads, vigilancia de oportunidades, negociador de objeciones y modo delegado para ejecutar acciones en masa
+- Scheduler: programador automático de acciones sin intervención del usuario, perfil psicológico de leads, vigilancia de oportunidades, negociador de objeciones y modo delegado para ejecutar acciones en masa
 
 APIs necesarias (todas gratuitas):
 - Google Places: console.cloud.google.com
 - Hunter.io: hunter.io (25/mes gratis)
-- Gemini: aistudio.google.com/apikey (1500/dÃ­a gratis)
+- Gemini: aistudio.google.com/apikey (1500/día gratis)
 
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-MODO 2: AUTOPROGRAMACIÃ“N DE MEJORAS
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-Cuando el usuario pida aÃ±adir, cambiar o mejorar algo en la app, activas este modo.
+---------------------------------------
+MODO 2: AUTOPROGRAMACIÓN DE MEJORAS
+---------------------------------------
+Cuando el usuario pida añadir, cambiar o mejorar algo en la app, activas este modo.
 
 PROCESO:
-1. RecibirÃ¡s el cÃ³digo HTML COMPLETO de la app en el mensaje del usuario.
-2. Lees ese cÃ³digo completo y encuentras TÃš MISMO las partes que necesitas modificar.
+1. Recibirás el código HTML COMPLETO de la app en el mensaje del usuario.
+2. Lees ese código completo y encuentras TÚ MISMO las partes que necesitas modificar.
 3. Generas el patch con los find/replace exactos.
-4. NUNCA le pidas al usuario que te envÃ­e cÃ³digo â€” tÃº ya lo tienes todo.
-5. NUNCA digas que "necesitas ver el cÃ³digo" â€” ya estÃ¡ en el mensaje.
-6. Si hay algo ambiguo, hazlo de la forma mÃ¡s razonable y aplÃ­calo.
+4. NUNCA le pidas al usuario que te envíe código — tú ya lo tienes todo.
+5. NUNCA digas que "necesitas ver el código" — ya está en el mensaje.
+6. Si hay algo ambiguo, hazlo de la forma más razonable y aplícalo.
 
-REGLA ABSOLUTA: NUNCA le pidas al usuario que busque o copie cÃ³digo. NUNCA digas frases como "necesito ver el cÃ³digo de...", "podrÃ­as enviarme...", "busca y envÃ­ame...". TÃº tienes el cÃ³digo completo â€” Ãºsalo.
+REGLA ABSOLUTA: NUNCA le pidas al usuario que busque o copie código. NUNCA digas frases como "necesito ver el código de...", "podrías enviarme...", "busca y envíame...". Tú tienes el código completo — úsalo.
 
 FORMATO DE RESPUESTA PARA MEJORAS:
-Cuando vayas a aplicar un cambio, responde ÃšNICAMENTE con este JSON (sin markdown, sin explicaciÃ³n antes o despuÃ©s):
+Cuando vayas a aplicar un cambio, responde ÚNICAMENTE con este JSON (sin markdown, sin explicación antes o después):
 
-{"type":"patch","description":"DescripciÃ³n breve del cambio","preview":"Lo que cambia en 1-2 frases","patches":[{"find":"TEXTO_EXACTO_A_BUSCAR_EN_EL_HTML","replace":"TEXTO_EXACTO_DE_REEMPLAZO"}]}
+{"type":"patch","description":"Descripción breve del cambio","preview":"Lo que cambia en 1-2 frases","patches":[{"find":"TEXTO_EXACTO_A_BUSCAR_EN_EL_HTML","replace":"TEXTO_EXACTO_DE_REEMPLAZO"}]}
 
-REGLAS DEL PATCH â€” CRÃTICAS:
-- "find" debe ser un fragmento ÃšNICO en el archivo. Incluye 3-5 lÃ­neas de contexto para garantizar unicidad. NUNCA uses una sola lÃ­nea corta como find.
-- "replace" contiene todo lo que habÃ­a en find MÃS los cambios. No omitas el contexto del find en el replace.
+REGLAS DEL PATCH — CRÍTICAS:
+- "find" debe ser un fragmento ÚNICO en el archivo. Incluye 3-5 líneas de contexto para garantizar unicidad. NUNCA uses una sola línea corta como find.
+- "replace" contiene todo lo que había en find MÁS los cambios. No omitas el contexto del find en el replace.
 - Escapa correctamente las comillas en los strings JSON: \" para comillas dobles dentro del find/replace.
-- Si el cambio afecta HTML y JS por separado, usa mÃºltiples objetos en el array "patches".
-- MantÃ©n el estilo visual: dark theme, variables CSS --primary, --bg, --glass, --text, --success, --danger.
-- Para aÃ±adir CSS nuevo, busca un bloque CSS existente Ãºnico y aÃ±ade tus reglas al final en el replace.
-- Para aÃ±adir funciones JS nuevas, busca la funciÃ³n mÃ¡s cercana y aÃ±ade la nueva justo despuÃ©s.
+- Si el cambio afecta HTML y JS por separado, usa múltiples objetos en el array "patches".
+- Mantén el estilo visual: dark theme, variables CSS --primary, --bg, --glass, --text, --success, --danger.
+- Para añadir CSS nuevo, busca un bloque CSS existente único y añade tus reglas al final en el replace.
+- Para añadir funciones JS nuevas, busca la función más cercana y añade la nueva justo después.
 
 FLUJO:
-- Si la peticiÃ³n es clara y concreta â†’ genera el JSON del patch DIRECTAMENTE, sin pedir confirmaciÃ³n.
-- Si hay ambigÃ¼edad real (ej: no estÃ¡ claro en quÃ© parte de la app) â†’ pregunta solo lo mÃ­nimo, en 1 frase.
+- Si la petición es clara y concreta -> genera el JSON del patch DIRECTAMENTE, sin pedir confirmación.
+- Si hay ambigüedad real (ej: no está claro en qué parte de la app) -> pregunta solo lo mínimo, en 1 frase.
 
 TIPOS DE MEJORAS QUE PUEDES HACER:
-- AÃ±adir o quitar campos en formularios
-- AÃ±adir columnas a tablas o kanban
+- Añadir o quitar campos en formularios
+- Añadir columnas a tablas o kanban
 - Nuevos filtros, botones o acciones
-- Cambios visuales (colores, tamaÃ±os, layouts)
-- Nuevas mÃ©tricas en el dashboard
+- Cambios visuales (colores, tamaños, layouts)
+- Nuevas métricas en el dashboard
 - Modificar plantillas de email
-- AÃ±adir validaciones o lÃ³gica de negocio
+- Añadir validaciones o lógica de negocio
 - Cualquier mejora funcional que el usuario describa
 
 ESTILO DE RESPUESTA (modo ayuda):
-- Conciso, mÃ¡ximo 4-5 pÃ¡rrafos cortos
-- Emojis con moderaciÃ³n
+- Conciso, máximo 4-5 párrafos cortos
+- Emojis con moderación
 - Pasos numerados para procesos
-- Siempre en espaÃ±ol
+- Siempre en español
 
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-MODO 3: ANÃLISIS DE EMBUDO (Mejora 4)
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-Cuando el usuario pregunte por quÃ© no cierra o pida anÃ¡lisis de rendimiento:
+---------------------------------------
+MODO 3: ANÁLISIS DE EMBUDO (Mejora 4)
+---------------------------------------
+Cuando el usuario pregunte por qué no cierra o pida análisis de rendimiento:
 1. Lee los datos reales de la cuenta (leads por estado, emails enviados, sectores, etc.)
-2. Detecta patrones: Â¿dÃ³nde se atascan los leads? Â¿quÃ© sectores convierten menos? Â¿hay leads dormidos?
-3. Da conclusiones especÃ­ficas con nÃºmeros reales, no generalidades
+2. Detecta patrones: ¿dónde se atascan los leads? ¿qué sectores convierten menos? ¿hay leads dormidos?
+3. Da conclusiones específicas con números reales, no generalidades
 4. Propone exactamente 3 acciones concretas y accionables esta semana
-Nunca digas "no tengo acceso a tus datos" â€” los datos reales van siempre en el mensaje.
+Nunca digas "no tengo acceso a tus datos" — los datos reales van siempre en el mensaje.
 
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+---------------------------------------
 MODO 4: COACH DE VENTAS (Mejora 5)
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-Cuando el usuario pegue una respuesta de un lead o pregunte cÃ³mo responder:
-1. Analiza la respuesta: Â¿hay interÃ©s real? Â¿quÃ© objeciones? Â¿quÃ© seÃ±ales implÃ­citas?
-2. Lee el historial del lead si estÃ¡ disponible en el contexto
+---------------------------------------
+Cuando el usuario pegue una respuesta de un lead o pregunte cómo responder:
+1. Analiza la respuesta: ¿hay interés real? ¿qué objeciones? ¿qué señales implícitas?
+2. Lee el historial del lead si está disponible en el contexto
 3. Genera el texto completo de respuesta, listo para enviar (no un esquema, el texto final)
-4. Explica en 1 frase la tÃ¡ctica usada y por quÃ©
+4. Explica en 1 frase la táctica usada y por qué
 El texto de respuesta debe ir en un bloque claramente diferenciado, en primera persona del vendedor.
 
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+---------------------------------------
 MODO 5: ACCIONES EJECUTABLES (Mejora 2)
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-Cuando el usuario pida ejecutar una acciÃ³n directa (ver leads, cambiar estado, etc.):
+---------------------------------------
+Cuando el usuario pida ejecutar una acción directa (ver leads, cambiar estado, etc.):
 - Puedes incluir en tu respuesta HTML con onclick que llame a funciones de la app:
   openLeadDetail('ID'), openAiEmailModal('ID'), showView('leads'), chatExecute('topLeads')
 - Usa enlaces clicables para los leads cuando los menciones
 - Si el usuario pide "cambia el estado de X a Y", genera un patch que lo haga`;
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// VOLTFLOW ASSISTANT â€” Motor de chat + autoprogramaciÃ³n
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ------------------------------------------------------------------------------
+// VOLTFLOW ASSISTANT — Motor de chat + autoprogramación
+// ------------------------------------------------------------------------------
 
 let chatHistory = [];
 let chatOpen = false;
@@ -2019,7 +2019,7 @@ let chatInitialized = false;
 let pendingPatch = null;
 let _chatVoiceRecog = null;
 let _chatVoiceActive = false;
-// â”€â”€ Persistent chat memory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Persistent chat memory ────────────────────────────────────────────────────
 let chatMemory = (() => {
   try { return JSON.parse(localStorage.getItem('gordi_chat_memory') || '{}'); } catch { return {}; }
 })();
@@ -2228,7 +2228,7 @@ function chatAddMessage(role, html, extra) {
   el.appendChild(div);
   el.scrollTop = el.scrollHeight;
   persistChatMessage(role, html);
-  // ðŸ—£ï¸ TTS: speak bot replies
+  // 🗣️ TTS: speak bot replies
   if (role === 'bot') debouncedRender('tts', () => speakText(html), 100);
   return div;
 }
@@ -2238,7 +2238,7 @@ function chatShowTyping() {
   const div = document.createElement('div');
   div.className = 'chat-msg bot typing';
   div.id = 'chat-typing';
-  div.innerHTML = 'â³ Analizando...';
+  div.innerHTML = '⏳ Analizando...';
   el.appendChild(div);
   el.scrollTop = el.scrollHeight;
 }
@@ -2253,24 +2253,24 @@ function chatAsk(question) {
   chatSend();
 }
 
-// â”€â”€ Detectar si el mensaje es una peticiÃ³n de mejora â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Detectar si el mensaje es una petición de mejora ─────────────────────────
 function isImproveRequest(text) {
   const keywords = [
-    'aÃ±adir','aÃ±ade','agregar','agrega','quiero que','necesito que',
+    'añadir','añade','agregar','agrega','quiero que','necesito que',
     'pon','poner','crear','crea','modificar','modifica','cambiar','cambia',
     'mejorar','mejora','incluir','incluye','implementar','implementa',
-    'nuevo campo','nueva columna','nueva funciÃ³n','nuevo botÃ³n','que aparezca',
+    'nuevo campo','nueva columna','nueva función','nuevo botón','que aparezca',
     'que muestre','que tenga','que se pueda','hacer que','falta','faltan',
-    'quiero','necesito','podrÃ­a','podrÃ­as','puedes','hacer que','aÃ±adir',
+    'quiero','necesito','podría','podrías','puedes','hacer que','añadir',
     'quita','elimina','borra','oculta','muestra','agrega','mete','saca',
-    'quisiera','me gustarÃ­a','serÃ­a posible','se puede','cÃ¡mbia','ponle',
+    'quisiera','me gustaría','sería posible','se puede','cámbia','ponle',
     'que salga','que no salga','que funcione','arregla','arreglar','fix'
   ];
   const lower = text.toLowerCase();
   return keywords.some(k => lower.includes(k));
 }
 
-// â”€â”€ Extraer fragmento de cÃ³digo relevante para el cambio â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Extraer fragmento de código relevante para el cambio ─────────────────────
 function extractRelevantCode(userRequest) {
   const fullHtml = document.documentElement.outerHTML;
   const lower = userRequest.toLowerCase();
@@ -2283,7 +2283,7 @@ function extractRelevantCode(userRequest) {
   let sections = [];
 
   // Formulario / campos de leads
-  if (lower.match(/campo|formulario|lead.form|presupuesto|precio|fecha|aÃ±ad|agreg|nuevo campo/)) {
+  if (lower.match(/campo|formulario|lead.form|presupuesto|precio|fecha|añad|agreg|nuevo campo/)) {
     const s1 = grab('id="lead-form"', 3000); if (s1) sections.push({ name:'lead-form HTML', code: s1 });
     const s2 = grab('function saveLead()', 2000); if (s2) sections.push({ name:'saveLead JS', code: s2 });
     const s3 = grab('function openLeadForm(', 1500); if (s3) sections.push({ name:'openLeadForm JS', code: s3 });
@@ -2295,8 +2295,8 @@ function extractRelevantCode(userRequest) {
     const s2 = grab('<table', 1500); if (s2) sections.push({ name:'leads table HTML', code: s2 });
   }
 
-  // Dashboard / mÃ©tricas / KPI
-  if (lower.match(/dashboard|mÃ©trica|estadÃ­stic|kpi|panel|grÃ¡fico|chart/)) {
+  // Dashboard / métricas / KPI
+  if (lower.match(/dashboard|métrica|estadístic|kpi|panel|gráfico|chart/)) {
     const s1 = grab('function renderConversionMetrics()', 2000); if (s1) sections.push({ name:'renderConversionMetrics JS', code: s1 });
     const s2 = grab('function updateStats()', 1500); if (s2) sections.push({ name:'updateStats JS', code: s2 });
     const s3 = grab('id="dashboard-view"', 2000); if (s3) sections.push({ name:'dashboard HTML', code: s3 });
@@ -2315,8 +2315,8 @@ function extractRelevantCode(userRequest) {
     const s3 = grab('id="lead-detail-modal"', 2000); if (s3) sections.push({ name:'lead-detail modal HTML', code: s3 });
   }
 
-  // Scoring / puntuaciÃ³n
-  if (lower.match(/score|puntuaciÃ³n|prioridad|puntos|puntaj/)) {
+  // Scoring / puntuación
+  if (lower.match(/score|puntuación|prioridad|puntos|puntaj/)) {
     const s1 = grab('function calculateScore(', 1500); if (s1) sections.push({ name:'calculateScore JS', code: s1 });
   }
 
@@ -2333,26 +2333,26 @@ function extractRelevantCode(userRequest) {
     const s3 = grab('id="import-view"', 2000); if (s3) sections.push({ name:'import HTML', code: s3 });
   }
 
-  // BÃºsqueda / enriquecimiento
-  if (lower.match(/buscar|bÃºsqueda|enriquec|scraping|hunter|apollo/)) {
+  // Búsqueda / enriquecimiento
+  if (lower.match(/buscar|búsqueda|enriquec|scraping|hunter|apollo/)) {
     const s1 = grab('function startSearch(', 2000); if (s1) sections.push({ name:'startSearch JS', code: s1 });
     const s2 = grab('id="search-view"', 2000); if (s2) sections.push({ name:'search HTML', code: s2 });
   }
 
-  // ConfiguraciÃ³n / settings / API keys
-  if (lower.match(/configuraciÃ³n|config|api|settings|clave|key/)) {
+  // Configuración / settings / API keys
+  if (lower.match(/configuración|config|api|settings|clave|key/)) {
     const s1 = grab('id="settings-view"', 3000); if (s1) sections.push({ name:'settings HTML', code: s1 });
     const s2 = grab('function saveProfile(', 1000); if (s2) sections.push({ name:'saveProfile JS', code: s2 });
   }
 
   // CSS / visual / colores
-  if (lower.match(/color|diseÃ±o|estilo|fondo|botÃ³n|visual|css|tema|fuente|tamaÃ±o/)) {
+  if (lower.match(/color|diseño|estilo|fondo|botón|visual|css|tema|fuente|tamaño/)) {
     const s1 = grab(':root {', 1000); if (s1) sections.push({ name:'CSS :root variables', code: s1 });
     const s2 = grab('.btn-primary', 500); if (s2) sections.push({ name:'CSS buttons', code: s2 });
   }
 
-  // Sidebar / navegaciÃ³n
-  if (lower.match(/sidebar|menÃº|navegaciÃ³n|nav|enlace|secciÃ³n/)) {
+  // Sidebar / navegación
+  if (lower.match(/sidebar|menú|navegación|nav|enlace|sección/)) {
     const s1 = grab('<aside id="sidebar"', 2000); if (s1) sections.push({ name:'sidebar HTML', code: s1 });
     const s2 = grab('function showView(', 800); if (s2) sections.push({ name:'showView JS', code: s2 });
   }
@@ -2377,7 +2377,7 @@ function extractRelevantCode(userRequest) {
   return combined;
 }
 
-// â”€â”€ Aplicar patch al DOM en tiempo real â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Aplicar patch al DOM en tiempo real ──────────────────────────────────────
 function applyPatch(patch) {
   try {
     // Guardar TODOS los datos de localStorage antes de modificar
@@ -2405,9 +2405,9 @@ function applyPatch(patch) {
 
     if (appliedCount === 0) {
       const hint = failedPatches.length
-        ? `\n\nFragmentos no encontrados:\n${failedPatches.map(f => `â€¢ "${f}"`).join('\n')}\n\nEl cÃ³digo puede haber cambiado. Intenta describir la mejora de nuevo.`
+        ? `\n\nFragmentos no encontrados:\n${failedPatches.map(f => `• "${f}"`).join('\n')}\n\nEl código puede haber cambiado. Intenta describir la mejora de nuevo.`
         : '';
-      chatAddMessage('bot', 'âš ï¸ No se pudo aplicar el cambio â€” el cÃ³digo de referencia no coincide.' + hint);
+      chatAddMessage('bot', '⚠️ No se pudo aplicar el cambio — el código de referencia no coincide.' + hint);
       return;
     }
 
@@ -2415,17 +2415,29 @@ function applyPatch(patch) {
       console.warn('[Patch] Algunos patches fallaron:', failedPatches);
     }
 
-    // Aplicar: reemplazar el documento completo
-    document.open();
-    document.write(html);
-    document.close();
+    const touchesScripts = patch.patches.some(p =>
+      /<script|function\s+|const\s+|let\s+|var\s+|=>|onclick=|onchange=/i.test(String(p.find) + String(p.replace))
+    );
+    if (touchesScripts) {
+      chatAddMessage(
+        'bot',
+        'Cambio preparado, pero no lo aplico en vivo porque toca JavaScript o eventos. Para evitar romper la sesión y proteger tus datos, este tipo de cambio debe aplicarse en los archivos del proyecto y recargar la app.'
+      );
+      return;
+    }
+
+    // Aplicar sin document.write: evita destruir el contexto del navegador si
+    // el asistente aplica un cambio despues de que la app ya este cargada.
+    const parser = new DOMParser();
+    const nextDoc = parser.parseFromString(html, 'text/html');
+    document.documentElement.replaceWith(document.importNode(nextDoc.documentElement, true));
 
     // Restaurar TODOS los datos de localStorage
     for (const [key, value] of Object.entries(savedData)) {
       if (value !== null) localStorage.setItem(key, value);
     }
 
-    // Reabrir chat con confirmaciÃ³n
+    // Reabrir chat con confirmación
     setTimeout(() => {
       const win = document.getElementById('chat-window');
       if (win) {
@@ -2433,18 +2445,18 @@ function applyPatch(patch) {
         chatInitialized = true;
         chatOpen = true;
         const msg = appliedCount < patch.patches.length
-          ? `âœ… <strong>Cambio aplicado parcialmente</strong> (${appliedCount}/${patch.patches.length} partes).<br><br>${patch.description}<br><br>Â¿Quieres ajustar algo mÃ¡s?`
-          : `âœ… <strong>Â¡Mejora aplicada!</strong><br><br>${patch.description}<br><br>Â¿Quieres aÃ±adir algo mÃ¡s?`;
+          ? `✅ <strong>Cambio aplicado parcialmente</strong> (${appliedCount}/${patch.patches.length} partes).<br><br>${patch.description}<br><br>¿Quieres ajustar algo más?`
+          : `✅ <strong>¡Mejora aplicada!</strong><br><br>${patch.description}<br><br>¿Quieres añadir algo más?`;
         chatAddMessage('bot', msg);
       }
     }, 400);
 
   } catch(e) {
-    chatAddMessage('bot', 'âŒ Error al aplicar el cambio: ' + e.message + '<br>IntÃ©ntalo de nuevo.');
+    chatAddMessage('bot', '❌ Error al aplicar el cambio: ' + e.message + '<br>Inténtalo de nuevo.');
   }
 }
 
-// â”€â”€ Botones de confirmaciÃ³n del patch â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Botones de confirmación del patch ────────────────────────────────────────
 function buildPatchConfirmButtons(patch) {
   const wrap = document.createElement('div');
   wrap.style.cssText = 'display:flex;gap:.5rem;margin-top:.65rem;flex-wrap:wrap';
@@ -2452,21 +2464,21 @@ function buildPatchConfirmButtons(patch) {
   const btnYes = document.createElement('button');
   btnYes.className = 'btn-primary';
   btnYes.style.cssText = 'font-size:.75rem;padding:.3rem .8rem';
-  btnYes.innerHTML = 'âœ… Aplicar ahora';
+  btnYes.innerHTML = '✅ Aplicar ahora';
   btnYes.onclick = () => { wrap.remove(); applyPatch(patch); };
 
   const btnNo = document.createElement('button');
   btnNo.className = 'btn-outline';
   btnNo.style.cssText = 'font-size:.75rem;padding:.3rem .8rem';
-  btnNo.innerHTML = 'âœ• Cancelar';
-  btnNo.onclick = () => { wrap.remove(); pendingPatch = null; chatAddMessage('bot', 'Cancelado. Â¿QuÃ© mÃ¡s necesitas?'); };
+  btnNo.innerHTML = '✕ Cancelar';
+  btnNo.onclick = () => { wrap.remove(); pendingPatch = null; chatAddMessage('bot', 'Cancelado. ¿Qué más necesitas?'); };
 
   wrap.appendChild(btnYes);
   wrap.appendChild(btnNo);
   return wrap;
 }
 
-// â”€â”€ FunciÃ³n principal de envÃ­o â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Función principal de envío ────────────────────────────────────────────────
 async function chatSend() {
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
@@ -2479,7 +2491,7 @@ async function chatSend() {
 
   const geminiKey = getGeminiKey();
   if (!geminiKey) {
-    chatAddMessage('bot', 'âš ï¸ Necesitas configurar tu <strong>API Key de Gemini</strong> en ConfiguraciÃ³n para usar el asistente.<br><br>Es gratuita: <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--primary)">aistudio.google.com/apikey</a>');
+    chatAddMessage('bot', '⚠️ Necesitas configurar tu <strong>API Key de Gemini</strong> en Configuración para usar el asistente.<br><br>Es gratuita: <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--primary)">aistudio.google.com/apikey</a>');
     chatToggleCommands(true);
     renderChatDiagnostics();
     return;
@@ -2502,7 +2514,7 @@ async function chatSend() {
   }
   const isOpportunity= isOpportunityRequest(text);
 
-  // Agent: delegate mode â€” execute directly
+  // Agent: delegate mode — execute directly
   if (isDelegate) {
     chatAddMessage('user', text);
     agentBatchPrepare(text);
@@ -2517,21 +2529,21 @@ async function chatSend() {
 
   let fullUserMessage = richContext + buildMemoryContext() + '\n\nMensaje del usuario: ' + text;
 
-  // Coach de ventas: aÃ±adir contexto del lead mencionado (Mejora 5)
+  // Coach de ventas: añadir contexto del lead mencionado (Mejora 5)
   if (isCoach) {
     fullUserMessage += buildSalesCoachContext(text);
-    fullUserMessage += '\n\nCOMPORTAMIENTO ESPERADO: ActÃºa como coach de ventas experto. Analiza la respuesta del lead, interpreta las seÃ±ales implÃ­citas, y genera la respuesta Ã³ptima teniendo en cuenta el historial y el sector. SÃ© directo y da el texto listo para enviar.';
+    fullUserMessage += '\n\nCOMPORTAMIENTO ESPERADO: Actúa como coach de ventas experto. Analiza la respuesta del lead, interpreta las señales implícitas, y genera la respuesta óptima teniendo en cuenta el historial y el sector. Sé directo y da el texto listo para enviar.';
   }
 
-  // Si es peticiÃ³n de mejora, enviar el HTML completo
+  // Si es petición de mejora, enviar el HTML completo
   if (isImprove) {
     const fullHtml = document.documentElement.outerHTML;
-    fullUserMessage += '\n\nCÃ“DIGO COMPLETO DE LA APP (busca tÃº mismo lo que necesitas modificar):\n' + fullHtml;
+    fullUserMessage += '\n\nCÓDIGO COMPLETO DE LA APP (busca tú mismo lo que necesitas modificar):\n' + fullHtml;
   }
 
-  // Si es anÃ¡lisis de embudo, reforzar el rol analÃ­tico (Mejora 4)
+  // Si es análisis de embudo, reforzar el rol analítico (Mejora 4)
   if (isAnalysis && !isImprove) {
-    fullUserMessage += '\n\nCOMPORTAMIENTO ESPERADO: Analiza los datos reales proporcionados arriba. Detecta patrones, cuellos de botella y oportunidades. Da conclusiones concretas y 3 acciones especÃ­ficas para mejorar. Basa todo en los nÃºmeros reales, no en generalidades.';
+    fullUserMessage += '\n\nCOMPORTAMIENTO ESPERADO: Analiza los datos reales proporcionados arriba. Detecta patrones, cuellos de botella y oportunidades. Da conclusiones concretas y 3 acciones específicas para mejorar. Basa todo en los números reales, no en generalidades.';
   }
 
   chatHistory.push({ role: 'user', parts: [{ text: fullUserMessage }] });
@@ -2540,7 +2552,7 @@ async function chatSend() {
   try {
     const messages = [
       { role: 'user', parts: [{ text: GORDI_SYSTEM }] },
-      { role: 'model', parts: [{ text: 'Entendido. Soy Voltflow Assistant en modo dual: ayuda y autoprogramaciÃ³n.' }] },
+      { role: 'model', parts: [{ text: 'Entendido. Soy Voltflow Assistant en modo dual: ayuda y autoprogramación.' }] },
       ...chatHistory
     ];
 
@@ -2565,19 +2577,19 @@ async function chatSend() {
     chatHistory.push({ role: 'model', parts: [{ text: reply }] });
     if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
 
-    // â”€â”€ Detectar si la respuesta es un patch JSON â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Detectar si la respuesta es un patch JSON ─────────────────────────────
     const jsonMatch = reply.match(/\{[\s\S]*"type"\s*:\s*"patch"[\s\S]*\}/);
     if (jsonMatch) {
       try {
         const patch = JSON.parse(jsonMatch[0]);
         pendingPatch = patch;
 
-        // Mostrar preview y botones de confirmaciÃ³n
+        // Mostrar preview y botones de confirmación
         const confirmButtons = buildPatchConfirmButtons(patch);
         chatAddMessage('bot',
-          'ðŸ”§ <strong>Mejora lista para aplicar:</strong><br><br>' +
+          '🔧 <strong>Mejora lista para aplicar:</strong><br><br>' +
           patch.preview + '<br><br>' +
-          '<span style="font-size:.75rem;color:var(--text-muted)">Se aplicarÃ¡ en tiempo real sin perder tus datos. Â¿Confirmas?</span>',
+          '<span style="font-size:.75rem;color:var(--text-muted)">Se aplicará en tiempo real sin perder tus datos. ¿Confirmas?</span>',
           confirmButtons
         );
         return;
@@ -2586,7 +2598,7 @@ async function chatSend() {
       }
     }
 
-    // â”€â”€ Respuesta de texto normal con formato enriquecido â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Respuesta de texto normal con formato enriquecido ───────────────────
     let formatted = reply
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
@@ -2608,9 +2620,9 @@ async function chatSend() {
       const actBar = document.createElement('div');
       actBar.style.cssText = 'display:flex;gap:.4rem;margin-top:.65rem;flex-wrap:wrap';
       const actions = [
-        { label:'ðŸ”¥ Ver leads prioritarios', fn: "chatExecute('topLeads')" },
-        { label:'â° Ver vencidos', fn: "chatExecute('overdueLeads')" },
-        { label:'ðŸ“Š Stats semana', fn: "chatExecute('weekStats')" },
+        { label:'🔥 Ver leads prioritarios', fn: "chatExecute('topLeads')" },
+        { label:'⏰ Ver vencidos', fn: "chatExecute('overdueLeads')" },
+        { label:'📊 Stats semana', fn: "chatExecute('weekStats')" },
       ];
       actions.forEach(a => {
         const btn = document.createElement('button');
@@ -2625,7 +2637,7 @@ async function chatSend() {
 
   } catch(e) {
     chatRemoveTyping();
-    chatAddMessage('bot', 'âŒ Error: ' + e.message + '. Verifica tu API key de Gemini en ConfiguraciÃ³n.');
+    chatAddMessage('bot', '❌ Error: ' + e.message + '. Verifica tu API key de Gemini en Configuración.');
     chatToggleCommands(true);
     renderChatDiagnostics();
   }
@@ -2683,7 +2695,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initLeadFormDatePicker();
   // Update cloud sync pill
   updateCloudPill();
-  // Proactive check (Mejora 4) â€” run after app is fully loaded
+  // Proactive check (Mejora 4) — run after app is fully loaded
   setTimeout(() => runProactiveCheck(), 10000);
   initTTS();
   initScheduler();
@@ -2692,7 +2704,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // JSONBin auto-pull is initialized once from init.js after local recovery checks.
 });
 
-// â”€â”€ Flatpickr: inicializar en el formulario de nuevo lead â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Flatpickr: inicializar en el formulario de nuevo lead ─────────────────────
 function initLeadFormDatePicker() {
   const el = document.getElementById('lead-next-contact');
   if (!el || el._flatpickr) return;
@@ -2707,7 +2719,7 @@ function initLeadFormDatePicker() {
   });
 }
 
-// â”€â”€ Flatpickr: inicializar en el modal de detalle del lead â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Flatpickr: inicializar en el modal de detalle del lead ────────────────────
 function initDetailDatePicker() {
   const el = document.getElementById('detail-next-contact');
   if (!el) return;
@@ -2727,7 +2739,7 @@ function initDetailDatePicker() {
 
 
 
-// â”€â”€ STATUS TIMELINE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── STATUS TIMELINE ──────────────────────────────────────────────
 function buildStatusTimeline(lead) {
   const allStatuses = ['Pendiente','Contactado','Respuesta del cliente','Visita','Entrega de presupuesto','Cerrado'];
   const dotClass = s => {
@@ -2758,7 +2770,7 @@ function buildStatusTimeline(lead) {
 
   // Status changes from activity log
   statusChanges.forEach(a => {
-    const match = a.action.match(/(?:Estado cambiado|Pipeline): (.+?) â†’ (.+)/);
+    const match = a.action.match(/(?:Estado cambiado|Pipeline): (.+?) -> (.+)/);
     if (match) {
       events.push({ status: match[2], label: match[2], date: a.date, isCurrent: false });
     }
@@ -2784,7 +2796,7 @@ function buildStatusTimeline(lead) {
             background:${done?'rgba(10,132,255,.12)':'var(--glass)'};
             color:${isCur?'var(--primary)':done?'var(--text-muted)':'var(--text-dim)'};
             border:1px solid ${isCur?'rgba(10,132,255,.3)':'var(--glass-border)'}">${s}</span>
-          ${i < allStatuses.length-1 ? '<span style="color:var(--text-dim);font-size:.65rem">â€º</span>' : ''}
+          ${i < allStatuses.length-1 ? '<span style="color:var(--text-dim);font-size:.65rem">›</span>' : ''}
         </div>`;
       }).join('')}
     </div>
@@ -2796,16 +2808,16 @@ function buildStatusTimeline(lead) {
       <div class="timeline-item">
         <div class="timeline-dot ${dotClass(ev.status)}"></div>
         <div class="timeline-body">
-          <div class="timeline-label">${ev.label === 'Creado' ? 'ðŸ†• Lead aÃ±adido' : ev.label}
+          <div class="timeline-label">${ev.label === 'Creado' ? '🆕 Lead añadido' : ev.label}
             ${ev.isCurrent ? '<span class="timeline-current">actual</span>' : ''}
           </div>
-          <div class="timeline-date">${ev.date ? new Date(ev.date).toLocaleDateString('es-ES', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : 'â€”'}</div>
+          <div class="timeline-date">${ev.date ? new Date(ev.date).toLocaleDateString('es-ES', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—'}</div>
         </div>
       </div>`).join('')}
   </div>`;
 }
 
-// â”€â”€ FILTROS PERSISTENTES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── FILTROS PERSISTENTES ──────────────────────────────────────────
 function saveFilters() {
   const filters = {
     search: document.getElementById('lead-search')?.value || '',
@@ -2830,7 +2842,7 @@ function restoreFilters() {
   } catch(e) {}
 }
 
-// â”€â”€ KANBAN QUICK NOTE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── KANBAN QUICK NOTE ─────────────────────────────────────────────
 let knPopupEl = null;
 
 function openQuickNote(e, leadId) {
@@ -2844,14 +2856,14 @@ function openQuickNote(e, leadId) {
   popup.className = 'kn-popup';
   popup.id = 'kn-popup';
 
-  const lastNote = lead.notes ? `<div class="kn-last-note">ðŸ“ ${lead.notes.slice(0,80)}${lead.notes.length>80?'â€¦':''}</div>` : '';
+  const lastNote = lead.notes ? `<div class="kn-last-note">📝 ${lead.notes.slice(0,80)}${lead.notes.length>80?'…':''}</div>` : '';
 
   popup.innerHTML = `
     <div style="font-size:.72rem;font-weight:600;color:var(--text-muted);margin-bottom:.35rem">
-      ðŸ“ Nota rÃ¡pida â€” <span style="color:var(--text)">${lead.company}</span>
+      📝 Nota rápida — <span style="color:var(--text)">${lead.company}</span>
     </div>
     ${lastNote}
-    <textarea id="kn-text" rows="3" placeholder="AÃ±ade una nota rÃ¡pida...">${lead.notes||''}</textarea>
+    <textarea id="kn-text" rows="3" placeholder="Añade una nota rápida...">${lead.notes||''}</textarea>
     <div class="kn-popup-actions">
       <button class="btn-action" onclick="closeQuickNote(true)">Descartar</button>
       <button class="btn-primary" style="font-size:.75rem;padding:.3rem .75rem" onclick="saveQuickNote('${leadId}')">Guardar</button>
@@ -2892,7 +2904,7 @@ function closeQuickNoteOutside(e) {
 
 function closeQuickNote(discard = false) {
   if (!knPopupEl) return;
-  // Auto-guardar si hay cambios y no se pide descartar explÃ­citamente
+  // Auto-guardar si hay cambios y no se pide descartar explícitamente
   if (!discard) {
     const ta = document.getElementById('kn-text');
     const leadIdAttr = knPopupEl.dataset.leadId;
@@ -2901,10 +2913,10 @@ function closeQuickNote(discard = false) {
       const newNote = ta.value.trim();
       if (lead && newNote !== (lead.notes || '').trim()) {
         lead.notes = newNote;
-        addActivityLog(leadIdAttr, `ðŸ“ Nota actualizada`);
+        addActivityLog(leadIdAttr, `📝 Nota actualizada`);
         saveLeads();
         renderKanban();
-        showToast('Nota guardada âœ“');
+        showToast('Nota guardada ✓');
       }
     }
   }
@@ -2919,17 +2931,17 @@ function saveQuickNote(leadId) {
   if (!lead || !ta) return;
   const newNote = ta.value.trim();
   if (newNote !== lead.notes) {
-    addActivityLog(leadId, `ðŸ“ Nota actualizada`);
+    addActivityLog(leadId, `📝 Nota actualizada`);
     lead.notes = newNote;
     saveLeads();
-    showToast('Nota guardada âœ“');
+    showToast('Nota guardada ✓');
     renderKanban();
   }
   closeQuickNote();
 }
 
 
-// â”€â”€ RE-ENRIQUECIMIENTO INDIVIDUAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── RE-ENRIQUECIMIENTO INDIVIDUAL ──────────────────────────────────────────
 async function reEnrichOne(idx) {
   const company = tempSearchResults[idx];
   if (!company) return;
@@ -2940,7 +2952,7 @@ async function reEnrichOne(idx) {
   const log   = document.getElementById(`rel-${idx}`);
 
   // UI: estado cargando
-  if (btn) { btn.disabled = true; btn.classList.add('spinning'); btn.innerHTML = '<span class="reenrich-icon">ðŸ”„</span> Buscando...'; }
+  if (btn) { btn.disabled = true; btn.classList.add('spinning'); btn.innerHTML = '<span class="reenrich-icon">🔄</span> Buscando...'; }
   if (prog) { prog.style.display = 'block'; progF.style.width = '5%'; }
   if (log)  { log.style.display = 'block'; log.textContent = 'Iniciando...'; }
 
@@ -2950,16 +2962,16 @@ async function reEnrichOne(idx) {
   let changed = false;
 
   try {
-    // â”€â”€ Capa Web (siempre se reintenta si no hay email) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Capa Web (siempre se reintenta si no hay email) ──────────────────
     if (!company.email && company.website) {
-      setL('ðŸŒ Scraping web...'); setP(15);
+      setL('🌐 Scraping web...'); setP(15);
       const enriched = await enrichFromWeb({ ...company });
       if (enriched.email && enriched.email !== company.email) {
         company.email = enriched.email;
         company.emails = enriched.emails || company.emails;
         if (!company.enrichSource.includes('Web-email')) company.enrichSource.push('Web-email');
         changed = true;
-        setL(`âœ‰ï¸ Email encontrado: ${enriched.email}`);
+        setL(`✉️ Email encontrado: ${enriched.email}`);
       } else {
         setL('Web: sin email');
       }
@@ -2971,16 +2983,16 @@ async function reEnrichOne(idx) {
     }
     setP(40);
 
-    // â”€â”€ Capa Hunter.io â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Capa Hunter.io ────────────────────────────────────────────────────
     const hunterKey = localStorage.getItem('gordi_hunter_key');
     if (!company.email && company.website && hunterKey) {
-      setL('ðŸ“§ Consultando Hunter.io...'); setP(55);
+      setL('📧 Consultando Hunter.io...'); setP(55);
       const enriched = await enrichFromHunter({ ...company });
       if (enriched.email && enriched.email !== company.email) {
         company.email = enriched.email;
         if (!company.enrichSource.includes('Hunter.io')) company.enrichSource.push('Hunter.io');
         changed = true;
-        setL(`âœ‰ï¸ Hunter: ${enriched.email}`);
+        setL(`✉️ Hunter: ${enriched.email}`);
       } else {
         setL('Hunter: sin resultado');
       }
@@ -2988,29 +3000,29 @@ async function reEnrichOne(idx) {
     }
     setP(70);
 
-    // â”€â”€ Capa Apollo.io â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Capa Apollo.io ────────────────────────────────────────────────────
     const apolloKey = localStorage.getItem('gordi_apollo_key');
     if ((!company.email || !company.decision_maker) && company.website && apolloKey) {
-      setL('ðŸš€ Consultando Apollo.io...'); setP(82);
+      setL('🚀 Consultando Apollo.io...'); setP(82);
       const enriched = await enrichFromApollo({ ...company });
       if (!company.email && enriched.email) {
         company.email = enriched.email;
         if (!company.enrichSource.includes('Apollo.io')) company.enrichSource.push('Apollo.io');
         changed = true;
-        setL(`âœ‰ï¸ Apollo: ${enriched.email}`);
+        setL(`✉️ Apollo: ${enriched.email}`);
       }
       if (!company.decision_maker && enriched.decision_maker) {
         company.decision_maker = enriched.decision_maker;
         if (!company.enrichSource.includes('Apollo.io')) company.enrichSource.push('Apollo.io');
         changed = true;
-        setL(`ðŸ‘¤ Apollo: ${enriched.decision_maker}`);
+        setL(`👤 Apollo: ${enriched.decision_maker}`);
       }
     }
     setP(95);
 
-    // â”€â”€ Social (LinkedIn / Instagram) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Social (LinkedIn / Instagram) ─────────────────────────────────────
     if (!company.instagram || !company.linkedin) {
-      setL('ðŸ“± Redes sociales...'); 
+      setL('📱 Redes sociales...'); 
       const enriched = await enrichFromSocial({ ...company });
       if (!company.instagram && enriched.instagram) { company.instagram = enriched.instagram; changed = true; }
       if (!company.linkedin  && enriched.linkedin)  { company.linkedin  = enriched.linkedin;  changed = true; }
@@ -3018,19 +3030,19 @@ async function reEnrichOne(idx) {
 
     setP(100);
 
-    // â”€â”€ Resultado final â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Resultado final ────────────────────────────────────────────────────
     tempSearchResults[idx] = company;
 
     if (company.email) {
-      setL(`âœ… Completado â€” email: ${company.email}`);
+      setL(`✅ Completado — email: ${company.email}`);
     } else {
-      setL('âš ï¸ Sin email encontrado en ninguna fuente');
+      setL('⚠️ Sin email encontrado en ninguna fuente');
     }
 
     updateEnrichStats();
 
   } catch(err) {
-    setL(`âŒ Error: ${err.message}`);
+    setL(`❌ Error: ${err.message}`);
     console.warn('reEnrichOne error:', err);
   }
 
@@ -3042,7 +3054,7 @@ async function reEnrichOne(idx) {
   if (btn) { btn.disabled = false; btn.classList.remove('spinning'); }
 }
 
-// â”€â”€ GLOBAL SEARCH â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── GLOBAL SEARCH ────────────────────────────────────────────────
 let gsActiveIndex = -1;
 
 function openGlobalSearch() {
@@ -3103,8 +3115,8 @@ function runGlobalSearch(query) {
       return `<div class="gs-item" data-lead-id="${l.id}" onclick="gsOpenLead('${l.id}')">
         <div class="gs-avatar" style="background:${color}22;color:${color}">${(l.company||'?')[0].toUpperCase()}</div>
         <div class="gs-main">
-          <div class="gs-name">${highlight(l.company, q)} <span style="font-size:.72rem;color:var(--text-muted)">â€” ${l.name}</span></div>
-          <div class="gs-sub">${l.segment} Â· ${l.email||'sin email'} ${l.notes ? 'Â· '+l.notes.slice(0,40)+'â€¦' : ''}</div>
+          <div class="gs-name">${highlight(l.company, q)} <span style="font-size:.72rem;color:var(--text-muted)">— ${l.name}</span></div>
+          <div class="gs-sub">${l.segment} · ${l.email||'sin email'} ${l.notes ? '· '+l.notes.slice(0,40)+'…' : ''}</div>
         </div>
         <span class="gs-badge" style="color:${bc}">${l.score}pts</span>
         <span class="gs-badge">${l.status}</span>
@@ -3112,10 +3124,10 @@ function runGlobalSearch(query) {
     }),
     emailResults.length ? `<div style="padding:.35rem 1.1rem .2rem;font-size:.68rem;color:var(--text-dim);font-weight:600;letter-spacing:.04em">EMAILS ENVIADOS</div>` : '',
     ...emailResults.map(e => `<div class="gs-item" onclick="closeGlobalSearch();showView('tracking')">
-      <div class="gs-avatar" style="background:rgba(10,132,255,.1);color:var(--primary)">âœ‰ï¸</div>
+      <div class="gs-avatar" style="background:rgba(10,132,255,.1);color:var(--primary)">✉️</div>
       <div class="gs-main">
         <div class="gs-name">${highlight(e.company, q)}</div>
-        <div class="gs-sub">${e.subject||'sin asunto'} Â· ${new Date(e.date).toLocaleDateString('es-ES')}</div>
+        <div class="gs-sub">${e.subject||'sin asunto'} · ${new Date(e.date).toLocaleDateString('es-ES')}</div>
       </div>
       <span class="gs-badge">${e.status}</span>
     </div>`)

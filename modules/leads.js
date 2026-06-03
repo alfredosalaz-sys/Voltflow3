@@ -319,9 +319,9 @@ function renderLeads() {
     if (totalPages > 1) {
       paginationEl.style.display = 'flex';
       paginationEl.innerHTML = `
-        <button onclick="if(leadsPage>0){leadsPage--;renderLeads()}" ${leadsPage===0?'disabled':''} class="btn-outline btn-sm">← Ant.</button>
+        <button onclick="if(leadsPage>0){leadsPage--;renderLeads()}" ${leadsPage===0?'disabled':''} class="btn-outline btn-sm"><- Ant.</button>
         <span style="font-size:.78rem;color:var(--text-dim)">Página ${leadsPage+1} de ${totalPages} · ${totalLeads} leads</span>
-        <button onclick="if(leadsPage<${totalPages-1}){leadsPage++;renderLeads()}" ${leadsPage===totalPages-1?'disabled':''} class="btn-outline btn-sm">Sig. →</button>`;
+        <button onclick="if(leadsPage<${totalPages-1}){leadsPage++;renderLeads()}" ${leadsPage===totalPages-1?'disabled':''} class="btn-outline btn-sm">Sig. -></button>`;
     } else {
       paginationEl.style.display = 'none';
     }
@@ -737,7 +737,7 @@ function saveLeadDetail(id) {
   lead.tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
   if (lead.status !== oldStatus) {
     lead.status_date = new Date().toISOString();
-    addActivityLog(id, `Estado cambiado: ${oldStatus} → ${lead.status}`);
+    addActivityLog(id, `Estado cambiado: ${oldStatus} -> ${lead.status}`);
     applySequenceRule(lead, lead.status); // MEJORA 2
   }
   lead.score = recalculateLeadScore(lead);

@@ -7,21 +7,26 @@ document.addEventListener('DOMContentLoaded', () => {
   const autoRescued = autoRestoreCriticalRescueIfNeeded();
   if (autoRescued) loadAllData();
   const recoverySummary = getLocalRecoverySummary();
-  createCriticalRescueSnapshot(`startup_${VOLTFLOW_VERSION}`, { throttleMs: 12 * 60 * 60 * 1000 });
+  runIdleStartupTask('critical-rescue-snapshot', () => {
+    createCriticalRescueSnapshot(`startup_${VOLTFLOW_VERSION}`, { throttleMs: 12 * 60 * 60 * 1000 });
+  }, 2400);
 
   updateDate();
-  renderAllFull();
-  renderTemplateList();
-  renderCampaigns();
-  renderDashboardCharts();
-  renderRecentActivity();
-  renderTopLeads();
-  renderTodayPanel();
-  renderSearchHistory();
-  updateStorageInfo();
+  runStartupTask('dashboard-visible', () => {
+    updateStats();
+    renderDashboardCharts();
+    renderRecentActivity();
+    renderTopLeads();
+    renderTodayPanel();
+  }, 0);
+  runIdleStartupTask('lists-background', () => renderAllFull(), 500);
+  runIdleStartupTask('templates-background', () => renderTemplateList(), 900);
+  runIdleStartupTask('campaigns-background', () => renderCampaigns(), 1200);
+  runIdleStartupTask('history-background', () => renderSearchHistory(), 1500);
+  runIdleStartupTask('storage-background', () => updateStorageInfo(), 1800);
   setTimeout(() => showStartupStorageRecoveryNotice(recoverySummary), 1200);
 
-  // Mostrar banner de migraciÃƒÂ³n automÃƒÂ¡tica si hubo volcado
+  // Mostrar banner de migración automática si hubo volcado
   if (migrationResult && typeof migrationResult === 'object' && migrationResult.leads > 0) {
     setTimeout(() => showMigrationBanner(migrationResult), 600);
   }
@@ -53,14 +58,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (e.key === 'Escape') {
       closeGlobalSearch();
-      // Cerrar paneles laterales de leads (si estÃƒÂ¡n abiertos)
+      // Cerrar paneles laterales de leads (si están abiertos)
       if (typeof closeLeadSidePanel === 'function') closeLeadSidePanel();
       closeLead(); closeAiModal(); closeCampaignModal(); closeObjectivesModal();
       document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
       return;
     }
 
-    // Atajos de navegaciÃƒÂ³n rÃƒÂ¡pida
+    // Atajos de navegación rápida
     const navMap = {
       'n': () => { showView('leads'); toggleLeadForm(); },
       'f': () => { openFocusMode(); },
@@ -76,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Tutorial solo si es instalaciÃƒÂ³n completamente nueva (sin datos y sin migraciÃƒÂ³n)
+  // Tutorial solo si es instalación completamente nueva (sin datos y sin migración)
   if (!localStorage.getItem('gordi_tutorial_done') && leads.length === 0 && !migrationResult) {
     setTimeout(() => showTutorial(), 800);
   }
@@ -89,33 +94,67 @@ document.addEventListener('DOMContentLoaded', () => {
   if (scale) setFontSize(scale, true);
 
   // Auto backup weekly
-  autoWeeklyBackup();
+  runIdleStartupTask('weekly-backup', () => autoWeeklyBackup(), 2600);
 
-  // Purgar cachÃƒÂ©s de enriquecimiento caducadas (>7 dÃƒÂ­as)
-  purgeStaleCaches();
+  // Purgar cachés de enriquecimiento caducadas (>7 días)
+  runIdleStartupTask('purge-stale-caches', () => purgeStaleCaches(), 3200);
 
-  // MEJORA: Sistema de Actualizaciones AutomÃƒÂ¡tico via version.json
+  // MEJORA: Sistema de Actualizaciones Automático via version.json
   checkUpdates({ migrationResult, recoverySummary });
+  window.__gordiBootReady = true;
 
-  // Auto-pull JSONBin al iniciar si estÃƒÂ¡ habilitado
+  // Auto-pull JSONBin al iniciar si está habilitado
   if (localStorage.getItem('gordi_jsonbin_auto') === 'true') {
     setTimeout(() => {
       if (typeof jsonbinPull === 'function') jsonbinPull(false);
-    }, 1000); // 1s delay para asegurar que renderAllFull ya terminÃƒÂ³ y se evita race condition visual
+    }, 1000); // 1s delay para asegurar que renderAllFull ya terminó y se evita race condition visual
   }
 });
 
+function runStartupTask(name, fn, delay) {
+  setTimeout(() => {
+    try {
+      fn();
+    } catch (err) {
+      console.error(`Error en arranque diferido (${name}):`, err);
+      try {
+        if (typeof logAudit === 'function') logAudit('startup_task_error', `${name}: ${err && err.message ? err.message : err}`);
+      } catch {}
+    }
+  }, delay || 0);
+}
 
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ MIGRACIÃƒâ€œN AUTOMÃƒÂTICA DE DATOS ENTRE VERSIONES Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+function runIdleStartupTask(name, fn, delay) {
+  runStartupTask(name, () => {
+    const run = () => {
+      try {
+        fn();
+      } catch (err) {
+        console.error(`Error en arranque idle (${name}):`, err);
+        try {
+          if (typeof logAudit === 'function') logAudit('startup_idle_error', `${name}: ${err && err.message ? err.message : err}`);
+        } catch {}
+      }
+    };
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(run, { timeout: 2500 });
+    } else {
+      setTimeout(run, 120);
+    }
+  }, delay || 0);
+}
+
+
+// --- MIGRACION AUTOMÁTICA DE DATOS ENTRE VERSIONES ---------------------------
 // Todas las versiones de Voltflow comparten el mismo localStorage en file://
-// Al arrancar por primera vez esta versiÃƒÂ³n, se vuelcan todos los datos automÃƒÂ¡ticamente.
+// Al arrancar por primera vez esta versión, se vuelcan todos los datos automáticamente.
 
-let VOLTFLOW_VERSION = '2.7.1'; // Fallback
+let VOLTFLOW_VERSION = '2.7.7'; // Fallback
 let VOLTFLOW_CHANGELOG = [];
 
-// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
-// Ã¢Å¡Â¡ PERFORMANCE SYSTEM Ã¢â‚¬â€ debounce renders, smart batching, pagination
-// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+// ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ 
+// Aviso: PERFORMANCE SYSTEM - debounce renders, smart batching, pagination
+// ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ 
 
 // Debounce timers
 const _renderTimers = {};
@@ -124,7 +163,7 @@ function debouncedRender(key, fn, delay) {
   _renderTimers[key] = setTimeout(() => { delete _renderTimers[key]; fn(); }, delay || 60);
 }
 
-// Batch multiple render requests Ã¢â‚¬â€ only executes once per animation frame
+// Batch multiple render requests - only executes once per animation frame
 const _pendingRenders = new Set();
 let   _rafScheduled   = false;
 function scheduleRender(key) {
@@ -161,7 +200,7 @@ function renderAllFull() {
 const LEADS_PAGE_SIZE = 50;
 let   leadsPage = 0;
 
-// Single-row update Ã¢â‚¬â€ update only the changed row without full re-render
+// Single-row update - update only the changed row without full re-render
 function updateLeadRow(leadId) {
   const tbody = document.getElementById('leads-body');
   if (!tbody) return false;
@@ -201,7 +240,7 @@ const VOLTFLOW_DATA_KEYS = [
   'gordi_manual_state',
   'gordi_workflow_restore_points', 'gordi_workflow_audit_log',
   'gordi_jsonbin_key', 'gordi_jsonbin_bin', 'gordi_jsonbin_auto',
-  // Ã¢â€â‚¬Ã¢â€â‚¬ GitHub sync Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // --  GitHub sync ------------------------------------------------------
   'gordi_gh_token', 'gordi_gh_user', 'gordi_gh_repo', 'gordi_gh_auto',
 ];
 
@@ -231,6 +270,7 @@ function exportDataSnapshot() {
     if (!k || VOLTFLOW_SNAPSHOT_EXCLUDED_KEYS.has(k)) continue;
     if (k && k.startsWith('gordi_ecache_')) snapshot[k] = localStorage.getItem(k);
     if (k && k.startsWith('gordi_') && snapshot[k] === undefined) snapshot[k] = localStorage.getItem(k);
+    if (k && k.startsWith('voltium_') && snapshot[k] === undefined) snapshot[k] = localStorage.getItem(k);
   }
   return snapshot;
 }
@@ -596,8 +636,8 @@ function hasRecoveredLocalData(summary) {
   );
 }
 
-// Detecta si esta versiÃƒÂ³n concreta se abre por primera vez en este navegador
-// Si hay datos de versiones anteriores en el mismo localStorage, los vuelca todo automÃƒÂ¡ticamente.
+// Detecta si esta versión concreta se abre por primera vez en este navegador
+// Si hay datos de versiones anteriores en el mismo localStorage, los vuelca todo automáticamente.
 function showStorageDiagnostics() {
   const summary = getLocalRecoverySummary();
   const origin = summary.origin || location.href;
@@ -651,10 +691,10 @@ function dismissStorageRecoveryNotice() {
 function tryAutoMigrate() {
   const thisVersionKey = `_voltflow_opened_${VOLTFLOW_VERSION}`;
 
-  // Si ya se abriÃƒÂ³ esta versiÃƒÂ³n antes Ã¢â€ â€™ no hacer nada
+  // Si ya se abrió esta versión antes -> no hacer nada
   if (localStorage.getItem(thisVersionKey)) return false;
 
-  // Primera vez que se abre esta versiÃƒÂ³n Ã¢â€ â€™ marcarla
+  // Primera vez que se abre esta versión -> marcarla
   localStorage.setItem(thisVersionKey, Date.now().toString());
 
   // Contar datos disponibles en el localStorage (dejados por versiones anteriores)
@@ -674,7 +714,7 @@ function tryAutoMigrate() {
   const hasApiKeys      = !!(localStorage.getItem('gordi_api_key') || getGeminiKey() || localStorage.getItem('gordi_hunter_key'));
   const hasProfile      = !!localStorage.getItem('gordi_user_name');
 
-  // Si no hay ningÃƒÂºn dato previo Ã¢â€ â€™ primera instalaciÃƒÂ³n, nada que migrar
+  // Si no hay ningún dato previo -> primera instalación, nada que migrar
   const hasWorkData = existingLeads.length || existingHistory.length || existingCamps.length ||
     existingSearches.length || existingSavedSearches.length || Object.keys(existingMemory).length ||
     hasScrapeMemory || hasApiKeys || hasProfile;
@@ -682,8 +722,8 @@ function tryAutoMigrate() {
 
   const migrationSnapshot = createSafetySnapshot(`before_opening_${VOLTFLOW_VERSION}`);
 
-  // Hay datos Ã¢â€ â€™ volcado automÃƒÂ¡tico completo (ya estÃƒÂ¡n en localStorage, solo necesitamos cargarlos en memoria)
-  // Guardar un registro de la migraciÃƒÂ³n para mostrarlo
+  // Hay datos -> volcado automático completo (ya están en localStorage, solo necesitamos cargarlos en memoria)
+  // Guardar un registro de la migración para mostrarlo
   const migrationLog = {
     date: new Date().toISOString(),
     leads: existingLeads.length,
@@ -780,7 +820,7 @@ function loadAllData() {
   }
 
   if (corruptionDetected) {
-    alert("Ã¢Å¡Â Ã¯Â¸Â ALERTA DE DATOS: Se han detectado datos corruptos o incompatibles en tu base de datos local.\n\nPor seguridad, los datos afectados no se han cargado para evitar sobreescribirlos. Por favor, ve a 'ConfiguraciÃƒÂ³n' y utiliza la opciÃƒÂ³n 'Exportar Datos' para generar un backup sin procesar, y contacta con soporte.");
+    alert("Aviso:️ ALERTA DE DATOS: Se han detectado datos corruptos o incompatibles en tu base de datos local.\n\nPor seguridad, los datos afectados no se han cargado para evitar sobreescribirlos. Por favor, ve a 'Configuración' y utiliza la opción 'Exportar Datos' para generar un backup sin procesar, y contacta con soporte.");
   }
 
   // Cargar keys y perfil
@@ -789,7 +829,7 @@ function loadAllData() {
   const el = id => document.getElementById(id);
 
   const profile = {
-    name: localStorage.getItem('gordi_user_name') || 'HÃƒÂ©ctor Alfredo Salazar',
+    name: localStorage.getItem('gordi_user_name') || 'Héctor Alfredo Salazar',
     email: localStorage.getItem('gordi_user_email') || 'hector@voltiummadrid.es',
     company: localStorage.getItem('gordi_user_company') || 'Voltium Madrid',
     phone: localStorage.getItem('gordi_user_phone') || '',
@@ -806,12 +846,12 @@ function loadAllData() {
 
   if (apiKey && el('api-key-input')) {
     el('api-key-input').value = apiKey;
-    el('api-key-status').innerHTML = '<span style="color:var(--success)">Ã¢Å“â€¦ API Key guardada</span>';
+    el('api-key-status').innerHTML = '<span style="color:var(--success)">OK API Key guardada</span>';
     loadGoogleMapsScript(apiKey);
   }
   if (hunterKey && el('hunter-key-input')) {
     el('hunter-key-input').value = hunterKey;
-    el('hunter-key-status').innerHTML = '<span style="color:var(--success)">Ã¢Å“â€¦ Hunter Key guardada</span>';
+    el('hunter-key-status').innerHTML = '<span style="color:var(--success)">OK Hunter Key guardada</span>';
   }
   const _ssid = localStorage.getItem('gordi_sheets_id');
   const _scid = localStorage.getItem('gordi_sheets_client_id');
@@ -823,24 +863,24 @@ function loadAllData() {
   const claudeKey = getGeminiKey();
   if (claudeKey && el('claude-key-input')) {
     el('claude-key-input').value = claudeKey;
-    el('claude-key-status').innerHTML = '<span style="color:var(--success)">Ã¢Å“â€¦ Gemini Key guardada</span>';
+    el('claude-key-status').innerHTML = '<span style="color:var(--success)">OK Gemini Key guardada</span>';
   }
   const groqKey = localStorage.getItem('gordi_groq_key');
   if (groqKey && el('groq-key-input')) {
     el('groq-key-input').value = groqKey;
-    el('groq-key-status').innerHTML = '<span style="color:var(--success)">Ã¢Å“â€¦ Groq Key guardada</span>';
+    el('groq-key-status').innerHTML = '<span style="color:var(--success)">OK Groq Key guardada</span>';
   }
   const openrouterKey = localStorage.getItem('gordi_openrouter_key');
   if (openrouterKey && el('openrouter-key-input')) {
     el('openrouter-key-input').value = openrouterKey;
-    el('openrouter-key-status').innerHTML = '<span style="color:var(--success)">Ã¢Å“â€¦ OpenRouter Key guardada</span>';
+    el('openrouter-key-status').innerHTML = '<span style="color:var(--success)">OK OpenRouter Key guardada</span>';
   }
   // Mostrar estado del router IA
   setTimeout(refreshAiRouterStatus, 100);
   const apolloKey = localStorage.getItem('gordi_apollo_key');
   if (apolloKey && el('apollo-key-input')) {
     el('apollo-key-input').value = apolloKey;
-    el('apollo-key-status').innerHTML = '<span style="color:var(--success)">Ã¢Å“â€¦ Apollo Key guardada</span>';
+    el('apollo-key-status').innerHTML = '<span style="color:var(--success)">OK Apollo Key guardada</span>';
   }
   // JSONBin
   const jbKey = localStorage.getItem('gordi_jsonbin_key');
@@ -859,16 +899,16 @@ function updateDate() {
   if (el) el.innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
-// ============ NAVEGACIÃƒâ€œN ============
+// ============ NAVEGACION ============
 
 
-// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
-// Ã¢â€“Ë†Ã¢â€“Ë†  MÃƒâ€œDULO: UI
-// Ã¢â€â‚¬Ã¢â€â‚¬  Renderizado, vistas, modales, drawer y componentes visuales
-// Ã¢â€â‚¬Ã¢â€â‚¬  Funciones: showView, showToast, setProgress, logEnrich, updateEnrichStats,
+// ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ 
+//     MODULO: UI
+// --   Renderizado, vistas, modales, drawer y componentes visuales
+// --   Funciones: showView, showToast, setProgress, logEnrich, updateEnrichStats,
   //          renderLeads, renderKanban, updateCard, openLeadDrawer, closeDrawer,
   //          openGlobalSearch, openVoiceModal, openScanModal, openFocusMode
-// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+// ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ 
 
 function showView(view) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -883,7 +923,10 @@ function showView(view) {
   document.querySelectorAll('aside nav li').forEach(li => {
     li.classList.toggle('active', li.getAttribute('data-view') === view);
   });
+  if (view === 'leads') renderLeads();
   if (view === 'kanban') renderKanban();
+  if (view === 'campaigns') renderCampaigns();
+  if (view === 'tracking') renderTracking();
   if (view === 'coverage' && typeof renderCoverage === 'function') renderCoverage();
   if (view === 'dashboard') { renderDashboardCharts(); renderRecentActivity(); renderTopLeads(); }
 }
@@ -902,48 +945,6 @@ function toggleLeadForm() {
 }
 
 // ============ PERFIL / FIRMA ============
-function getProfile() {
-  return {
-    name: localStorage.getItem('gordi_user_name') || 'HÃƒÂ©ctor Alfredo Salazar',
-    email: localStorage.getItem('gordi_user_email') || 'hector@voltiummadrid.es',
-    company: localStorage.getItem('gordi_user_company') || 'Voltium Madrid',
-    phone: localStorage.getItem('gordi_user_phone') || '',
-    web: localStorage.getItem('gordi_user_web') || 'https://www.voltiummadrid.es',
-    logo: localStorage.getItem('gordi_user_logo') || ''
-  };
-}
-
-function buildFirmaText() {
-  const p = getProfile();
-  let firma = `\n--\n${p.name}`;
-  if (p.company) firma += ` Ã¢â‚¬â€ ${p.company}`;
-  if (p.phone) firma += `\nTel. ${p.phone}`;
-  if (p.email) firma += `\n${p.email}`;
-  if (p.web) firma += `\n${p.web}`;
-  return firma;
-}
-
-function buildFirmaHTML() {
-  const p = getProfile();
-  let html = `<div style="font-family:Arial,sans-serif;margin-top:1.5rem;padding-top:1rem;border-top:1px solid #ddd;font-size:13px;color:#333">`;
-  if (p.logo) html += `<img src="${p.logo}" alt="${p.company}" style="height:40px;margin-bottom:.5rem;display:block">`;
-  html += `<strong>${p.name}</strong>`;
-  if (p.company) html += ` &mdash; <strong>${p.company}</strong>`;
-  if (p.phone) html += `<br>Ã°Å¸â€œÅ¾ ${p.phone}`;
-  html += `<br>Ã¢Å“â€°Ã¯Â¸Â <a href="mailto:${p.email}">${p.email}</a>`;
-  if (p.web) html += `<br>Ã°Å¸Å’Â <a href="${p.web}" target="_blank">${p.web}</a>`;
-  html += `</div>`;
-  return html;
-}
-
-function saveProfile() {
-  ['name','email','company','phone','web','logo'].forEach(k => {
-    const el = document.getElementById(`user-${k}-input`);
-    if (el) localStorage.setItem(`gordi_user_${k}`, el.value.trim());
-  });
-  document.getElementById('profile-status').innerHTML = '<span style="color:var(--success)">Ã¢Å“â€¦ Perfil actualizado</span>';
-  setTimeout(() => document.getElementById('profile-status').innerHTML = '', 3000);
-}
 
 function previewFirma() {
   saveProfile();
@@ -954,15 +955,15 @@ function previewFirma() {
 }
 
 
-// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
-// Ã¢ËœÂÃ¯Â¸Â  MÃƒâ€œDULO: JSONBin Sync Ã¢â‚¬â€ SincronizaciÃƒÂ³n multi-dispositivo
-// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+// ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ 
+//   MODULO: JSONBin Sync - Sincronización multi-dispositivo
+// ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ 
 
 const JSONBIN_API = 'https://api.jsonbin.io/v3';
 let _jsonbinPushing = false;
 let _jsonbinPullPending = false;
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Activar UI cuando hay key guardada Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// --  Activar UI cuando hay key guardada ---------------------------------------
 function jsonbinActivateUI() {
   const badge   = document.getElementById('jsonbin-badge');
   const pushBtn = document.getElementById('btn-jsonbin-push');
@@ -976,28 +977,24 @@ function jsonbinActivateUI() {
   if (autoRow) autoRow.style.display = 'flex';
 }
 
-function jsonbinSetStatus(msg, color) {
-  const el = document.getElementById('jsonbin-status');
-  if (el) el.innerHTML = `<span style="color:${color||'var(--text-dim)'}">${msg}</span>`;
-}
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Guardar configuraciÃƒÂ³n Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// --  Guardar configuración ---------------------------------------------------
 async function saveJsonBinConfig() {
   const key = document.getElementById('jsonbin-key-input')?.value.trim();
   if (!key || key.length < 10) {
-    jsonbinSetStatus('Ã¢Å¡Â Ã¯Â¸Â Introduce tu Master Key de JSONBin', 'var(--danger)');
+    jsonbinSetStatus('Aviso:️ Introduce tu Master Key de JSONBin', 'var(--danger)');
     return;
   }
   localStorage.setItem('gordi_jsonbin_key', key);
-  jsonbinSetStatus('Ã¢ÂÂ³ Conectando con JSONBin...', 'var(--text-dim)');
+  jsonbinSetStatus('⏳ Conectando con JSONBin...', 'var(--text-dim)');
 
   // Check if we already have a bin ID
   const existingBin = document.getElementById('jsonbin-bin-input')?.value.trim();
   if (existingBin) {
     localStorage.setItem('gordi_jsonbin_bin', existingBin);
     jsonbinActivateUI();
-    jsonbinSetStatus('Ã¢Å“â€¦ ConfiguraciÃƒÂ³n guardada Ã¢â‚¬â€ bin existente vinculado', 'var(--success)');
-    showToast('Ã¢ËœÂÃ¯Â¸Â JSONBin configurado correctamente');
+    jsonbinSetStatus('OK Configuración guardada - bin existente vinculado', 'var(--success)');
+    showToast(' JSONBin configurado correctamente');
     return;
   }
 
@@ -1005,7 +1002,7 @@ async function saveJsonBinConfig() {
   await jsonbinCreateBin(key);
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Crear bin nuevo Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// --  Crear bin nuevo ---------------------------------------------------------
 async function jsonbinCreateBin(key) {
   try {
     const snapshot = exportDataSnapshot();
@@ -1027,26 +1024,26 @@ async function jsonbinCreateBin(key) {
     const binInput = document.getElementById('jsonbin-bin-input');
     if (binInput) binInput.value = binId;
     jsonbinActivateUI();
-    jsonbinSetStatus(`Ã¢Å“â€¦ Bin creado y datos subidos Ã¢â‚¬â€ ID: ${binId}`, 'var(--success)');
-    showToast('Ã¢ËœÂÃ¯Â¸Â JSONBin configurado Ã¢â‚¬â€ bin creado con tus datos actuales');
+    jsonbinSetStatus(`OK Bin creado y datos subidos - ID: ${binId}`, 'var(--success)');
+    showToast(' JSONBin configurado - bin creado con tus datos actuales');
   } catch(e) {
     console.error('JSONBin create error:', e);
-    jsonbinSetStatus(`Ã¢ÂÅ’ Error al crear bin: ${e.message} Ã¢â‚¬â€ comprueba tu Master Key`, 'var(--danger)');
+    jsonbinSetStatus(`Error: Error al crear bin: ${e.message} - comprueba tu Master Key`, 'var(--danger)');
   }
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Push (subir datos) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// --  Push (subir datos) ------------------------------------------------------
 async function jsonbinPush(showFeedback = true) {
   const key = localStorage.getItem('gordi_jsonbin_key');
   const binId = localStorage.getItem('gordi_jsonbin_bin');
   if (!key || !binId) {
-    if (showFeedback) jsonbinSetStatus('Ã¢Å¡Â Ã¯Â¸Â Configura primero la Master Key y crea un bin', 'var(--warning)');
+    if (showFeedback) jsonbinSetStatus('Aviso:️ Configura primero la Master Key y crea un bin', 'var(--warning)');
     return;
   }
   if (_jsonbinPushing) return; // debounce
   _jsonbinPushing = true;
 
-  if (showFeedback) jsonbinSetStatus('Ã¢ÂÂ« Subiendo datos...', 'var(--text-dim)');
+  if (showFeedback) jsonbinSetStatus(' Subiendo datos...', 'var(--text-dim)');
 
   try {
     const snapshot = exportDataSnapshot();
@@ -1062,27 +1059,27 @@ async function jsonbinPush(showFeedback = true) {
     const now = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
     localStorage.setItem('gordi_jsonbin_last_push', new Date().toISOString());
     if (showFeedback) {
-      jsonbinSetStatus(`Ã¢Å“â€¦ Datos subidos correctamente Ã¢â‚¬â€ ${now}`, 'var(--success)');
-      showToast('Ã¢ËœÂÃ¯Â¸Â Datos sincronizados en la nube');
+      jsonbinSetStatus(`OK Datos subidos correctamente - ${now}`, 'var(--success)');
+      showToast(' Datos sincronizados en la nube');
     }
   } catch(e) {
     console.error('JSONBin push error:', e);
-    if (showFeedback) jsonbinSetStatus(`Ã¢ÂÅ’ Error al subir: ${e.message}`, 'var(--danger)');
+    if (showFeedback) jsonbinSetStatus(`Error: Error al subir: ${e.message}`, 'var(--danger)');
   } finally {
     setTimeout(() => { _jsonbinPushing = false; }, 3000); // debounce 3s
   }
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Pull (descargar datos) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// --  Pull (descargar datos) ---------------------------------------------------
 async function jsonbinPull(showFeedback = true) {
   const key = localStorage.getItem('gordi_jsonbin_key');
   const binId = localStorage.getItem('gordi_jsonbin_bin');
   if (!key || !binId) {
-    if (showFeedback) jsonbinSetStatus('Ã¢Å¡Â Ã¯Â¸Â Configura primero la Master Key', 'var(--warning)');
+    if (showFeedback) jsonbinSetStatus('Aviso:️ Configura primero la Master Key', 'var(--warning)');
     return;
   }
 
-  if (showFeedback) jsonbinSetStatus('Ã¢ÂÂ¬ Descargando datos...', 'var(--text-dim)');
+  if (showFeedback) jsonbinSetStatus(' Descargando datos...', 'var(--text-dim)');
 
   try {
     const res = await fetch(`${JSONBIN_API}/b/${binId}/latest`, {
@@ -1095,7 +1092,7 @@ async function jsonbinPull(showFeedback = true) {
     const snapshotValidation = validateDataSnapshot(snapshot, getCurrentDataSummary());
     if (!snapshotValidation.ok) throw new Error(snapshotValidation.errors.join(' '));
 
-    // Smart merge: solo importar si la nube es mÃƒÂ¡s reciente o tiene diferencias claras
+    // Smart merge: solo importar si la nube es más reciente o tiene diferencias claras
     const cloudUpdated = data.record?._updated || data.record?._created || '';
     const lastPush = localStorage.getItem('gordi_jsonbin_last_push') || '';
     const cloudLeadCount = (() => {
@@ -1103,7 +1100,7 @@ async function jsonbinPull(showFeedback = true) {
     })();
     const localLeadCount = leads.length;
 
-    // Hash rÃƒÂ¡pido: longitud del JSON local vs nube para detectar cambios reales sin parsear todo
+    // Hash rápido: longitud del JSON local vs nube para detectar cambios reales sin parsear todo
     const cloudLeadsRaw  = snapshot['gordi_leads'] || '[]';
     const localLeadsRaw  = localStorage.getItem('gordi_leads') || '[]';
     const dataIsDifferent = cloudLeadsRaw.length !== localLeadsRaw.length;
@@ -1114,24 +1111,24 @@ async function jsonbinPull(showFeedback = true) {
     if (cloudUpdated) {
       const cloudTime = new Date(cloudUpdated).getTime();
       const localTime = lastPush ? new Date(lastPush).getTime() : 0;
-      // AÃƒÂ±adimos buffer de 5s para evitar pull de algo que acabamos de pushear
+      // Añadimos buffer de 5s para evitar pull de algo que acabamos de pushear
       if (cloudTime > localTime + 5000) isNewer = true;
     }
 
     if (showFeedback) {
       if (cloudLeadCount !== localLeadCount || isNewer) {
-        const confirmMsg = `Ã‚Â¿Descargar datos de la nube?\n\nNube: ${cloudLeadCount} leads (actualizado: ${cloudUpdated ? new Date(cloudUpdated).toLocaleString('es-ES') : 'desconocido'})\nLocal: ${localLeadCount} leads\n\nEsto reemplazarÃƒÂ¡ tus datos locales.`;
+        const confirmMsg = `¿Descargar datos de la nube?\n\nNube: ${cloudLeadCount} leads (actualizado: ${cloudUpdated ? new Date(cloudUpdated).toLocaleString('es-ES') : 'desconocido'})\nLocal: ${localLeadCount} leads\n\nEsto reemplazará tus datos locales.`;
         if (!confirm(confirmMsg)) {
           jsonbinSetStatus('Descarga cancelada por el usuario', 'var(--text-dim)');
           return;
         }
         shouldPull = true;
       } else {
-        shouldPull = true; // El usuario pulsÃƒÂ³ el botÃƒÂ³n manualmente y no hay diff grave, hacemos pull
+        shouldPull = true; // El usuario pulsó el botón manualmente y no hay diff grave, hacemos pull
       }
     } else {
-      // Descarga silenciosa (al arrancar): solo si la nube es realmente mÃƒÂ¡s reciente Y los datos difieren.
-      // Evita render extra + pÃƒÂ©rdida de ediciones tempranas cuando counts son iguales pero la nube
+      // Descarga silenciosa (al arrancar): solo si la nube es realmente más reciente Y los datos difieren.
+      // Evita render extra + pérdida de ediciones tempranas cuando counts son iguales pero la nube
       // tiene el mismo snapshot que acabamos de pushear hace menos de 5 s.
       if (isNewer && dataIsDifferent) {
         shouldPull = true;
@@ -1141,7 +1138,7 @@ async function jsonbinPull(showFeedback = true) {
     }
 
     if (!shouldPull) {
-      if (!showFeedback) console.log('JSONBin Pull omitido: los datos locales ya estÃƒÂ¡n actualizados.');
+      if (!showFeedback) console.log('JSONBin Pull omitido: los datos locales ya están actualizados.');
       return;
     }
 
@@ -1161,25 +1158,25 @@ async function jsonbinPull(showFeedback = true) {
 
     const now = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
     if (showFeedback) {
-      jsonbinSetStatus(`Ã¢Å“â€¦ Datos descargados Ã¢â‚¬â€ ${cloudLeadCount} leads Ã‚Â· ${now}`, 'var(--success)');
-      showToast(`Ã¢ËœÂÃ¯Â¸Â ${cloudLeadCount} leads descargados desde la nube`);
+      jsonbinSetStatus(`OK Datos descargados - ${cloudLeadCount} leads · ${now}`, 'var(--success)');
+      showToast(` ${cloudLeadCount} leads descargados desde la nube`);
     } else {
-      // Silent pull on app start Ã¢â‚¬â€ show subtle toast only if data changed
+      // Silent pull on app start - show subtle toast only if data changed
       if (cloudLeadCount !== localLeadCount) {
-        showToast(`Ã¢ËœÂÃ¯Â¸Â Sync: ${cloudLeadCount} leads desde la nube`);
+        showToast(` Sync: ${cloudLeadCount} leads desde la nube`);
       }
     }
   } catch(e) {
     console.error('JSONBin pull error:', e);
-    if (showFeedback) jsonbinSetStatus(`Ã¢ÂÅ’ Error al descargar: ${e.message}`, 'var(--danger)');
+    if (showFeedback) jsonbinSetStatus(`Error: Error al descargar: ${e.message}`, 'var(--danger)');
   }
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Test conexiÃƒÂ³n Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// --  Test conexión ------------------------------------------------------------
 async function jsonbinTestConnection() {
   const key = localStorage.getItem('gordi_jsonbin_key');
   const binId = localStorage.getItem('gordi_jsonbin_bin');
-  jsonbinSetStatus('Ã°Å¸â€Å’ Probando conexiÃƒÂ³n...', 'var(--text-dim)');
+  jsonbinSetStatus(' Probando conexión...', 'var(--text-dim)');
   try {
     const res = await fetch(`${JSONBIN_API}/b/${binId}/latest`, {
       headers: { 'X-Master-Key': key }
@@ -1188,113 +1185,15 @@ async function jsonbinTestConnection() {
     const data = await res.json();
     const updated = data.record?._updated || data.record?._created || '';
     jsonbinSetStatus(
-      `Ã¢Å“â€¦ ConexiÃƒÂ³n OK Ã¢â‚¬â€ ÃƒÂºltima actualizaciÃƒÂ³n: ${updated ? new Date(updated).toLocaleString('es-ES') : 'desconocida'}`,
+      `OK Conexión OK - última actualización: ${updated ? new Date(updated).toLocaleString('es-ES') : 'desconocida'}`,
       'var(--success)'
     );
   } catch(e) {
-    jsonbinSetStatus(`Ã¢ÂÅ’ Error de conexiÃƒÂ³n: ${e.message}`, 'var(--danger)');
+    jsonbinSetStatus(`Error: Error de conexión: ${e.message}`, 'var(--danger)');
   }
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Toggle auto-sync Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-function updateCloudPill() {
-  const pill = document.getElementById('cloud-sync-pill');
-  const dot  = document.getElementById('cloud-sync-dot');
-  const lbl  = document.getElementById('cloud-sync-label');
-  if (!pill) return;
-  const ghToken = localStorage.getItem('gordi_gh_token');
-  const ghAuto  = localStorage.getItem('gordi_gh_auto') === 'true';
-  if (ghToken) {
-    pill.style.display = 'flex';
-    dot.style.background = ghAuto ? 'var(--success)' : 'var(--warning,#f59e0b)';
-    lbl.textContent = ghAuto ? 'Ã°Å¸Ââ„¢ GitHub sync' : 'Ã°Å¸Ââ„¢ Manual';
-  } else {
-    pill.style.display = 'none';
-  }
-}
-
-function toggleJsonBinAuto(enabled) {
-  localStorage.setItem('gordi_jsonbin_auto', enabled ? 'true' : 'false');
-  updateCloudPill();
-  if (enabled) {
-    jsonbinSetStatus('Ã¢Å“â€¦ Sync automÃƒÂ¡tico activado Ã¢â‚¬â€ los datos se subirÃƒÂ¡n al guardar y descargarÃƒÂ¡n al abrir', 'var(--success)');
-    showToast('Ã¢ËœÂÃ¯Â¸Â SincronizaciÃƒÂ³n automÃƒÂ¡tica activada');
-  } else {
-    jsonbinSetStatus('Sync automÃƒÂ¡tico desactivado Ã¢â‚¬â€ usa los botones para sincronizar manualmente', 'var(--text-dim)');
-  }
-}
-
-// ============ API KEYS ============
-function saveApiKey() {
-  const k = document.getElementById('api-key-input').value.trim();
-  if (!k) return;
-  localStorage.setItem('gordi_api_key', k);
-  document.getElementById('api-key-status').innerHTML = '<span style="color:var(--success)">Ã¢Å“â€¦ Guardada. Recarga (F5) para activar.</span>';
-  loadGoogleMapsScript(k);
-}
-function saveHunterKey() {
-  const k = document.getElementById('hunter-key-input').value.trim();
-  if (!k) return;
-  localStorage.setItem('gordi_hunter_key', k);
-  document.getElementById('hunter-key-status').innerHTML = '<span style="color:var(--success)">Ã¢Å“â€¦ Hunter Key guardada</span>';
-}
-
-function saveApolloKey() {
-  const k = document.getElementById('apollo-key-input').value.trim();
-  if (!k) return;
-  localStorage.setItem('gordi_apollo_key', k);
-  document.getElementById('apollo-key-status').innerHTML = '<span style="color:var(--success)">Ã¢Å“â€¦ Apollo Key guardada</span>';
-}
-
-function saveClaudeKey() {
-  const k = document.getElementById('claude-key-input').value.trim();
-  if (!k) return;
-  localStorage.setItem('gordi_claude_key', k);
-  localStorage.setItem('gordi_gemini_key', k);
-  document.getElementById('claude-key-status').innerHTML = '<span style="color:var(--success)">Ã¢Å“â€¦ Gemini Key guardada</span>';
-  refreshAiRouterStatus();
-}
-
-function saveGroqKey() {
-  const k = document.getElementById('groq-key-input')?.value.trim();
-  if (!k) return;
-  localStorage.setItem('gordi_groq_key', k);
-  const el = document.getElementById('groq-key-status');
-  if (el) el.innerHTML = '<span style="color:var(--success)">Ã¢Å“â€¦ Groq Key guardada</span>';
-  refreshAiRouterStatus();
-}
-
-function saveOpenRouterKey() {
-  const k = document.getElementById('openrouter-key-input')?.value.trim();
-  if (!k) return;
-  localStorage.setItem('gordi_openrouter_key', k);
-  const el = document.getElementById('openrouter-key-status');
-  if (el) el.innerHTML = '<span style="color:var(--success)">Ã¢Å“â€¦ OpenRouter Key guardada</span>';
-  refreshAiRouterStatus();
-}
-
-function refreshAiRouterStatus() {
-  const el = document.getElementById('ai-router-status');
-  if (!el) return;
-  const s = AI_ROUTER.getStatus();
-  const row = (name, label, icon, info) => {
-    const ok = s[name].configured;
-    const lim = s[name].limited;
-    const color = !ok ? 'var(--text-dim)' : lim ? 'var(--warning)' : 'var(--success)';
-    const badge = !ok ? 'Ã¢Å¡Âª No configurado' : lim ? 'Ã¢ÂÂ³ LÃƒÂ­mite alcanzado' : 'Ã¢Å“â€¦ Activo';
-    return `<div style="display:flex;align-items:center;gap:.6rem;padding:.35rem 0;border-bottom:1px solid var(--glass-border)">
-      <span>${icon}</span>
-      <span style="flex:1;font-weight:600">${label}</span>
-      <span style="color:${color};font-size:.75rem">${badge}</span>
-      ${ok ? '' : `<a href="${info}" target="_blank" style="font-size:.72rem;color:var(--primary)">Configurar Ã¢â€ â€™</a>`}
-    </div>`;
-  };
-  el.innerHTML =
-    row('gemini',     'Gemini (Principal)',   'Ã¢Å“Â¨', 'https://aistudio.google.com/apikey') +
-    row('groq',       'Groq (Respaldo 1)',    'Ã¢Å¡Â¡', 'https://console.groq.com') +
-    row('openrouter', 'OpenRouter (Resp. 2)', 'Ã°Å¸â€â‚¬', 'https://openrouter.ai') +
-    `<p style="margin-top:.6rem;font-size:.75rem;color:var(--text-dim)">Ã°Å¸â€™Â¡ Configura los 3 proveedores para tener IA prÃƒÂ¡cticamente ilimitada. El sistema cambia automÃƒÂ¡ticamente cuando uno alcanza su lÃƒÂ­mite.</p>`;
-}
+// --  Toggle auto-sync ---------------------------------------------------------
 
 async function checkUpdates(startupContext = {}) {
   try {
@@ -1321,70 +1220,6 @@ async function checkUpdates(startupContext = {}) {
   }
 }
 
-function showWhatsNewModal(oldV, newV, startupContext = {}) {
-  const summary = startupContext.recoverySummary || getLocalRecoverySummary();
-  const changelog = VOLTFLOW_CHANGELOG.length ? VOLTFLOW_CHANGELOG : [
-    { title: 'Datos locales recuperados', desc: 'La app carga automaticamente los datos guardados en este navegador.' }
-  ];
-  const items = changelog.map(item => `
-    <div style="margin-bottom:12px;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.05)">
-      <strong style="display:block;color:var(--primary);margin-bottom:4px;font-size:15px">${item.title}</strong>
-      <span style="font-size:13px;color:var(--text-dim);line-height:1.45">${item.desc}</span>
-    </div>
-  `).join('');
-  const stat = (label, value) => `
-    <div style="padding:.65rem .75rem;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,.035)">
-      <div style="font-size:1rem;font-weight:800;color:var(--text)">${value}</div>
-      <div style="font-size:.68rem;color:var(--text-dim)">${label}</div>
-    </div>`;
-
-  const modal = document.createElement('div');
-  modal.className = 'modal-overlay';
-  modal.style = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;transition:opacity .35s ease';
-  modal.innerHTML = `
-    <div style="background:var(--bg-card);max-width:620px;width:100%;border-radius:20px;border:1px solid var(--glass-border);box-shadow:0 25px 50px -12px rgba(0,0,0,.5);overflow:hidden;transform:scale(.94);transition:transform .35s ease">
-      <div style="background:linear-gradient(135deg,var(--primary),var(--secondary));padding:30px;text-align:center">
-        <div style="font-size:38px;margin-bottom:10px">Ã°Å¸Å¡â‚¬</div>
-        <h2 style="margin:0;color:#fff;font-size:24px">Gordi listo y datos recuperados</h2>
-        <p style="margin:6px 0 0;color:rgba(255,255,255,.82);font-size:14px">v${oldV} Ã¢â€ â€™ v${newV}</p>
-      </div>
-      <div style="padding:25px;max-height:520px;overflow-y:auto">
-        <div style="padding:14px 16px;margin-bottom:18px;border-radius:12px;background:rgba(16,217,124,.08);border:1px solid rgba(16,217,124,.22);font-size:.86rem;line-height:1.55;color:var(--text-muted)">
-          Tus datos se han cargado automaticamente desde la memoria local de <strong style="color:var(--text)">${summary.origin}</strong>. Esto incluye CRM, historial, busquedas, configuracion y memoria comercial guardada en este navegador.
-          <br><span style="color:var(--warning)">Importante:</span> si abres la herramienta en otro navegador, otro dispositivo, modo incognito o borras datos del sitio, esa memoria local no estara disponible. Para mover datos usa backup, QR o sincronizacion en la nube.
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.55rem;margin-bottom:18px">
-          ${stat('Leads', summary.leads)}
-          ${stat('Emails', summary.emails)}
-          ${stat('Campanas', summary.campaigns)}
-          ${stat('Busquedas', summary.searches)}
-          ${stat('Memoria', summary.commercialMemory)}
-          ${stat('Scraping', (summary.scrapeMemory || 0) + (summary.enrichCache || 0))}
-          ${stat('Claves API', summary.apiKeys)}
-        </div>
-        <h3 style="margin:0 0 15px;font-size:16px;color:var(--text)">Novedades en esta version:</h3>
-        ${items}
-      </div>
-      <div style="padding:20px;text-align:center;border-top:1px solid var(--glass-border)">
-        <button id="close-whats-new" style="background:var(--primary);color:#fff;border:none;padding:12px 35px;border-radius:30px;font-weight:bold;cursor:pointer;box-shadow:0 10px 20px -5px var(--primary)">Entendido</button>
-      </div>
-    </div>`;
-
-  document.body.appendChild(modal);
-  requestAnimationFrame(() => {
-    modal.style.opacity = '1';
-    modal.querySelector('div').style.transform = 'scale(1)';
-  });
-  modal.querySelector('#close-whats-new').onclick = () => {
-    modal.style.opacity = '0';
-    modal.querySelector('div').style.transform = 'scale(.94)';
-    setTimeout(() => {
-      modal.remove();
-      localStorage.setItem(`_voltflow_notice_seen_${VOLTFLOW_VERSION}`, Date.now().toString());
-      localStorage.setItem('_voltflow_last_version', VOLTFLOW_VERSION);
-    }, 300);
-  };
-}
 
 function getProfile() {
   return {
@@ -1607,3 +1442,4 @@ function showWhatsNewModal(oldV, newV, startupContext = {}) {
     }, 300);
   };
 }
+

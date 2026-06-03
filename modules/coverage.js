@@ -13,6 +13,7 @@ let coverageSearchTerm = '';
 let coverageSmartFilter = coverageSafeJson(COVERAGE_FILTER_KEY, 'all');
 let coverageViewMode = coverageSafeJson(COVERAGE_VIEW_KEY, 'cp');
 let coverageBypassRepeatWarning = false;
+let _coverageLeadIndexCache = null;
 
 function coverageSafeJson(key, fallback) {
   try {
@@ -175,10 +176,34 @@ function leadMatchesCoverageCell(lead, location, sector) {
     && (!sector || lead.coverageSector === sector || lead.segment === sector);
 }
 
-function getCoverageCellFunnel(location, sector) {
-  const entry = getCoverageEntries().find(e => e.key === coverageKey(location, sector));
-  const related = (Array.isArray(window.leads) ? window.leads : (typeof leads !== 'undefined' ? leads : []))
-    .filter(lead => leadMatchesCoverageCell(lead, location, sector));
+function getCoverageLeadIndex() {
+  const source = Array.isArray(window.leads) ? window.leads : (typeof leads !== 'undefined' ? leads : []);
+  const signature = `${source.length}:${source.map(l => `${l.id || l.email || l.company || l.name || ''}:${l.status || ''}:${l.archived ? 1 : 0}:${l.coverageLocation || ''}:${l.coverageSector || l.segment || ''}`).join('|')}`;
+  if (_coverageLeadIndexCache?.signature === signature) return _coverageLeadIndexCache.index;
+  const index = new Map();
+  const add = (location, sector, lead) => {
+    const loc = normalizeCoverageLocation(location);
+    const sec = String(sector || '').trim();
+    if (!loc || !sec) return;
+    const key = coverageKey(loc, sec);
+    if (!index.has(key)) index.set(key, []);
+    const bucket = index.get(key);
+    if (!bucket.includes(lead)) bucket.push(lead);
+  };
+  source.forEach(lead => {
+    if (!lead || lead.archived) return;
+    const mission = getCoverageMissionForLead(lead);
+    if (mission) add(mission.location, mission.sector || lead.segment || lead.coverageSector, lead);
+    add(lead.coverageLocation, lead.coverageSector || lead.segment, lead);
+    if (lead.coverageSector && lead.segment && lead.coverageSector !== lead.segment) add(lead.coverageLocation, lead.segment, lead);
+  });
+  _coverageLeadIndexCache = { signature, index };
+  return index;
+}
+
+function getCoverageCellFunnel(location, sector, entryOverride = null) {
+  const entry = entryOverride || getCoverageEntries().find(e => e.key === coverageKey(location, sector));
+  const related = getCoverageLeadIndex().get(coverageKey(location, sector)) || [];
   const contactedStatuses = ['Contactado', 'Respuesta del cliente', 'Visita', 'Entrega de presupuesto', 'Cerrado'];
   return {
     searched: entry?.uniqueCount || 0,
@@ -190,8 +215,8 @@ function getCoverageCellFunnel(location, sector) {
   };
 }
 
-function getCoverageProfitability(location, sector) {
-  const funnel = getCoverageCellFunnel(location, sector);
+function getCoverageProfitability(location, sector, funnelOverride = null) {
+  const funnel = funnelOverride || getCoverageCellFunnel(location, sector);
   const usefulRate = funnel.searched ? Math.round((funnel.useful / funnel.searched) * 100) : 0;
   const importRate = funnel.useful ? Math.round((funnel.imported / funnel.useful) * 100) : 0;
   const responseRate = funnel.imported ? Math.round((funnel.responded / funnel.imported) * 100) : 0;
@@ -943,8 +968,8 @@ function renderCoverageMatrix(model, cells) {
             if (!cell) return '<td><div class="coverage-cell coverage-filtered"><small>Filtro</small></div></td>';
             const meta = coverageStatusMeta(cell.status);
             const e = cell.entry;
-            const funnel = getCoverageCellFunnel(location, sector);
-            const profit = getCoverageProfitability(location, sector);
+            const funnel = getCoverageCellFunnel(location, sector, e);
+            const profit = getCoverageProfitability(location, sector, funnel);
             const title = e
               ? `${getCoverageSectorLabel(sector)} en ${location}: ${e.uniqueCount || 0} empresas, ${e.readyCount || 0} listas, ${e.importedCount || 0} importadas. Accion: ${getCoverageActionLabel(cell)}`
               : `${getCoverageSectorLabel(sector)} en ${location}: ${meta.label}`;

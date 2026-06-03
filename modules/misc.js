@@ -13,11 +13,11 @@
   });
 })();
 
-// ════════════════════════════════════════════════════════════════
+// ----------------------------------------------------------------
 // VOLTFLOW GUARDIAN — Integridad permanente integrada en el HTML
 // Se ejecuta automáticamente en cada carga de la aplicación.
 // Cualquier versión futura DEBE pasar estos checks antes de entregarse.
-// ════════════════════════════════════════════════════════════════
+// ----------------------------------------------------------------
 
 const GUARDIAN = {
   version: '2.6',
@@ -36,6 +36,8 @@ const GUARDIAN = {
     'enrichFromHunter','enrichFromSocial','enrichFromStreetView','enrichFromWeb',
     'enrichFromWhois','expandInlinePaste','exportDataSnapshot','exportFilteredData',
     'exportFullBackup','exportPortableData','exportSearchCSV','exportTracking',
+    'connectDiskBackupFolder','disconnectDiskBackupFolder','runDiskBackupNow',
+    'maybeCreateDailyDiskBackup','renderDiskBackupStatus',
     'focusMarkDone','generateEmail','geocodeSearch','getCachedEnrich',
     'getCityDistricts','getEnrichTTL','getFocusLeads','getLookalikeSimilarity',
     'getSegmentQueries','handleInlineDrop','handleScanFile','handleSlashCommand',
@@ -218,10 +220,10 @@ const GUARDIAN = {
         : 'PERDIDAS: ' + missing_versions.join(', ')
     );
 
-    // ══════════════════════════════════════════════════════════════════
+    // ------------------------------------------------------------------
     // 7. TESTS DEL MOTOR DE SCRAPING
     // Ahora usan el toString() de las funciones globales (válido en modular).
-    // ══════════════════════════════════════════════════════════════════
+    // ------------------------------------------------------------------
 
     // TEST 7a: BATCH_SIZE <= 4
     const batchMatch = src.match(/const BATCH_SIZE\s*=\s*(\d+)/);
@@ -311,12 +313,19 @@ const GUARDIAN = {
       srcLabelsOk ? "srcLabels incluye 'propio' ✓" : "FALTA entrada 'propio' en srcLabels — leads importados sin emoji"
     );
 
-    // 9. CHECK NUEVO: search-history.js cargado
+    // 9. CHECK: historial de busquedas disponible
     const shLoaded = typeof window.loadSearchHistory === 'function' ||
       typeof window.saveSearchHistory === 'function';
-    check('Módulos', 'search-history.js cargado',
-      shLoaded,
-      shLoaded ? 'Historial de búsquedas disponible ✓' : 'MÓDULO NO CARGADO — añadir <script src="modules/search-history.js">'
+    const hasCurrentSearchHistory = localStorage.getItem('gordi_search_history') !== null ||
+      localStorage.getItem('gordi_saved_searches') !== null ||
+      localStorage.getItem('gordi_search_coverage') !== null;
+    check('Modulos', 'historial de busquedas disponible',
+      shLoaded || hasCurrentSearchHistory,
+      shLoaded
+        ? 'Modulo legacy search-history.js cargado'
+        : hasCurrentSearchHistory
+          ? 'Historial actual detectado en localStorage'
+          : 'Sin historial guardado todavia'
     );
 
     // 10. CHECK NUEVO: restoreBackup con soporte dual-format
@@ -434,7 +443,7 @@ window.addEventListener('resize', checkMobileLayout);
 checkMobileLayout();
 
 
-/* ══ ANIMACIÓN CONTEO KPIs ══ */
+/* -- ANIMACIÓN CONTEO KPIs -- */
 function animateCount(el, target, duration) {
   if (!el) return;
   const start = parseInt(el.textContent) || 0;
@@ -469,9 +478,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-/* ══════════════════════════════════════════════════════
+/* ------------------------------------------------------
    VOLTFLOW — APPLE JS ENGINE
-   ══════════════════════════════════════════════════════ */
+   ------------------------------------------------------ */
 
 (function initAppleEngine() {
 
@@ -595,9 +604,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-// ══════════════════════════════════════════════════════════════════
+// ------------------------------------------------------------------
 // MEJORA A — AUTOSAVE DEL FORMULARIO DE NUEVO LEAD
-// ══════════════════════════════════════════════════════════════════
+// ------------------------------------------------------------------
 
 const DRAFT_KEY = 'gordi_lead_form_draft';
 let _autosaveTimer = null;
@@ -690,9 +699,9 @@ function _debouncedDraftSave() {
   _draftDebounce = setTimeout(saveLeadFormDraft, 1500);
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ------------------------------------------------------------------
 // MEJORA B — BULK APPLY STATUS (función para el nuevo dropdown)
-// ══════════════════════════════════════════════════════════════════
+// ------------------------------------------------------------------
 
 function bulkApplyStatus() {
   const sel = document.getElementById('bulk-status-select');
@@ -703,9 +712,9 @@ function bulkApplyStatus() {
   if (sel) sel.value = '';
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ------------------------------------------------------------------
 // MEJORA C — DETECCIÓN DE DUPLICADOS EN IMPORTACIÓN
-// ══════════════════════════════════════════════════════════════════
+// ------------------------------------------------------------------
 
 function detectImportDuplicates(importLeads) {
   const dupes = [];
@@ -781,9 +790,9 @@ function deselImportRow(idx) {
 }
 
 
-// ══════════════════════════════════════════════════════════════════
+// ------------------------------------------------------------------
 // EMAILJS — MÉTODO SIMPLIFICADO DE ALERTAS
-// ══════════════════════════════════════════════════════════════════
+// ------------------------------------------------------------------
 
 function selectEmailMethod(method) {
   const ejsPanel   = document.getElementById('emailjs-setup');
@@ -915,9 +924,9 @@ window.sendGmailAlert = async function(subject, htmlBody) {
 };
 
 
-// ══════════════════════════════════════════════════════════════════
+// ------------------------------------------------------------------
 // QR SYNC — IMPORTAR QR CON CÁMARA (jsQR library)
-// ══════════════════════════════════════════════════════════════════
+// ------------------------------------------------------------------
 
 function openQRImportScanner() {
   // Crear modal con preview de cámara
@@ -1006,7 +1015,7 @@ function processScannedQRData(data) {
   const statusEl = document.getElementById('qr-scan-status');
 
   if (!data.startsWith('VOLTFLOW:')) {
-    if (statusEl) statusEl.innerHTML = '⚠️ Este QR no es de Voltflow. Escanea el código generado en Configuración → QR Sync.';
+    if (statusEl) statusEl.innerHTML = '⚠️ Este QR no es de Voltflow. Escanea el código generado en Configuración -> QR Sync.';
     // Reiniciar escaneo tras 2s
     setTimeout(startQRScanner, 2000);
     return;

@@ -10,7 +10,7 @@ function updateStats() {
   set('stat-waiting', emailHistory.filter(h => h.status === 'Visita').length);
 }
 
-// ðŸ›ï¸ ARQUITECTURA: Escuchar cambios globales
+// 🏛️ ARQUITECTURA: Escuchar cambios globales
 if (typeof VoltiumEvents !== 'undefined') {
     VoltiumEvents.on('state:changed', () => {
         updateStats();
@@ -36,17 +36,17 @@ function renderSegmentChart() {
           <div class="seg-bar-wrap"><div class="seg-bar" style="width:${Math.round(cnt/max*100)}%;background:${SEGMENT_COLORS[seg]||'#7a8ba0'}"></div></div>
           <div class="seg-count" style="color:${SEGMENT_COLORS[seg]||'#7a8ba0'}">${cnt}</div>
         </div>`).join('')
-    : '<p style="color:var(--text-muted);font-size:.83rem;margin-top:1rem">Sin datos aÃºn</p>';
+    : '<p style="color:var(--text-muted);font-size:.83rem;margin-top:1rem">Sin datos aún</p>';
 }
 
-// â”€â”€ NIVEL 1: Top leads por scoring dinÃ¡mico con seÃ±ales â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── NIVEL 1: Top leads por scoring dinámico con señales ──────────────────────
 function renderTopLeads() {
   const container = document.getElementById('top-leads-list');
   if (!container) return;
 
   // Recalcular scores con datos reales antes de ordenar
-  // NOTA: no llamar saveLeads() aquÃ­ â€” este es un render, no una mutaciÃ³n persistida.
-  // El recÃ¡lculo masivo se hace en saveLeadDetail/saveLead donde ya hay un saveLeads().
+  // NOTA: no llamar saveLeads() aquí — este es un render, no una mutación persistida.
+  // El recálculo masivo se hace en saveLeadDetail/saveLead donde ya hay un saveLeads().
   leads.forEach(l => { l.score = recalculateLeadScore(l); });
 
   const top = [...leads]
@@ -61,12 +61,12 @@ function renderTopLeads() {
 
   container.innerHTML = top.map(l => {
     const bc = l.score >= 70 ? 'badge-high' : (l.score >= 40 ? 'badge-mid' : 'badge-low');
-    // SeÃ±ales visuales de por quÃ© es prioritario
+    // Señales visuales de por qué es prioritario
     const signals = [];
-    if (l.rating && l.rating < 4.2) signals.push(`<span class="intel-tag warn">â­ ${l.rating}</span>`);
-    if (l.email) signals.push('<span class="intel-tag ok">âœ‰ï¸</span>');
-    if (l.phone) signals.push('<span class="intel-tag ok">ðŸ“ž</span>');
-    if (l.decision_maker && l.decision_maker !== 'Responsable') signals.push('<span class="intel-tag ok">ðŸ‘¤</span>');
+    if (l.rating && l.rating < 4.2) signals.push(`<span class="intel-tag warn">⭐ ${l.rating}</span>`);
+    if (l.email) signals.push('<span class="intel-tag ok">✉️</span>');
+    if (l.phone) signals.push('<span class="intel-tag ok">📞</span>');
+    if (l.decision_maker && l.decision_maker !== 'Responsable') signals.push('<span class="intel-tag ok">👤</span>');
     const daysSince = l.date ? Math.floor((Date.now()-new Date(l.date))/(1000*86400)) : 0;
     if (daysSince > 7) signals.push(`<span class="intel-tag warn">${daysSince}d sin contacto</span>`);
 
@@ -74,14 +74,14 @@ function renderTopLeads() {
       <div class="top-lead-avatar" style="background:${SEGMENT_COLORS[l.segment]||'#5E5CE6'}22;color:${SEGMENT_COLORS[l.segment]||'#5E5CE6'}">${(l.company||'?')[0].toUpperCase()}</div>
       <div style="flex:1;min-width:0">
         <div class="top-lead-name">${l.company}</div>
-        <div class="top-lead-co">${l.segment}${signals.length ? ' Â· '+signals.join('') : ''}</div>
+        <div class="top-lead-co">${l.segment}${signals.length ? ' · '+signals.join('') : ''}</div>
       </div>
       <span class="score-badge ${bc}">${l.score}</span>
     </div>`;
   }).join('');
 }
 
-// â”€â”€ NIVEL 6: MÃ©tricas de conversiÃ³n â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── NIVEL 6: Métricas de conversión ──────────────────────────────────────────
 function renderConversionMetrics() {
   const el = document.getElementById('conversion-metrics');
   if (!el) return;
@@ -105,15 +105,15 @@ function renderConversionMetrics() {
   const avgTtfc = ttfcLeads.length
     ? Math.round(ttfcLeads.reduce((s,l) => s + l.ttfc_hours, 0) / ttfcLeads.length)
     : null;
-  const ttfcVal = avgTtfc != null ? (avgTtfc < 24 ? avgTtfc+'h' : Math.round(avgTtfc/24)+'d') : 'â€”';
+  const ttfcVal = avgTtfc != null ? (avgTtfc < 24 ? avgTtfc+'h' : Math.round(avgTtfc/24)+'d') : '—';
   const ttfcColor = avgTtfc == null ? 'var(--text-dim)' : avgTtfc <= 24 ? 'var(--success)' : avgTtfc <= 72 ? 'var(--warning)' : 'var(--danger)';
 
   const metrics = [
-    { label:'Tasa de respuesta', value: convRate+'%', sub: `${responded} de ${contacted} contactados`, color: convRate>20?'var(--success)':convRate>10?'var(--warning)':'var(--danger)', icon:'ðŸ“¬' },
-    { label:'Tasa de cierre', value: closeRate+'%', sub: `${closed} proyectos cerrados`, color: closeRate>30?'var(--success)':closeRate>10?'var(--warning)':'var(--danger)', icon:'ðŸ†' },
-    { label:'Score medio', value: avgScore, sub: 'de 100 puntos posibles', color: avgScore>60?'var(--success)':avgScore>40?'var(--warning)':'var(--danger)', icon:'âš¡' },
-    { label:'DÃ­as medio en pipeline', value: avgDays+'d', sub: 'desde creaciÃ³n del lead', color:'var(--primary)', icon:'â±ï¸' },
-    { label:'Tiempo hasta 1er contacto', value: ttfcVal, sub: avgTtfc != null ? `${ttfcLeads.length} leads con dato Â· <24h = Ã³ptimo` : 'Sin emails enviados aÃºn', color: ttfcColor, icon:'âš¡' },
+    { label:'Tasa de respuesta', value: convRate+'%', sub: `${responded} de ${contacted} contactados`, color: convRate>20?'var(--success)':convRate>10?'var(--warning)':'var(--danger)', icon:'📬' },
+    { label:'Tasa de cierre', value: closeRate+'%', sub: `${closed} proyectos cerrados`, color: closeRate>30?'var(--success)':closeRate>10?'var(--warning)':'var(--danger)', icon:'🏆' },
+    { label:'Score medio', value: avgScore, sub: 'de 100 puntos posibles', color: avgScore>60?'var(--success)':avgScore>40?'var(--warning)':'var(--danger)', icon:'⚡' },
+    { label:'Días medio en pipeline', value: avgDays+'d', sub: 'desde creación del lead', color:'var(--primary)', icon:'⏱️' },
+    { label:'Tiempo hasta 1er contacto', value: ttfcVal, sub: avgTtfc != null ? `${ttfcLeads.length} leads con dato · <24h = óptimo` : 'Sin emails enviados aún', color: ttfcColor, icon:'⚡' },
   ];
 
   el.innerHTML = metrics.map(m => `
@@ -126,14 +126,14 @@ function renderConversionMetrics() {
       <div style="font-size:1.3rem;font-weight:700;color:${m.color}">${m.value}</div>
     </div>`).join('');
 
-  if (!total) el.innerHTML = '<p style="color:var(--text-muted);font-size:.83rem">Sin datos todavÃ­a. AÃ±ade leads para ver mÃ©tricas.</p>';
+  if (!total) el.innerHTML = '<p style="color:var(--text-muted);font-size:.83rem">Sin datos todavía. Añade leads para ver métricas.</p>';
 }
 
-// â”€â”€ NIVEL 6: Rendimiento por sector â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── NIVEL 6: Rendimiento por sector ──────────────────────────────────────────
 function renderSectorPerformance() {
   const el = document.getElementById('sector-performance');
   if (!el || !leads.length) {
-    if (el) el.innerHTML = '<p style="color:var(--text-muted);font-size:.83rem">Sin datos todavÃ­a.</p>';
+    if (el) el.innerHTML = '<p style="color:var(--text-muted);font-size:.83rem">Sin datos todavía.</p>';
     return;
   }
 
@@ -159,7 +159,7 @@ function renderSectorPerformance() {
     </div>`).join('');
 }
 
-// â”€â”€ NIVEL 4: Inteligencia competitiva local â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── NIVEL 4: Inteligencia competitiva local ───────────────────────────────────
 function renderIntelPanel() {
   const el = document.getElementById('intel-content');
   if (!el) return;
@@ -196,7 +196,7 @@ function renderIntelPanel() {
           const avg = Math.round(d.ratings.reduce((s,r)=>s+r,0)/d.ratings.length*10)/10;
           return `<div style="padding:.75rem;background:var(--glass);border-radius:8px;border:1px solid var(--glass-border)">
             <div style="font-size:.72rem;color:var(--text-muted);margin-bottom:.25rem">${seg}</div>
-            <div style="font-size:1.1rem;font-weight:700;color:var(--warning)">â­ ${avg}</div>
+            <div style="font-size:1.1rem;font-weight:700;color:var(--warning)">⭐ ${avg}</div>
             <div style="font-size:.7rem;color:var(--text-dim)">${d.count} empresas analizadas</div>
           </div>`;
         }).join('')}
@@ -206,16 +206,16 @@ function renderIntelPanel() {
 
   el.innerHTML = `
     <div style="margin-bottom:1rem;font-size:.82rem;color:var(--text-muted)">
-      Empresas con rating <strong style="color:var(--warning)">por debajo de la media</strong> de su sector â€” <strong style="color:var(--primary)">oportunidad de reforma alta</strong>
+      Empresas con rating <strong style="color:var(--warning)">por debajo de la media</strong> de su sector — <strong style="color:var(--primary)">oportunidad de reforma alta</strong>
     </div>
     <div style="display:grid;gap:.5rem">
       ${opportunities.flatMap(o => o.belowAvg.slice(0,3).map(l => `
         <div class="intel-row" onclick="openLeadDetail('${l.id}')">
           <div style="display:flex;align-items:center;gap:.6rem;flex:1">
-            <span style="font-size:.9rem">â­</span>
+            <span style="font-size:.9rem">⭐</span>
             <div>
               <div style="font-size:.82rem;font-weight:600">${l.company}</div>
-              <div style="font-size:.7rem;color:var(--text-muted)">${l.segment} Â· Rating ${l.rating} vs media ${o.avg} del sector</div>
+              <div style="font-size:.7rem;color:var(--text-muted)">${l.segment} · Rating ${l.rating} vs media ${o.avg} del sector</div>
             </div>
           </div>
           <span class="intel-tag warn">-${Math.round((o.avg-l.rating)*10)/10} pts bajo media</span>
@@ -223,7 +223,7 @@ function renderIntelPanel() {
     </div>`;
 }
 
-// â”€â”€ NIVEL 1: Alerta inteligente de prioridades â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── NIVEL 1: Alerta inteligente de prioridades ────────────────────────────────
 function renderSmartAlert() {
   const el = document.getElementById('smart-alert');
   if (!el) return;
@@ -237,22 +237,22 @@ function renderSmartAlert() {
   let html = '';
   if (urgent.length > 0) {
     html += `<div class="smart-alert-box alert-urgent">
-      <span style="font-size:1.1rem">ðŸ”¥</span>
+      <span style="font-size:1.1rem">🔥</span>
       <div>
-        <strong>${urgent.length} lead${urgent.length>1?'s':''} de alta prioridad</strong> esperando contacto â€” score â‰¥75
-        <div style="font-size:.75rem;margin-top:.2rem;opacity:.8">${urgent.slice(0,3).map(l=>l.company).join(', ')}${urgent.length>3?' y '+(urgent.length-3)+' mÃ¡s':''}</div>
+        <strong>${urgent.length} lead${urgent.length>1?'s':''} de alta prioridad</strong> esperando contacto — score ≥75
+        <div style="font-size:.75rem;margin-top:.2rem;opacity:.8">${urgent.slice(0,3).map(l=>l.company).join(', ')}${urgent.length>3?' y '+(urgent.length-3)+' más':''}</div>
       </div>
-      <button class="btn-action" onclick="showView('leads')" style="margin-left:auto;white-space:nowrap">Ver â†’</button>
+      <button class="btn-action" onclick="showView('leads')" style="margin-left:auto;white-space:nowrap">Ver -></button>
     </div>`;
   }
   if (overdue.length > 0) {
     html += `<div class="smart-alert-box alert-warn" style="margin-top:.5rem">
-      <span style="font-size:1.1rem">â°</span>
+      <span style="font-size:1.1rem">⏰</span>
       <div>
-        <strong>${overdue.length} lead${overdue.length>1?'s':''}</strong> contactados hace mÃ¡s de 5 dÃ­as sin respuesta registrada
+        <strong>${overdue.length} lead${overdue.length>1?'s':''}</strong> contactados hace más de 5 días sin respuesta registrada
         <div style="font-size:.75rem;margin-top:.2rem;opacity:.8">${overdue.slice(0,3).map(l=>l.company).join(', ')}</div>
       </div>
-      <button class="btn-action" onclick="showView('kanban')" style="margin-left:auto;white-space:nowrap">Pipeline â†’</button>
+      <button class="btn-action" onclick="showView('kanban')" style="margin-left:auto;white-space:nowrap">Pipeline -></button>
     </div>`;
   }
 
@@ -265,12 +265,12 @@ function renderSmartAlert() {
   );
   if (hotUncontacted.length > 0) {
     html += `<div class="smart-alert-box alert-urgent" style="margin-top:.5rem;border-color:rgba(239,68,68,.4)">
-      <span style="font-size:1.1rem">âš¡</span>
+      <span style="font-size:1.1rem">⚡</span>
       <div>
-        <strong>${hotUncontacted.length} lead${hotUncontacted.length>1?'s':''} caliente${hotUncontacted.length>1?'s':''} sin contactar</strong> â€” llevan mÃ¡s de 48h esperando
-        <div style="font-size:.75rem;margin-top:.2rem;opacity:.8">${hotUncontacted.slice(0,3).map(l=>`${l.company} (${l.score}pts)`).join(', ')}${hotUncontacted.length>3?' y '+(hotUncontacted.length-3)+' mÃ¡s':''}</div>
+        <strong>${hotUncontacted.length} lead${hotUncontacted.length>1?'s':''} caliente${hotUncontacted.length>1?'s':''} sin contactar</strong> — llevan más de 48h esperando
+        <div style="font-size:.75rem;margin-top:.2rem;opacity:.8">${hotUncontacted.slice(0,3).map(l=>`${l.company} (${l.score}pts)`).join(', ')}${hotUncontacted.length>3?' y '+(hotUncontacted.length-3)+' más':''}</div>
       </div>
-      <button class="btn-action" onclick="showView('leads');document.getElementById('sort-leads').value='score';renderLeads()" style="margin-left:auto;white-space:nowrap">Contactar â†’</button>
+      <button class="btn-action" onclick="showView('leads');document.getElementById('sort-leads').value='score';renderLeads()" style="margin-left:auto;white-space:nowrap">Contactar -></button>
     </div>`;
   }
 
@@ -287,7 +287,7 @@ function renderRecentActivity() {
         <div class="activity-item">
           <div class="activity-dot"></div>
           <div>
-            <div class="activity-text">Email enviado a <strong>${e.company}</strong> â€” ${e.email}</div>
+            <div class="activity-text">Email enviado a <strong>${e.company}</strong> — ${e.email}</div>
             <div class="activity-time">${new Date(e.date).toLocaleDateString('es-ES', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
           </div>
         </div>`).join('')
@@ -345,8 +345,8 @@ function renderKanban() {
     const valEl = document.getElementById(`val-${status}`);
     if (valEl) {
       if (colValue > 0) {
-        valEl.textContent = colValue >= 1000000 ? (colValue/1000000).toFixed(1)+'Mâ‚¬'
-          : colValue >= 1000 ? Math.round(colValue/1000)+'kâ‚¬' : colValue+'â‚¬';
+        valEl.textContent = colValue >= 1000000 ? (colValue/1000000).toFixed(1)+'M€'
+          : colValue >= 1000 ? Math.round(colValue/1000)+'k€' : colValue+'€';
         valEl.style.display = 'inline';
       } else { valEl.style.display = 'none'; }
     }
@@ -363,21 +363,21 @@ function renderKanban() {
           if (l.next_contact) {
             const nc = new Date(l.next_contact); nc.setHours(0,0,0,0);
             const diff = Math.floor((nc - today) / 86400000);
-            if (diff === 0) nextBadge = '<div style="font-size:.62rem;color:var(--warning);margin-top:2px">ðŸ“… Seguimiento hoy</div>';
-            else if (diff < 0) nextBadge = '<div style="font-size:.62rem;color:var(--danger);margin-top:2px">âš ï¸ Seguimiento vencido</div>';
-            else if (diff <= 2) nextBadge = `<div style="font-size:.62rem;color:var(--primary);margin-top:2px">ðŸ“… ${diff}d para seguimiento</div>`;
+            if (diff === 0) nextBadge = '<div style="font-size:.62rem;color:var(--warning);margin-top:2px">📅 Seguimiento hoy</div>';
+            else if (diff < 0) nextBadge = '<div style="font-size:.62rem;color:var(--danger);margin-top:2px">⚠️ Seguimiento vencido</div>';
+            else if (diff <= 2) nextBadge = `<div style="font-size:.62rem;color:var(--primary);margin-top:2px">📅 ${diff}d para seguimiento</div>`;
           }
 
           const tagsHtml = (l.tags||[]).slice(0,1).map(t => `<span style="font-size:.6rem;background:rgba(94,92,230,.15);color:#a78bfc;padding:1px 5px;border-radius:8px">${t}</span>`).join('');
-          const budgetHtml = l.budget ? `<div style="font-size:.62rem;color:var(--success);margin-top:2px">ðŸ’° ${l.budget.toLocaleString('es-ES')}â‚¬</div>` : '';
+          const budgetHtml = l.budget ? `<div style="font-size:.62rem;color:var(--success);margin-top:2px">💰 ${l.budget.toLocaleString('es-ES')}€</div>` : '';
 
           return `<div class="kanban-card" draggable="true" ondragstart="dragStart(event,'${l.id}')" onclick="openLeadDetail('${l.id}')" oncontextmenu="event.preventDefault();openCtxMenu(event,'${l.id}','kanban')">
-            <button class="kanban-quick-note-btn ${l.notes?'has-note':''}" onclick="openQuickNote(event,'${l.id}')" title="${l.notes?'Ver/editar nota':'AÃ±adir nota rÃ¡pida'}">ðŸ“</button>
+            <button class="kanban-quick-note-btn ${l.notes?'has-note':''}" onclick="openQuickNote(event,'${l.id}')" title="${l.notes?'Ver/editar nota':'Añadir nota rápida'}">📝</button>
             <div class="kanban-card-name">${l.name}</div>
             <div class="kanban-card-co">${l.company}</div>
             ${nextBadge}
-            ${l.notes ? `<div style="font-size:.62rem;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">ðŸ“ ${l.notes.slice(0,45)}${l.notes.length>45?'â€¦':''}</div>` : ''}
-            ${l.email ? `<div style="display:flex;align-items:center;gap:3px;margin-top:3px"><span style="font-size:.62rem;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">âœ‰ï¸ ${l.email}</span><button onclick="event.stopPropagation(); copyToClipboard('${l.email}', 'Email: ${l.email}')" title="Copiar email" style="background:none;border:none;cursor:pointer;color:var(--text-dim);padding:0 2px;font-size:.72rem;line-height:1;flex-shrink:0;transition:color .15s" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-dim)'">â§‰</button></div>` : ''}
+            ${l.notes ? `<div style="font-size:.62rem;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">📝 ${l.notes.slice(0,45)}${l.notes.length>45?'…':''}</div>` : ''}
+            ${l.email ? `<div style="display:flex;align-items:center;gap:3px;margin-top:3px"><span style="font-size:.62rem;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">✉️ ${l.email}</span><button onclick="event.stopPropagation(); copyToClipboard('${l.email}', 'Email: ${l.email}')" title="Copiar email" style="background:none;border:none;cursor:pointer;color:var(--text-dim);padding:0 2px;font-size:.72rem;line-height:1;flex-shrink:0;transition:color .15s" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-dim)'">⧉</button></div>` : ''}
             ${budgetHtml}
             <div class="kanban-card-foot">
               <span class="kanban-seg">${l.segment}</span>
@@ -389,7 +389,7 @@ function renderKanban() {
             </div>
           </div>`;
         }).join('')
-      : `<div style="text-align:center;padding:1.5rem;color:var(--text-dim);font-size:.78rem">Arrastra aquÃ­</div>`;
+      : `<div style="text-align:center;padding:1.5rem;color:var(--text-dim);font-size:.78rem">Arrastra aquí</div>`;
   });
 
   // Update kanban filter count
@@ -404,7 +404,7 @@ function renderKanban() {
     // Contar items reales mostrados sumando las columnas ya renderizadas
     const shownCount = document.querySelectorAll('#kanban-board .kanban-card').length;
     kCountEl.textContent = activeK
-      ? `${shownCount} de ${total} Â· ${activeK} filtro${activeK>1?'s':''} activo${activeK>1?'s':''}`
+      ? `${shownCount} de ${total} · ${activeK} filtro${activeK>1?'s':''} activo${activeK>1?'s':''}`
       : '';
   }
 }
@@ -435,7 +435,7 @@ function dropLead(e, newStatus) {
     confirmStatusChange(lead, newStatus, () => {
       lead.status = newStatus;
       lead.status_date = new Date().toISOString();
-      addActivityLog(lead.id, `Pipeline: ${oldStatus} â†’ ${newStatus}`);
+      addActivityLog(lead.id, `Pipeline: ${oldStatus} -> ${newStatus}`);
       applySequenceRule(lead, newStatus);
       saveLeads();
       renderKanban();
@@ -497,7 +497,7 @@ function renderTracking() {
   if (cntEl) {
     const active = [tSearch,tSeg,tChannel,tDate].filter(Boolean).length;
     cntEl.textContent = `${list.length} de ${emailHistory.length} registros` +
-      (active ? ` Â· ${active} filtro${active>1?'s':''}` : '');
+      (active ? ` · ${active} filtro${active>1?'s':''}` : '');
   }
 
   if (!list.length) { if (empty) empty.style.display = 'flex'; return; }
@@ -507,10 +507,10 @@ function renderTracking() {
     tr.innerHTML = `
       <td style="font-size:.78rem">${new Date(e.date).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'})}</td>
       <td><div class="lead-name">${e.company}</div></td>
-      <td style="color:var(--primary);font-size:.82rem"><span style="display:inline-flex;align-items:center;gap:.35rem">${e.email}<button onclick="event.stopPropagation(); copyToClipboard('${e.email}', 'Email: ${e.email}')" title="Copiar email" style="background:none;border:none;cursor:pointer;color:var(--text-dim);padding:1px 4px;font-size:.75rem;line-height:1;transition:color .15s" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-dim)'">â§‰</button></span></td>
+      <td style="color:var(--primary);font-size:.82rem"><span style="display:inline-flex;align-items:center;gap:.35rem">${e.email}<button onclick="event.stopPropagation(); copyToClipboard('${e.email}', 'Email: ${e.email}')" title="Copiar email" style="background:none;border:none;cursor:pointer;color:var(--text-dim);padding:1px 4px;font-size:.75rem;line-height:1;transition:color .15s" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-dim)'">⧉</button></span></td>
       <td><span style="font-size:.75rem;background:var(--glass);padding:2px 8px;border-radius:5px;color:var(--text-muted)">${e.segment}</span></td>
-      <td><span style="color:var(--success);font-size:.78rem">âœ… ${e.status}</span></td>
-      <td style="font-size:.78rem;color:var(--text-muted)">${e.notes||'â€”'}</td>`;
+      <td><span style="color:var(--success);font-size:.78rem">✅ ${e.status}</span></td>
+      <td style="font-size:.78rem;color:var(--text-muted)">${e.notes||'—'}</td>`;
     tbody.appendChild(tr);
   });
 }
@@ -565,37 +565,37 @@ function saveTemplate() {
   if (localStorage.getItem('gordi_jsonbin_auto') === 'true') {
     if (typeof jsonbinPush === 'function') jsonbinPush(false);
   }
-  showToast('Plantilla guardada âœ“');
+  showToast('Plantilla guardada ✓');
 }
 
 function previewTemplate() {
   const body = document.getElementById('tpl-body').value;
   const subject = document.getElementById('tpl-subject-a').value;
   const firma = buildFirmaText();
-  const saludo = buildSaludo('Carlos GarcÃ­a', 'Empresa Ejemplo S.L.');
+  const saludo = buildSaludo('Carlos García', 'Empresa Ejemplo S.L.');
   const preview = body
     .replace(/{{SALUDO}}/g, saludo)
-    .replace(/{{Name}}/g, 'Carlos GarcÃ­a')
+    .replace(/{{Name}}/g, 'Carlos García')
     .replace(/{{Company}}/g, 'Empresa Ejemplo S.L.')
     .replace(/{{Sector}}/g, 'Hoteles')
     .replace(/{{Ciudad}}/g, 'Madrid')
     .replace(/{{Rating}}/g, '3.8')
-    .replace(/{{Signal}}/g, 'estÃ¡n buscando actualizar sus instalaciones')
-    .replace(/{{SeÃ±al}}/g, 'estÃ¡n buscando actualizar sus instalaciones')
+    .replace(/{{Signal}}/g, 'están buscando actualizar sus instalaciones')
+    .replace(/{{Señal}}/g, 'están buscando actualizar sus instalaciones')
     .replace(/{{FIRMA}}/g, firma);
   const subjectPreview = subject
     .replace(/{{Company}}/g, 'Empresa Ejemplo S.L.')
-    .replace(/{{Name}}/g, 'Carlos GarcÃ­a')
+    .replace(/{{Name}}/g, 'Carlos García')
     .replace(/{{Sector}}/g, 'Hoteles');
   const box = document.getElementById('template-preview-box');
   document.getElementById('template-preview-content').innerHTML =
-    `<div style="font-size:.72rem;color:var(--text-muted);margin-bottom:.5rem">ðŸ“Œ <strong>Asunto:</strong> ${subjectPreview}</div>` +
+    `<div style="font-size:.72rem;color:var(--text-muted);margin-bottom:.5rem">📌 <strong>Asunto:</strong> ${subjectPreview}</div>` +
     `<pre style="white-space:pre-wrap;font-family:inherit;font-size:.82rem">${preview}</pre>` +
     `<div style="font-size:.68rem;color:var(--text-dim);margin-top:.75rem">Variables disponibles: {{SALUDO}} {{Company}} {{Name}} {{Sector}} {{Signal}} {{Ciudad}} {{Rating}} {{FIRMA}}</div>`;
   box.style.display = 'block';
 }
 
-// ============ IMPORTACIÃ“N CSV ============
+// ============ IMPORTACIÓN CSV ============
 function switchImportTab(tab, btn) {
   document.querySelectorAll('.import-tab-content').forEach(el => el.style.display = 'none');
   document.querySelectorAll('.import-tab').forEach(el => el.classList.remove('active'));
@@ -603,20 +603,20 @@ function switchImportTab(tab, btn) {
   btn.classList.add('active');
 }
 
-// ImportaciÃ³n CSV/Excel â€” gestionada Ã­ntegramente por modules/smart-import.js
+// Importación CSV/Excel — gestionada íntegramente por modules/smart-import.js
 // (handleFileSelect, handleDrop, handleDragOver, processFile, parseAndPreviewImport,
 //  processBulkImport, importSelectedLeads, clearImportArea, toggleAllImport,
 //  updateImportEmail, autoDetectSegment)
-// NO redeclarar aquÃ­ para evitar conflictos de source ('import' vs 'propio')
-// y de atributos data-index vs data-idx en los checkboxes de previsualizaciÃ³n.
+// NO redeclarar aquí para evitar conflictos de source ('import' vs 'propio')
+// y de atributos data-index vs data-idx en los checkboxes de previsualización.
 
-// ============ CAMPAÃ‘AS ============
+// ============ CAMPAÑAS ============
 function openCampaignModal() { document.getElementById('campaign-modal').style.display = 'flex'; }
 function closeCampaignModal() { document.getElementById('campaign-modal').style.display = 'none'; }
 
 function saveCampaign() {
   const name = document.getElementById('camp-name').value.trim();
-  if (!name) { alert('Ponle nombre a la campaÃ±a.'); return; }
+  if (!name) { alert('Ponle nombre a la campaña.'); return; }
   const seg = document.getElementById('camp-segment').value;
   const seq = document.getElementById('camp-sequence').value;
   const desc = document.getElementById('camp-desc').value.trim();
@@ -628,7 +628,7 @@ function saveCampaign() {
   }
   closeCampaignModal();
   renderCampaigns();
-  showToast('CampaÃ±a creada âœ“');
+  showToast('Campaña creada ✓');
 }
 
 function getCampaignLeadList(c) {
@@ -695,7 +695,7 @@ function renderCampaigns() {
   const cntEl = document.getElementById('campaigns-filter-count');
   if (cntEl) {
     const active = [cSearch,cSeg,cStatus].filter(Boolean).length;
-    cntEl.textContent = `${list.length} de ${campaigns.length}` + (active ? ` Â· ${active} filtro${active>1?'s':''}` : '');
+    cntEl.textContent = `${list.length} de ${campaigns.length}` + (active ? ` · ${active} filtro${active>1?'s':''}` : '');
   }
 
   if (!list.length) { empty.style.display = 'flex'; container.style.display = 'none'; return; }
@@ -718,12 +718,12 @@ function renderCampaigns() {
           <div class="camp-stat"><div class="camp-stat-val">${pct}%</div><div class="camp-stat-lbl">Progreso</div></div>
         </div>
         <div class="camp-progress"><div class="camp-progress-fill" style="width:${pct}%"></div></div>
-        <div class="camp-real-progress">ðŸ“Š Progreso real basado en historial de emails</div>
-        <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:.75rem">${c.desc||'Sin descripciÃ³n'}</div>
+        <div class="camp-real-progress">📊 Progreso real basado en historial de emails</div>
+        <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:.75rem">${c.desc||'Sin descripción'}</div>
         <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-          <span style="font-size:.72rem;background:var(--glass);padding:2px 8px;border-radius:5px;color:var(--text-muted)">${c.sequence === 'cold' ? 'ðŸ“§ Cold Outbound' : 'ðŸ“© Inbound Nurturing'}</span>
-          <button class="btn-action" onclick="duplicateCampaign(${c.id})" title="Duplicar campaÃ±a">âŽ˜</button>
-          <button class="btn-action" onclick="openCampaignLeads(${c.id})">Ver leads →</button>
+          <span style="font-size:.72rem;background:var(--glass);padding:2px 8px;border-radius:5px;color:var(--text-muted)">${c.sequence === 'cold' ? '📧 Cold Outbound' : '📩 Inbound Nurturing'}</span>
+          <button class="btn-action" onclick="duplicateCampaign(${c.id})" title="Duplicar campaña">⎘</button>
+          <button class="btn-action" onclick="openCampaignLeads(${c.id})">Ver leads -></button>
           <button class="btn-action danger" onclick="deleteCampaign(${c.id})" style="margin-left:auto">Eliminar</button>
         </div>
       </div>`;
@@ -759,8 +759,8 @@ function deleteCampaign(id) {
   if (!c) return;
   const seg = c.segment === 'Todos' ? leads.length : leads.filter(l => l.segment === c.segment).length;
   const sent = emailHistory.filter(e => c.segment === 'Todos' || e.segment === c.segment).length;
-  const summary = `CampaÃ±a: ${c.name}\nLeads: ${seg} Â· Emails enviados: ${sent}`;
-  if (!confirm('Â¿Eliminar esta campaÃ±a?\n\n' + summary)) return;
+  const summary = `Campaña: ${c.name}\nLeads: ${seg} · Emails enviados: ${sent}`;
+  if (!confirm('¿Eliminar esta campaña?\n\n' + summary)) return;
   campaigns = campaigns.filter(x => x.id !== id);
   localStorage.setItem('gordi_campaigns', JSON.stringify(campaigns));
   renderCampaigns();
@@ -773,13 +773,13 @@ function duplicateCampaign(id) {
   campaigns.push(copy);
   localStorage.setItem('gordi_campaigns', JSON.stringify(campaigns));
   renderCampaigns();
-  showToast('CampaÃ±a duplicada âœ“');
+  showToast('Campaña duplicada ✓');
 }
 
 // ============ EXPORT ============
 function exportData() {
   if (!leads.length) { alert('No hay leads para exportar.'); return; }
-  let csv = 'Nombre,Empresa,Email,TelÃ©fono,Segmento,SeÃ±al,Score,Estado,Web\n';
+  let csv = 'Nombre,Empresa,Email,Teléfono,Segmento,Señal,Score,Estado,Web\n';
   leads.forEach(l => { csv += `"${l.name}","${l.company}","${l.email||''}","${l.phone||''}","${l.segment}","${(l.signal||'').replace(/"/g,"'")}",${l.score},"${l.status}","${l.website||''}"\n`; });
   downloadCSV(csv, 'leads_gordi.csv');
 }
@@ -793,7 +793,7 @@ function downloadCSV(content, filename) {
 }
 
 function clearAllLeads() {
-  if (!confirm('âš ï¸ Â¿Borrar TODOS los leads? Esta acciÃ³n no se puede deshacer.')) return;
+  if (!confirm('⚠️ ¿Borrar TODOS los leads? Esta acción no se puede deshacer.')) return;
   if (typeof createSafetySnapshot === 'function') createSafetySnapshot('before_clear_all_leads');
   if (typeof createCriticalRescueSnapshot === 'function') createCriticalRescueSnapshot('before_clear_all_leads');
   if (typeof markIntentionalEmptyLeads === 'function') markIntentionalEmptyLeads();

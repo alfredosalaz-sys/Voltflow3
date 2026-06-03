@@ -113,7 +113,7 @@ function renderRedditResults(posts) {
               ${!isDeleted
                 ? `<a href="${authorUrl}" target="_blank" rel="noopener" style="font-size:.78rem;color:var(--text-muted);text-decoration:none">👤 u/${_escapeHtml(author)}</a>`
                 : `<span style="font-size:.78rem;color:var(--text-dim)">👤 [usuario eliminado]</span>`}
-              <a href="${redditUrl}" target="_blank" rel="noopener" style="font-size:.78rem;color:var(--primary)">Ver post →</a>
+              <a href="${redditUrl}" target="_blank" rel="noopener" style="font-size:.78rem;color:var(--primary)">Ver post -></a>
             </div>
           </div>
           ${!isDeleted ? `

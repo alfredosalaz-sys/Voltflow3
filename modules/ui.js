@@ -1,52 +1,8 @@
-﻿// ============ TOAST ============
-function showToast(msg) {
-  const t = document.createElement('div');
-  t.style.cssText = `position:fixed;bottom:2rem;right:2rem;background:var(--bg2);border:1px solid var(--glass-border);color:var(--text);padding:.75rem 1.25rem;border-radius:10px;font-size:.83rem;z-index:9999;animation:fadeIn .3s ease;box-shadow:0 8px 24px rgba(0,0,0,.4)`;
-  t.innerText = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 2800);
-}
-
-// ============ CLIPBOARD ============
-async function copyToClipboard(text, message = 'Copiado al portapapeles') {
-  if (!text) return;
-  try {
-    await navigator.clipboard.writeText(text);
-    showToast(`ðŸ“‹ ${message}`);
-  } catch (err) {
-    // Fallback para navegadores antiguos o sin permisos
-    const textArea = document.createElement("textarea");
-    textArea.value = text;
-    document.body.appendChild(textArea);
-    textArea.select();
-    try {
-      document.execCommand('copy');
-      showToast(`ðŸ“‹ ${message}`);
-    } catch (err) {
-      console.error('Error al copiar:', err);
-    }
-    document.body.removeChild(textArea);
-  }
-}
-
 function copyEmail(email, event) {
   if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
   return copyToClipboard(email, `Email: ${email}`);
 }
 
-// ============ LIGHT MODE ============
-function toggleLightMode() {
-  const isLight = document.body.classList.toggle('light-mode');
-  localStorage.setItem('gordi_light_mode', isLight ? '1' : '0');
-  const btn = document.getElementById('theme-btn');
-  if (btn) btn.textContent = isLight ? 'â˜€ï¸ Claro' : 'ðŸŒ™ Oscuro';
-}
-function applyLightMode(on) {
-  if (on) document.body.classList.add('light-mode');
-  else document.body.classList.remove('light-mode');
-  const btn = document.getElementById('theme-btn');
-  if (btn) btn.textContent = on ? 'â˜€ï¸ Claro' : 'ðŸŒ™ Oscuro';
-}
 
 // ============ FONT SIZE ============
 function setFontSize(scale, silent) {
@@ -95,7 +51,7 @@ function bulkChangeStatus(newStatus) {
       const old = l.status;
       l.status = newStatus;
       l.status_date = new Date().toISOString();
-      addActivityLog(l.id, `Cambio en lote: ${old} â†’ ${newStatus}`);
+      addActivityLog(l.id, `Cambio en lote: ${old} -> ${newStatus}`);
     }
   });
   saveLeads();
@@ -106,7 +62,7 @@ function bulkChangeStatus(newStatus) {
 function bulkExport() {
   const selected = leads.filter(l => selectedLeadIds.has(String(l.id)));
   if (!selected.length) return;
-  let csv = 'Nombre,Empresa,Email,TelÃ©fono,Segmento,Score,Estado\n';
+  let csv = 'Nombre,Empresa,Email,Teléfono,Segmento,Score,Estado\n';
   selected.forEach(l => { csv += `"${l.name}","${l.company}","${l.email||''}","${l.phone||''}","${l.segment}",${l.score},"${l.status}"\n`; });
   downloadCSV(csv, 'leads_seleccionados.csv');
   clearBulkSelection();
@@ -117,7 +73,7 @@ function exportFilteredData() {
   const list = getFilteredLeads();
   if (!list.length) { alert('No hay leads para exportar.'); return; }
   const esc = v => `"${String(v||'').replace(/"/g,"'")}"`;
-  let csv = 'Nombre,Empresa,Email,TelÃ©fono,Segmento,SeÃ±al,Score,Estado,Web,Decisor,Rating,NÂº ReseÃ±as,Instagram,LinkedIn,AÃ±o Dominio,AÃ±o FundaciÃ³n,Estado Legal,Fuentes Enriquecimiento,SeÃ±ales,Presupuesto,PrÃ³ximo contacto,Etiquetas\n';
+  let csv = 'Nombre,Empresa,Email,Teléfono,Segmento,Señal,Score,Estado,Web,Decisor,Rating,Nº Reseñas,Instagram,LinkedIn,Año Dominio,Año Fundación,Estado Legal,Fuentes Enriquecimiento,Señales,Presupuesto,Próximo contacto,Etiquetas\n';
   list.forEach(l => {
     csv += [
       esc(l.name), esc(l.company), esc(l.email), esc(l.phone),
@@ -153,39 +109,39 @@ function renderTodayPanel() {
   // Card: seguimientos hoy
   if (dueToday.length) {
     cards.push(`<div class="today-action-card">
-      <div class="today-action-header" style="color:var(--primary)">ðŸ“… Seguimientos hoy <span style="color:var(--text-muted);font-weight:400">(${dueToday.length})</span></div>
+      <div class="today-action-header" style="color:var(--primary)">📅 Seguimientos hoy <span style="color:var(--text-muted);font-weight:400">(${dueToday.length})</span></div>
       ${dueToday.slice(0,4).map(l => `
         <div class="today-lead-row">
           <span class="today-lead-name" onclick="openLeadDetail('${l.id}')">${l.company}</span>
           <span style="font-size:.65rem;color:var(--text-dim)">${l.status}</span>
-          ${l.email ? `<button class="today-mini-btn" onclick="copyToClipboard('${l.email}', 'Email: ${l.email}')" title="Copiar email">â§‰</button>` : ''}
-          ${l.email ? `<button class="today-mini-btn success" onclick="generateEmail('${l.id}')">âœ‰ï¸ Email</button>` : ''}
+          ${l.email ? `<button class="today-mini-btn" onclick="copyToClipboard('${l.email}', 'Email: ${l.email}')" title="Copiar email">⧉</button>` : ''}
+          ${l.email ? `<button class="today-mini-btn success" onclick="generateEmail('${l.id}')">✉️ Email</button>` : ''}
           <button class="today-mini-btn" onclick="todayPostpone('${l.id}')">+1d</button>
-          <button class="today-mini-btn" onclick="openLeadDetail('${l.id}')">Ver â†’</button>
+          <button class="today-mini-btn" onclick="openLeadDetail('${l.id}')">Ver -></button>
         </div>`).join('')}
-      ${dueToday.length > 4 ? `<div style="font-size:.7rem;color:var(--text-dim);margin-top:.35rem">+${dueToday.length-4} mÃ¡s â€” <span style="cursor:pointer;color:var(--primary)" onclick="showView('leads')">ver todos</span></div>` : ''}
+      ${dueToday.length > 4 ? `<div style="font-size:.7rem;color:var(--text-dim);margin-top:.35rem">+${dueToday.length-4} más — <span style="cursor:pointer;color:var(--primary)" onclick="showView('leads')">ver todos</span></div>` : ''}
     </div>`);
   }
 
   // Card: urgentes sin contactar
   if (urgent.length) {
     cards.push(`<div class="today-action-card">
-      <div class="today-action-header" style="color:var(--warning)">ðŸ”¥ Alta prioridad sin contactar <span style="color:var(--text-muted);font-weight:400">(${urgent.length})</span></div>
+      <div class="today-action-header" style="color:var(--warning)">🔥 Alta prioridad sin contactar <span style="color:var(--text-muted);font-weight:400">(${urgent.length})</span></div>
       ${urgent.slice(0,3).map(l => `
         <div class="today-lead-row">
           <span class="today-lead-name" onclick="openLeadDetail('${l.id}')">${l.company}</span>
           <span style="font-size:.65rem;color:var(--warning)">${l.score}pts</span>
-          ${l.email ? `<button class="today-mini-btn" onclick="copyToClipboard('${l.email}', 'Email: ${l.email}')" title="Copiar email">â§‰</button>` : ''}
-          ${l.email ? `<button class="today-mini-btn success" onclick="generateEmail('${l.id}')">âœ‰ï¸ Email</button>` : ''}
-          <button class="today-mini-btn" onclick="openAiEmailModal('${l.id}')">âœ¨ IA</button>
-          <button class="today-mini-btn danger" onclick="markNotInterested('${l.id}');renderTodayPanel()">âœ•</button>
+          ${l.email ? `<button class="today-mini-btn" onclick="copyToClipboard('${l.email}', 'Email: ${l.email}')" title="Copiar email">⧉</button>` : ''}
+          ${l.email ? `<button class="today-mini-btn success" onclick="generateEmail('${l.id}')">✉️ Email</button>` : ''}
+          <button class="today-mini-btn" onclick="openAiEmailModal('${l.id}')">✨ IA</button>
+          <button class="today-mini-btn danger" onclick="markNotInterested('${l.id}');renderTodayPanel()">✖</button>
         </div>`).join('')}
     </div>`);
   }
 
   // Card: resumen semana
   cards.push(`<div class="today-action-card">
-    <div class="today-action-header" style="color:var(--success)">ðŸ“ˆ Esta semana</div>
+    <div class="today-action-header" style="color:var(--success)">📈 Esta semana</div>
     <div style="display:flex;gap:1.5rem;margin-top:.1rem">
       <div style="text-align:center">
         <div style="font-size:1.4rem;font-weight:700;color:var(--primary)">${leadsThisWeek}</div>
@@ -202,14 +158,14 @@ function renderTodayPanel() {
     </div>
     <div style="margin-top:.6rem;display:flex;gap:.4rem;flex-wrap:wrap">
       <button class="today-mini-btn" onclick="showView('leads');toggleLeadForm()">+ Nuevo lead</button>
-      <button class="today-mini-btn" onclick="showView('kanban')">ðŸ“‹ Pipeline</button>
-      <button class="today-mini-btn" onclick="showView('planner')">ðŸ” Buscar empresas</button>
-      <button class="today-mini-btn" onclick="openFocusMode()" style="background:rgba(10,132,255,.1);border-color:var(--primary);color:var(--primary)">âš¡ Modo Enfoque</button>
+      <button class="today-mini-btn" onclick="showView('kanban')">📋 Pipeline</button>
+      <button class="today-mini-btn" onclick="showView('planner')">🔍 Buscar empresas</button>
+      <button class="today-mini-btn" onclick="openFocusMode()" style="background:rgba(10,132,255,.1);border-color:var(--primary);color:var(--primary)">⚡ Modo Enfoque</button>
     </div>
   </div>`);
 
   el.style.gridTemplateColumns = cards.length >= 3 ? 'repeat(auto-fit,minmax(240px,1fr))' : 'repeat(auto-fit,minmax(200px,1fr))';
-  el.innerHTML = cards.length ? cards.join('') : '<div class="today-action-card" style="grid-column:1/-1"><div style="font-size:.82rem;color:var(--success);text-align:center;padding:.5rem">âœ… Todo al dÃ­a â€” no hay acciones pendientes para hoy</div></div>';
+  el.innerHTML = cards.length ? cards.join('') : '<div class="today-action-card" style="grid-column:1/-1"><div style="font-size:.82rem;color:var(--success);text-align:center;padding:.5rem">✅ Todo al día — no hay acciones pendientes para hoy</div></div>';
 }
 
 function todayPostpone(leadId) {
@@ -218,7 +174,7 @@ function todayPostpone(leadId) {
   const d = new Date(lead.next_contact);
   d.setDate(d.getDate() + 1);
   lead.next_contact = d.toISOString().slice(0,10);
-  addActivityLog(leadId, `ðŸ“… Seguimiento pospuesto a ${lead.next_contact}`);
+  addActivityLog(leadId, `📅 Seguimiento pospuesto a ${lead.next_contact}`);
   saveLeads();
   renderTodayPanel();
   showToast(`Pospuesto a ${d.toLocaleDateString('es-ES')}`);
@@ -252,10 +208,10 @@ function renderPipelineValue() {
   const total  = active.reduce((s,l) => s + (l.budget || 0), 0);
   const closed = leads.filter(l => l.status === 'Cerrado' && l.budget > 0).reduce((s,l) => s + (l.budget||0), 0);
   el.innerHTML = `
-    <div class="pipeline-value">${total.toLocaleString('es-ES')}â‚¬</div>
-    <div style="font-size:.75rem;color:var(--text-muted);margin-top:.25rem">${active.length} leads con presupuesto Â· ${total > 0 ? Math.round(total/active.length).toLocaleString('es-ES')+'â‚¬ media' : 'â€”'}</div>
-    ${closed > 0 ? `<div style="font-size:.78rem;color:var(--success);margin-top:.4rem">âœ… ${closed.toLocaleString('es-ES')}â‚¬ cerrados</div>` : ''}
-    <div style="font-size:.7rem;color:var(--text-dim);margin-top:.5rem">AÃ±ade presupuesto estimado en cada lead para ver el valor del pipeline</div>`;
+    <div class="pipeline-value">${total.toLocaleString('es-ES')}€</div>
+    <div style="font-size:.75rem;color:var(--text-muted);margin-top:.25rem">${active.length} leads con presupuesto · ${total > 0 ? Math.round(total/active.length).toLocaleString('es-ES')+'€ media' : '—'}</div>
+    ${closed > 0 ? `<div style="font-size:.78rem;color:var(--success);margin-top:.4rem">✅ ${closed.toLocaleString('es-ES')}€ cerrados</div>` : ''}
+    <div style="font-size:.7rem;color:var(--text-dim);margin-top:.5rem">Añade presupuesto estimado en cada lead para ver el valor del pipeline</div>`;
 }
 
 // ============ STREAK ============
@@ -276,8 +232,8 @@ function renderStreakPanel() {
   const streak = JSON.parse(localStorage.getItem('gordi_streak') || '{"days":0}');
   const days = streak.days || 0;
   el.innerHTML = `<div style="display:flex;align-items:center;gap:1rem">
-    <div class="streak-badge">ðŸ”¥ ${days} dÃ­a${days!==1?'s':''} de racha</div>
-    <div style="font-size:.75rem;color:var(--text-muted)">${days >= 7 ? 'Â¡Semana completa! ðŸ†' : days >= 3 ? 'Buen ritmo ðŸ’ª' : 'Empieza tu racha'}</div>
+    <div class="streak-badge">🔥 ${days} día${days!==1?'s':''} de racha</div>
+    <div style="font-size:.75rem;color:var(--text-muted)">${days >= 7 ? '¡Semana completa! 🏆' : days >= 3 ? 'Buen ritmo 👍' : 'Empieza tu racha'}</div>
   </div>`;
 }
 
@@ -299,7 +255,7 @@ function renderHeatmap() {
     const v = actByMonth[m] || 0;
     const level = v === 0 ? 0 : v <= max*0.25 ? 1 : v <= max*0.5 ? 2 : v <= max*0.75 ? 3 : 4;
     return `<div class="heatmap-cell heatmap-${level}" data-tip="${m}: ${v} acciones" title="${m}: ${v} acciones"></div>`;
-  }).join('') + '</div><div style="font-size:.65rem;color:var(--text-dim);margin-top:.3rem">Ãšltimos 12 meses</div>';
+  }).join('') + '</div><div style="font-size:.65rem;color:var(--text-dim);margin-top:.3rem">Últimos 12 meses</div>';
 }
 
 // ============ OBJECTIVES ============
@@ -319,7 +275,7 @@ function saveObjectives() {
   localStorage.setItem('gordi_objectives', JSON.stringify(objectives));
   closeObjectivesModal();
   renderObjectivesPanel();
-  showToast('Objetivos guardados âœ“');
+  showToast('Objetivos guardados ✓');
 }
 function renderObjectivesPanel() {
   const el = document.getElementById('objectives-panel');
@@ -329,9 +285,9 @@ function renderObjectivesPanel() {
   const emailsW = emailHistory.filter(e => e.date && new Date(e.date) >= weekStart).length;
   const repliesW = leads.filter(l => l.status_date && new Date(l.status_date) >= weekStart && l.status === 'Respuesta del cliente').length;
   const items = [
-    { label:'Leads nuevos', val:leadsW, target:objectives.leads, icon:'ðŸ‘¥' },
-    { label:'Emails enviados', val:emailsW, target:objectives.emails, icon:'âœ‰ï¸' },
-    { label:'Respuestas', val:repliesW, target:objectives.replies, icon:'ðŸ’¬' },
+    { label:'Leads nuevos', val:leadsW, target:objectives.leads, icon:'👥' },
+    { label:'Emails enviados', val:emailsW, target:objectives.emails, icon:'✉️' },
+    { label:'Respuestas', val:repliesW, target:objectives.replies, icon:'💬' },
   ];
   el.innerHTML = items.map(it => {
     const pct = Math.min(Math.round(it.val / Math.max(it.target,1) * 100), 100);
@@ -348,7 +304,7 @@ function renderObjectivesPanel() {
 
 // ============ SEARCH HISTORY ============
 function saveSearchHistory(segment, location) {
-  const key = `${segment} â€” ${location}`;
+  const key = `${segment} — ${location}`;
   searchHistoryList = [key, ...searchHistoryList.filter(k => k !== key)].slice(0,5);
   localStorage.setItem('gordi_search_history', JSON.stringify(searchHistoryList));
   renderSearchHistory();
@@ -358,7 +314,7 @@ function renderSearchHistory() {
   if (!el || !searchHistoryList.length) return;
   el.innerHTML = '<span style="font-size:.68rem;color:var(--text-dim);margin-right:.25rem">Recientes:</span>' +
     searchHistoryList.map(k => {
-      const [seg, loc] = k.split(' â€” ');
+      const [seg, loc] = k.split(' — ');
       return `<span class="sh-pill" onclick="applySearchHistory('${encodeURIComponent(seg)}','${encodeURIComponent(loc)}')">${k}</span>`;
     }).join('');
 }
@@ -381,12 +337,12 @@ async function regenerateSubjectOnly() {
   const key = getGeminiKey();
   if (!key) return;
   const btn = event.target;
-  btn.textContent = 'â³ Generando...'; btn.disabled = true;
+  btn.textContent = '⏳ Generando...'; btn.disabled = true;
   try {
     // Usar Gemini para generar asuntos de email
     const geminiResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: `Genera 3 asuntos de email comercial cortos y directos para contactar a ${lead.company} (sector ${lead.segment}). Solo los 3 asuntos numerados, sin mÃ¡s texto.` }] }] })
+      body: JSON.stringify({ contents: [{ parts: [{ text: `Genera 3 asuntos de email comercial cortos y directos para contactar a ${lead.company} (sector ${lead.segment}). Solo los 3 asuntos numerados, sin más texto.` }] }] })
     });
     const data = await geminiResp.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -396,7 +352,7 @@ async function regenerateSubjectOnly() {
       if (chosen) document.getElementById('ai-subject-out').value = chosen.replace(/^\d+[\.\)]\s*/, '').trim();
     }
   } catch(e) { showToast('Error generando asuntos'); }
-  btn.textContent = 'ðŸ”„ Nuevo asunto'; btn.disabled = false;
+  btn.textContent = '🔄 Nuevo asunto'; btn.disabled = false;
 }
 
 function saveAiEmailAsTemplate() {
@@ -409,17 +365,17 @@ function saveAiEmailAsTemplate() {
   emailTemplates[key].subjectA = subject;
   emailTemplates[key].body = body;
   localStorage.setItem('gordi_templates', JSON.stringify(emailTemplates));
-  showToast(`Plantilla guardada para sector ${key} âœ“`);
+  showToast(`Plantilla guardada para sector ${key} ✓`);
 }
 
 function checkSpam(subject) {
-  const spamWords = ['gratis','free','oferta','urgente','descuento','!','â‚¬â‚¬','$$','100%','garantizado','ganador'];
+  const spamWords = ['gratis','free','oferta','urgente','descuento','!','€€','$$','100%','garantizado','ganador'];
   const hits = spamWords.filter(w => subject.toLowerCase().includes(w));
   const el = document.getElementById('spam-check-result');
   if (!el) return;
-  if (hits.length === 0) el.innerHTML = '<span class="spam-ok">âœ… Asunto sin palabras de spam</span>';
-  else if (hits.length <= 2) el.innerHTML = `<span class="spam-warn">âš ï¸ Palabras de riesgo: ${hits.join(', ')}</span>`;
-  else el.innerHTML = `<span class="spam-bad">ðŸš« Alto riesgo de spam: ${hits.join(', ')}</span>`;
+  if (hits.length === 0) el.innerHTML = '<span class="spam-ok">✅ Asunto sin palabras de spam</span>';
+  else if (hits.length <= 2) el.innerHTML = `<span class="spam-warn">⚠️ Palabras de riesgo: ${hits.join(', ')}</span>`;
+  else el.innerHTML = `<span class="spam-bad">🚫 Alto riesgo de spam: ${hits.join(', ')}</span>`;
 }
 
 function updateEmailWordCount() {
@@ -445,7 +401,7 @@ async function generateFollowupEmail(id) {
   modal.style.display = 'flex';
   document.getElementById('ai-loading').style.display = 'block';
   document.getElementById('ai-result').style.display = 'none';
-  document.getElementById('ai-modal-title').innerText = `â†©ï¸ Seguimiento para ${lead.company}`;
+  document.getElementById('ai-modal-title').innerText = `↩️ Seguimiento para ${lead.company}`;
   try {
     // Recuperar historial de contacto con este lead
     const prevHistory = emailHistory.filter(h => h.leadId == lead.id || h.email === lead.email);
@@ -459,31 +415,31 @@ async function generateFollowupEmail(id) {
 CONTEXTO DEL LEAD:
 - Empresa: ${lead.company} | Sector: ${lead.segment} | Ciudad: ${lead.address || 'Madrid'}
 - Estado actual: ${lead.status} | Score: ${lead.score || '?'}
-- DÃ­as sin respuesta: ${daysInStatus}
+- Días sin respuesta: ${daysInStatus}
 - Emails previos enviados: ${emailCount}
-- Ãšltimo asunto enviado: "${lastSubject}"
-- SeÃ±ales del lead: ${(lead.signals||[]).slice(0,3).join(' Â· ') || 'sin seÃ±ales'}
-- Nota Google: ${lead.rating ? lead.rating + '/5 (' + lead.ratingCount + ' reseÃ±as)' : 'sin datos'}
+- Último asunto enviado: "${lastSubject}"
+- Señales del lead: ${(lead.signals||[]).slice(0,3).join(' · ') || 'sin señales'}
+- Nota Google: ${lead.rating ? lead.rating + '/5 (' + lead.ratingCount + ' reseñas)' : 'sin datos'}
 ${lead.decision_maker ? '- Decisor: ' + lead.decision_maker : ''}
 
 TONO DEL SECTOR: ${segmentToneFollow.tone}
 DOLOR PRINCIPAL: ${segmentToneFollow.pain}
-ÃNGULO DE VENTA: ${segmentToneFollow.angle}
+ÁNGULO DE VENTA: ${segmentToneFollow.angle}
 PROHIBIDO: ${segmentToneFollow.forbidden}
 
 REGLAS DEL SEGUIMIENTO:
-${daysInStatus <= 4 ? `- Han pasado SOLO ${daysInStatus} dÃ­as. El tono debe ser muy breve y ligero â€” apenas un recordatorio amable. No dar la lata.` :
-  daysInStatus <= 10 ? `- Han pasado ${daysInStatus} dÃ­as. Aporta UN dato nuevo o Ã¡ngulo diferente al primer email. No repetir lo mismo.` :
-  `- Han pasado ${daysInStatus} dÃ­as. Este es posiblemente el Ãºltimo intento. Abre una puerta de salida elegante ("si no es el momento...") pero con un CTA claro.`}
+${daysInStatus <= 4 ? `- Han pasado SOLO ${daysInStatus} días. El tono debe ser muy breve y ligero — apenas un recordatorio amable. No dar la lata.` :
+  daysInStatus <= 10 ? `- Han pasado ${daysInStatus} días. Aporta UN dato nuevo o ángulo diferente al primer email. No repetir lo mismo.` :
+  `- Han pasado ${daysInStatus} días. Este es posiblemente el último intento. Abre una puerta de salida elegante ("si no es el momento...") pero con un CTA claro.`}
 - NUNCA mencionar el asunto anterior ni decir "como te dije"
-- NUNCA: "solo querÃ­a recordarte", "espero que todo vaya bien", frases de relleno
-- SÃ: empezar con algo que aporte valor (un dato, una pregunta, un Ã¡ngulo nuevo)
-- Longitud: ${daysInStatus <= 4 ? '50-70' : '80-120'} palabras mÃ¡ximo en el cuerpo
-- Formato HTML con <br><br> entre pÃ¡rrafos, <strong> solo en el CTA
+- NUNCA: "solo quería recordarte", "espero que todo vaya bien", frases de relleno
+- SÍ: empezar con algo que aporte valor (un dato, una pregunta, un ángulo nuevo)
+- Longitud: ${daysInStatus <= 4 ? '50-70' : '80-120'} palabras máximo en el cuerpo
+- Formato HTML con <br><br> entre párrafos, <strong> solo en el CTA
 - Genera 2 opciones de asunto: uno directo, uno de curiosidad/pregunta
 
-Responde ÃšNICAMENTE JSON vÃ¡lido:
-{"subjects":["asunto directo","asunto pregunta/curiosidad"],"body":"HTML del email","tactic":"en 1 frase: quÃ© tÃ¡ctica usaste y por quÃ© para este caso concreto"}`;
+Responde ÚNICAMENTE JSON válido:
+{"subjects":["asunto directo","asunto pregunta/curiosidad"],"body":"HTML del email","tactic":"en 1 frase: qué táctica usaste y por qué para este caso concreto"}`;
 
     const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -499,7 +455,7 @@ Responde ÃšNICAMENTE JSON vÃ¡lido:
     // Show subject options if we have multiple
     const followSubjects = result.subjects || [result.subject];
     const subjectList = document.getElementById('ai-subjects-list');
-    const subjectLabels = ['ðŸŽ¯ Directo', 'â“ Pregunta'];
+    const subjectLabels = ['🎯 Directo', '❓ Pregunta'];
     if (subjectList) {
       subjectList.innerHTML = followSubjects.map((s, i) => `
         <div onclick="selectAiSubject(this, '${s.replace(/'/g,"&#39;")}')"
@@ -507,19 +463,19 @@ Responde ÃšNICAMENTE JSON vÃ¡lido:
           background:var(--glass);font-size:.82rem;display:flex;gap:.5rem;align-items:center;justify-content:space-between;transition:border-color .15s"
           class="subject-option${i===0?' selected-subject':''}">
           <div style="display:flex;gap:.5rem;align-items:flex-start;flex:1">
-            <span style="font-size:.7rem;color:var(--text-muted);white-space:nowrap;padding-top:1px">${subjectLabels[i]||'âœï¸'}</span>
+            <span style="font-size:.7rem;color:var(--text-muted);white-space:nowrap;padding-top:1px">${subjectLabels[i]||'✏️'}</span>
             <span>${s}</span>
           </div>
           <button onclick="event.stopPropagation();copySubjectOption('${s.replace(/'/g,"&#39;")}')" title="Copiar asunto"
             style="background:none;border:none;cursor:pointer;font-size:.75rem;color:var(--text-dim);padding:.1rem .3rem;border-radius:4px;flex-shrink:0;transition:color .15s"
-            onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-dim)'">ðŸ“‹</button>
+            onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-dim)'">📋</button>
         </div>`).join('');
     }
     document.getElementById('ai-subject-out').value = followSubjects[0] || '';
     document.getElementById('ai-body-editor').innerHTML = result.body || '';
     if (result.tactic) {
       document.getElementById('ai-reviews-insight').innerHTML =
-        `<strong style="color:var(--primary)">ðŸ§  TÃ¡ctica usada:</strong> ${result.tactic}`;
+        `<strong style="color:var(--primary)">🧠 Táctica usada:</strong> ${result.tactic}`;
       document.getElementById('ai-reviews-insight').style.display = 'block';
     }
   } catch(e) {
@@ -539,16 +495,16 @@ function checkPin() {
     return; // Fallback gracefully if localStorage is unavailable
   }
   if (!pin) return;
-  const input = prompt('ðŸ”’ Voltflow â€” Introduce tu PIN:');
+  const input = prompt('🔒 Voltflow — Introduce tu PIN:');
   if (input !== pin) {
-    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0f1e;color:#ef4444;font-family:sans-serif;font-size:1.2rem">ðŸ”’ PIN incorrecto. Recarga para intentarlo de nuevo.</div>';
+    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0f1e;color:#ef4444;font-family:sans-serif;font-size:1.2rem">🔒 PIN incorrecto. Recarga para intentarlo de nuevo.</div>';
     throw new Error('PIN incorrecto');
   }
 }
 function savePin() {
   const pin = document.getElementById('pin-input').value;
-  if (pin && !/^\d{4}$/.test(pin)) { showToast('El PIN debe ser exactamente 4 dÃ­gitos'); return; }
-  if (pin) { localStorage.setItem('gordi_pin', pin); document.getElementById('pin-status').innerHTML = '<span style="color:var(--success)">âœ… PIN guardado</span>'; }
+  if (pin && !/^\d{4}$/.test(pin)) { showToast('El PIN debe ser exactamente 4 dígitos'); return; }
+  if (pin) { localStorage.setItem('gordi_pin', pin); document.getElementById('pin-status').innerHTML = '<span style="color:var(--success)">✅ PIN guardado</span>'; }
   else { localStorage.removeItem('gordi_pin'); document.getElementById('pin-status').innerHTML = '<span style="color:var(--text-muted)">PIN eliminado</span>'; }
 }
 function removePin() {
@@ -558,10 +514,10 @@ function removePin() {
 }
 
 // ============ BACKUP / RESTORE ============
-// exportDataSnapshot estÃ¡ definida en modules/init.js (versiÃ³n authoritative
+// exportDataSnapshot está definida en modules/init.js (versión authoritative
 // con todas las claves gordi_gh_* y VOLTFLOW_DATA_KEYS completo)
 
-// â”€â”€â”€ EXPORTAR / IMPORTAR DATOS PORTÃTILES ENTRE VERSIONES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── EXPORTAR / IMPORTAR DATOS PORTÁTILES ENTRE VERSIONES ────────────────────
 function exportPortableData() {
   const snapshot = exportDataSnapshot();
   const leadsCount = (() => { try { return JSON.parse(snapshot.gordi_leads || '[]').length; } catch { return 0; } })();
@@ -572,10 +528,10 @@ function exportPortableData() {
   a.download = `voltflow_datos_${new Date().toISOString().slice(0,10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast(`ðŸ“¦ Datos exportados (${leadsCount} leads + configuraciÃ³n)`);
+  showToast(` Datos exportados (${leadsCount} leads + configuración)`);
 }
 
-// â”€â”€â”€ IMPORTAR DESDE VERSIÃ“N ANTERIOR (lee localStorage directamente) â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── IMPORTAR DESDE VERSIÓN ANTERIOR (lee localStorage directamente) ─────────
 function openImportFromLocalStorage() {
   // Leer todos los datos gordi_ que hay en el localStorage ahora mismo
   const leadsRaw     = localStorage.getItem('gordi_leads');
@@ -592,7 +548,7 @@ function openImportFromLocalStorage() {
     localStorage.getItem('gordi_user_name')
   );
 
-  // Detectar todas las claves gordi_ presentes (incluyendo cachÃ© de enriquecimiento)
+  // Detectar todas las claves gordi_ presentes (incluyendo caché de enriquecimiento)
   const allGordiKeys = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
@@ -600,11 +556,11 @@ function openImportFromLocalStorage() {
   }
 
   if (allGordiKeys.length === 0) {
-    showToast('â„¹ï¸ No se encontraron datos de Voltflow en este navegador');
+    showToast('ℹ️ No se encontraron datos de Voltflow en este navegador');
     return;
   }
 
-  // AnÃ¡lisis de duplicados con los leads actuales en memoria
+  // Análisis de duplicados con los leads actuales en memoria
   const normN = n => (n||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,25);
   let newCount = 0, dupCount = 0;
   for (const l of leadsData) {
@@ -615,7 +571,7 @@ function openImportFromLocalStorage() {
     if (dup) dupCount++; else newCount++;
   }
 
-  // Detectar fecha del dato mÃ¡s reciente
+  // Detectar fecha del dato más reciente
   let lastActivity = null;
   for (const l of leadsData) {
     const d = new Date(l.date || 0);
@@ -623,7 +579,7 @@ function openImportFromLocalStorage() {
   }
   const lastStr = lastActivity
     ? lastActivity.toLocaleDateString('es-ES', {day:'2-digit', month:'short', year:'numeric'})
-    : 'â€”';
+    : '—';
 
   // Calcular peso total
   let totalBytes = 0;
@@ -634,15 +590,15 @@ function openImportFromLocalStorage() {
   document.getElementById('import-modal-content').innerHTML = `
     <div style="padding:1.5rem;display:grid;gap:1.25rem">
 
-      <!-- Cabecera: quÃ© se ha encontrado -->
+      <!-- Cabecera: qué se ha encontrado -->
       <div style="background:rgba(10,132,255,.06);border:1px solid rgba(10,132,255,.15);border-radius:10px;padding:1rem 1.25rem">
-        <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--primary);font-weight:700;margin-bottom:.6rem">ðŸ” Datos encontrados en este navegador</div>
+        <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--primary);font-weight:700;margin-bottom:.6rem">🔍 Datos encontrados en este navegador</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.45rem .75rem;font-size:.82rem">
           <div><span style="color:var(--text-muted)">Leads guardados:</span> <strong style="color:var(--text)">${leadsData.length}</strong></div>
           <div><span style="color:var(--text-muted)">Emails en historial:</span> <strong style="color:var(--text)">${historyData.length}</strong></div>
-          <div><span style="color:var(--text-muted)">CampaÃ±as:</span> <strong style="color:var(--text)">${campsData.length}</strong></div>
-          <div><span style="color:var(--text-muted)">ConfiguraciÃ³n:</span> <strong style="color:${hasConfig?'var(--success)':'var(--text-dim)'}">${hasConfig?'âœ… Incluida':'â€”'}</strong></div>
-          <div><span style="color:var(--text-muted)">Ãšltimo lead aÃ±adido:</span> <strong style="color:var(--text)">${lastStr}</strong></div>
+          <div><span style="color:var(--text-muted)">Campañas:</span> <strong style="color:var(--text)">${campsData.length}</strong></div>
+          <div><span style="color:var(--text-muted)">Configuración:</span> <strong style="color:${hasConfig?'var(--success)':'var(--text-dim)'}">${hasConfig?'✅ Incluida':'—'}</strong></div>
+          <div><span style="color:var(--text-muted)">Último lead añadido:</span> <strong style="color:var(--text)">${lastStr}</strong></div>
           <div><span style="color:var(--text-muted)">Peso total:</span> <strong style="color:var(--text-muted)">${totalKb} KB</strong></div>
         </div>
       </div>
@@ -665,31 +621,31 @@ function openImportFromLocalStorage() {
 
       ${leadsData.length > 0 && leads.length > 0 ? `
       <div style="background:rgba(16,217,124,.05);border:1px solid rgba(16,217,124,.15);border-radius:8px;padding:.75rem 1rem;font-size:.8rem">
-        <strong style="color:var(--success)">ðŸ” AnÃ¡lisis:</strong>
-        <span style="color:var(--text-muted)"> ${newCount} leads <strong style="color:var(--success)">nuevos</strong> Â· ${dupCount} posibles <strong style="color:var(--warning)">duplicados</strong></span>
+        <strong style="color:var(--success)">🔍 Análisis:</strong>
+        <span style="color:var(--text-muted)"> ${newCount} leads <strong style="color:var(--success)">nuevos</strong> · ${dupCount} posibles <strong style="color:var(--warning)">duplicados</strong></span>
       </div>` : ''}
 
       ${leadsData.length === 0 ? `
       <div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:.75rem 1rem;font-size:.82rem;color:var(--danger)">
-        âš ï¸ No se encontraron leads en el storage. Es posible que los datos estÃ©n en un navegador o perfil diferente.
+        ⚠️ No se encontraron leads en el storage. Es posible que los datos estén en un navegador o perfil diferente.
       </div>` : ''}
 
       <!-- Opciones -->
       <div style="display:grid;gap:.75rem">
-        <div style="font-size:.78rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em">Â¿CÃ³mo quieres importar?</div>
+        <div style="font-size:.78rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em">¿Cómo quieres importar?</div>
 
         ${leads.length > 0 && leadsData.length > 0 ? `
         <button onclick="executeLocalImport('merge')" style="display:flex;align-items:flex-start;gap:.85rem;background:rgba(16,217,124,.07);border:1px solid rgba(16,217,124,.2);border-radius:10px;padding:.9rem 1.1rem;cursor:pointer;text-align:left;transition:all .2s;width:100%" onmouseover="this.style.borderColor='var(--success)'" onmouseout="this.style.borderColor='rgba(16,217,124,.2)'">
-          <span style="font-size:1.3rem;flex-shrink:0">ðŸ”€</span>
+          <span style="font-size:1.3rem;flex-shrink:0">
           <div>
             <div style="font-weight:700;color:var(--success);font-size:.88rem;margin-bottom:2px">Combinar <span style="font-weight:400;color:var(--text-muted);font-size:.78rem">(recomendado)</span></div>
-            <div style="font-size:.75rem;color:var(--text-muted);line-height:1.5">AÃ±ade los ${newCount} leads nuevos a los ${leads.length} que ya tienes en memoria. Los ${dupCount} duplicados se ignoran. No se pierde nada.</div>
+            <div style="font-size:.75rem;color:var(--text-muted);line-height:1.5">Añade los ${newCount} leads nuevos a los ${leads.length} que ya tienes en memoria. Los ${dupCount} duplicados se ignoran. No se pierde nada.</div>
           </div>
         </button>` : ''}
 
         ${leadsData.length > 0 ? `
         <button onclick="executeLocalImport('replace')" style="display:flex;align-items:flex-start;gap:.85rem;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);border-radius:10px;padding:.9rem 1.1rem;cursor:pointer;text-align:left;transition:all .2s;width:100%" onmouseover="this.style.borderColor='var(--warning)'" onmouseout="this.style.borderColor='rgba(245,158,11,.15)'">
-          <span style="font-size:1.3rem;flex-shrink:0">ðŸ”„</span>
+          <span style="font-size:1.3rem;flex-shrink:0">🔄</span>
           <div>
             <div style="font-weight:700;color:var(--warning);font-size:.88rem;margin-bottom:2px">Cargar todo desde storage</div>
             <div style="font-size:.75rem;color:var(--text-muted);line-height:1.5">Carga los ${leadsData.length} leads y todos los datos guardados en el navegador como estado actual. ${leads.length > 0 ? `<strong style="color:var(--danger)">Reemplaza los ${leads.length} leads en memoria.</strong>` : ''}</div>
@@ -698,9 +654,9 @@ function openImportFromLocalStorage() {
 
         ${hasConfig ? `
         <button onclick="executeLocalImport('config_only')" style="display:flex;align-items:flex-start;gap:.85rem;background:rgba(94,92,230,.06);border:1px solid rgba(94,92,230,.15);border-radius:10px;padding:.9rem 1.1rem;cursor:pointer;text-align:left;transition:all .2s;width:100%" onmouseover="this.style.borderColor='var(--secondary)'" onmouseout="this.style.borderColor='rgba(94,92,230,.15)'">
-          <span style="font-size:1.3rem;flex-shrink:0">âš™ï¸</span>
+          <span style="font-size:1.3rem;flex-shrink:0">⚙️</span>
           <div>
-            <div style="font-weight:700;color:var(--secondary);font-size:.88rem;margin-bottom:2px">Solo configuraciÃ³n</div>
+            <div style="font-weight:700;color:var(--secondary);font-size:.88rem;margin-bottom:2px">Solo configuración</div>
             <div style="font-size:.75rem;color:var(--text-muted);line-height:1.5">Trae solo las API keys, perfil y plantillas. Los leads no se tocan.</div>
           </div>
         </button>` : ''}
@@ -740,11 +696,11 @@ function executeLocalImport(mode) {
       if (!dup) { merged.push(l); added++; }
     }
     leads = merged;
-    // Historial: aÃ±adir los que no estÃ©n ya
+    // Historial: añadir los que no estén ya
     const exIds = new Set(emailHistory.map(h => h.id || (h.date + h.email)));
     const newHist = histData.filter(h => !exIds.has(h.id || (h.date + h.email)));
     emailHistory = [...emailHistory, ...newHist];
-    // CampaÃ±as: aÃ±adir las nuevas
+    // Campañas: añadir las nuevas
     const exCampIds = new Set(campaigns.map(c => c.id));
     campaigns = [...campaigns, ...campsData.filter(c => !exCampIds.has(c.id))];
     saveLeads();
@@ -752,7 +708,7 @@ function executeLocalImport(mode) {
     localStorage.setItem('gordi_campaigns', JSON.stringify(campaigns));
     renderAll(); renderDashboardCharts(); renderTracking(); renderCampaigns();
     closeImportModal();
-    showToast(`âœ… Combinado: +${added} leads nuevos importados`);
+    showToast(`✅ Combinado: +${added} leads nuevos importados`);
 
   } else if (mode === 'replace') {
     leads = leadsData;
@@ -763,7 +719,7 @@ function executeLocalImport(mode) {
     localStorage.setItem('gordi_campaigns', JSON.stringify(campaigns));
     renderAll(); renderDashboardCharts(); renderTracking(); renderCampaigns();
     closeImportModal();
-    showToast(`âœ… ${leads.length} leads cargados desde el storage`);
+    showToast(`✅ ${leads.length} leads cargados desde el storage`);
 
   } else if (mode === 'config_only') {
     for (const key of CONFIG_KEYS) {
@@ -772,7 +728,7 @@ function executeLocalImport(mode) {
     }
     loadAllData();
     closeImportModal();
-    showToast('âœ… ConfiguraciÃ³n cargada (leads sin cambios)');
+    showToast('✅ Configuración cargada (leads sin cambios)');
   }
 }
 
@@ -829,7 +785,7 @@ function openSafetySnapshotsModal() {
     </div>`;
 }
 
-// Banner de bienvenida tras migraciÃ³n automÃ¡tica en primer arranque
+// Banner de bienvenida tras migración automática en primer arranque
 function showMigrationBanner(log) {
   const existing = document.getElementById('migration-banner');
   if (existing) existing.remove();
@@ -845,32 +801,32 @@ function showMigrationBanner(log) {
     animation:slideInRight .35s cubic-bezier(.16,1,.3,1);
   `;
 
-  const apiTxt  = log.hasApiKeys ? '<span style="color:var(--success)">âœ… API keys</span>' : '';
-  const profTxt = log.hasProfile ? '<span style="color:var(--success)">âœ… Perfil</span>'    : '';
-  const extras  = [apiTxt, profTxt].filter(Boolean).join(' Â· ');
+  const apiTxt  = log.hasApiKeys ? '<span style="color:var(--success)">✅ API keys</span>' : '';
+  const profTxt = log.hasProfile ? '<span style="color:var(--success)">✅ Perfil</span>'    : '';
+  const extras  = [apiTxt, profTxt].filter(Boolean).join(' · ');
 
   banner.innerHTML = `
     <div style="display:flex;align-items:flex-start;gap:.85rem">
-      <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--secondary));display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">âš¡</div>
+      <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--secondary));display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">⚡</div>
       <div style="flex:1">
-        <div style="font-weight:700;font-size:.9rem;color:var(--text);margin-bottom:.2rem">Â¡Voltflow v${VOLTFLOW_VERSION} listo!</div>
+        <div style="font-weight:700;font-size:.9rem;color:var(--text);margin-bottom:.2rem">¡Voltflow v${VOLTFLOW_VERSION} listo!</div>
         <div style="font-size:.78rem;color:var(--text-muted);line-height:1.5">
-          Datos cargados automÃ¡ticamente desde la versiÃ³n anterior:
+          Datos cargados automáticamente desde la versión anterior:
         </div>
         <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.5rem">
           <span style="background:rgba(10,132,255,.12);border:1px solid rgba(10,132,255,.2);border-radius:20px;padding:2px 9px;font-size:.72rem;color:var(--primary);font-weight:600">
             ${log.leads} leads
           </span>
           ${log.emails > 0 ? `<span style="background:rgba(94,92,230,.12);border:1px solid rgba(94,92,230,.2);border-radius:20px;padding:2px 9px;font-size:.72rem;color:#a78bfc;font-weight:600">${log.emails} emails</span>` : ''}
-          ${log.campaigns > 0 ? `<span style="background:rgba(16,217,124,.1);border:1px solid rgba(16,217,124,.2);border-radius:20px;padding:2px 9px;font-size:.72rem;color:var(--success);font-weight:600">${log.campaigns} campaÃ±as</span>` : ''}
+          ${log.campaigns > 0 ? `<span style="background:rgba(16,217,124,.1);border:1px solid rgba(16,217,124,.2);border-radius:20px;padding:2px 9px;font-size:.72rem;color:var(--success);font-weight:600">${log.campaigns} campañas</span>` : ''}
         </div>
         ${extras ? `<div style="font-size:.72rem;margin-top:.4rem;display:flex;gap:.5rem;flex-wrap:wrap">${extras}</div>` : ''}
       </div>
-      <button onclick="document.getElementById('migration-banner').remove()" style="background:none;border:none;color:var(--text-dim);font-size:1rem;cursor:pointer;padding:0;flex-shrink:0;line-height:1;margin-top:-2px" title="Cerrar">âœ•</button>
+      <button onclick="document.getElementById('migration-banner').remove()" style="background:none;border:none;color:var(--text-dim);font-size:1rem;cursor:pointer;padding:0;flex-shrink:0;line-height:1;margin-top:-2px" title="Cerrar">✖</button>
     </div>
   `;
 
-  // AÃ±adir keyframe si no existe
+  // Añadir keyframe si no existe
   if (!document.getElementById('migration-banner-style')) {
     const st = document.createElement('style');
     st.id = 'migration-banner-style';
@@ -908,7 +864,7 @@ function exportFullBackup() {
   const a = document.createElement('a'); a.href = url;
   a.download = `gordi_backup_${new Date().toISOString().slice(0,10)}.json`;
   a.click(); URL.revokeObjectURL(url);
-  showToast('Backup exportado âœ“');
+  showToast('Backup exportado ✓');
 }
 
 function openPasteRecoveryModal() {
@@ -959,7 +915,7 @@ function restoreBackup(event) {
     try {
       const data = JSON.parse(e.target.result);
 
-      // â”€â”€ Formato A: backup completo  { leads:[...], emailHistory:[...], ... }
+      // ── Formato A: backup completo  { leads:[...], emailHistory:[...], ... }
       // Generado por "Backup completo (JSON)" en Voltflow2 / app.html
       if (data.leads && Array.isArray(data.leads)) {
         const backupSnapshot = data.portableSnapshot || buildSnapshotFromFullBackup(data);
@@ -978,7 +934,7 @@ function restoreBackup(event) {
         if (data.portableSnapshot && typeof importDataSnapshot === 'function') {
           importDataSnapshot(data.portableSnapshot, true, { reason: 'before_restore_full_backup' });
           if (typeof reloadDataFromStorage === 'function') reloadDataFromStorage();
-          showToast(`âœ… Backup completo restaurado: ${validation.summary.leads} leads`);
+          showToast(`✅ Backup completo restaurado: ${validation.summary.leads} leads`);
           return;
         }
         if (typeof createSafetySnapshot === 'function') createSafetySnapshot('before_restore_legacy_backup');
@@ -1000,12 +956,12 @@ function restoreBackup(event) {
         if (typeof renderTracking     === 'function') renderTracking();
         if (typeof renderCampaigns    === 'function') renderCampaigns();
         if (typeof renderTemplateList === 'function') renderTemplateList();
-        showToast(`âœ… Backup restaurado: ${leads.length} leads`);
+        showToast(`✅ Backup restaurado: ${leads.length} leads`);
         return;
       }
 
-      // â”€â”€ Formato B: snapshot portÃ¡til del index.html antiguo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-      // Generado por "Exportar datos portÃ¡tiles" â€” estructura:
+      // ── Formato B: snapshot portátil del index.html antiguo ──────────────────
+      // Generado por "Exportar datos portátiles" — estructura:
       // { _voltflow_version:"x", _exported:"...", gordi_leads:"[...]", ... }
       if (data.gordi_leads !== undefined || data._voltflow_version || data._exported) {
         const validation = typeof validateDataSnapshot === 'function'
@@ -1031,7 +987,7 @@ function restoreBackup(event) {
           if (typeof val === 'string' && !(typeof VOLTFLOW_SNAPSHOT_EXCLUDED_KEYS !== 'undefined' && VOLTFLOW_SNAPSHOT_EXCLUDED_KEYS.has(key))) { localStorage.setItem(key, val); restored++; }
         }
 
-        // Recargar estado en memoria desde el localStorage reciÃ©n poblado
+        // Recargar estado en memoria desde el localStorage recién poblado
         try { leads        = JSON.parse(localStorage.getItem('gordi_leads')         || '[]'); } catch { leads = []; }
         try { emailHistory = JSON.parse(localStorage.getItem('gordi_email_history') || '[]'); } catch { emailHistory = []; }
         try { campaigns    = JSON.parse(localStorage.getItem('gordi_campaigns')     || '[]'); } catch { campaigns = []; }
@@ -1048,14 +1004,14 @@ function restoreBackup(event) {
         if (typeof renderTracking     === 'function') renderTracking();
         if (typeof renderCampaigns    === 'function') renderCampaigns();
         if (typeof renderTemplateList === 'function') renderTemplateList();
-        showToast(`âœ… Datos portÃ¡tiles restaurados: ${leads.length} leads`);
+        showToast(`✅ Datos portátiles restaurados: ${leads.length} leads`);
         return;
       }
 
-      alert('Archivo no reconocido.\nUsa un "Backup completo" (gordi_backup_*.json) o un "Exportar datos portÃ¡tiles" (voltflow_datos_*.json) generado por Voltflow.');
+      alert('Archivo no reconocido.\nUsa un "Backup completo" (gordi_backup_*.json) o un "Exportar datos portátiles" (voltflow_datos_*.json) generado por Voltflow.');
 
     } catch(err) {
-      alert('Error al leer el archivo: ' + err.message + '\nAsegÃºrate de que es un JSON vÃ¡lido exportado desde Voltflow.');
+      alert('Error al leer el archivo: ' + err.message + '\nAsegúrate de que es un JSON válido exportado desde Voltflow.');
     }
   };
   reader.readAsText(file);
@@ -1085,25 +1041,26 @@ function autoWeeklyBackup() {
 function cleanObsoleteLeads() {
   const cutoff = Date.now() - 90 * 86400000;
   const old = leads.filter(l => !l.archived && l.status === 'Pendiente' && new Date(l.date) < cutoff);
-  if (!old.length) { showToast('No hay leads obsoletos (>90 dÃ­as en Pendiente)'); return; }
-  if (!confirm(`Hay ${old.length} leads en "Pendiente" hace mÃ¡s de 90 dÃ­as. Â¿Archivarlos todos?`)) return;
+  if (!old.length) { showToast('No hay leads obsoletos (>90 días en Pendiente)'); return; }
+  if (!confirm(`Hay ${old.length} leads en "Pendiente" hace más de 90 días. ¿Archivarlos todos?`)) return;
   old.forEach(l => l.archived = true);
   saveLeads();
   renderAll();
-  showToast(`${old.length} leads archivados âœ“`);
+  showToast(`${old.length} leads archivados ✓`);
 }
 
 // ============ STORAGE INFO ============
 function updateStorageInfo() {
   const el = document.getElementById('storage-info-text');
   const fill = document.getElementById('storage-fill');
+  if (typeof renderDiskBackupStatus === 'function') renderDiskBackupStatus();
   if (!el) return;
   let total = 0;
   for (let k in localStorage) { if (k.startsWith('gordi_')) total += (localStorage[k]||'').length * 2; }
   const kb = Math.round(total / 1024);
   const maxKb = 5120;
   const pct = Math.min(Math.round(kb / maxKb * 100), 100);
-  el.textContent = `Espacio usado: ${kb} KB de ${maxKb} KB (${leads.length} leads Â· ${emailHistory.length} emails)`;
+  el.textContent = `Espacio usado: ${kb} KB de ${maxKb} KB (${leads.length} leads · ${emailHistory.length} emails)`;
   if (fill) fill.style.width = pct + '%';
   if (fill) fill.style.background = pct > 80 ? 'var(--danger)' : pct > 60 ? 'var(--warning)' : '';
 }
@@ -1120,17 +1077,17 @@ function renderApiLog() {
   const el = document.getElementById('api-error-log');
   if (!el) return;
   const log = JSON.parse(localStorage.getItem('gordi_api_log') || '[]');
-  el.innerHTML = log.length ? log.map(e => `<div style="border-bottom:1px solid var(--glass-border);padding:.2rem 0;"><span style="color:var(--text-dim)">${new Date(e.date).toLocaleString('es-ES')}</span> â€” ${e.msg}</div>`).join('') : 'Sin errores registrados âœ“';
+  el.innerHTML = log.length ? log.map(e => `<div style="border-bottom:1px solid var(--glass-border);padding:.2rem 0;"><span style="color:var(--text-dim)">${new Date(e.date).toLocaleString('es-ES')}</span> — ${e.msg}</div>`).join('') : 'Sin errores registrados ✓';
 }
 function clearApiLog() { localStorage.removeItem('gordi_api_log'); renderApiLog(); showToast('Log limpiado'); }
 
 // ============ TUTORIAL ============
 const tutorialSteps = [
-  { icon:'âš¡', title:'Bienvenido a Voltflow', body:'Tu herramienta de prospecciÃ³n B2B para Voltium Madrid. En 5 pasos aprenderÃ¡s todo lo que necesitas saber.' },
-  { icon:'ðŸ”', title:'Busca empresas con IA', body:'Ve a "Buscar Empresas", introduce una zona y sector. Voltflow encontrarÃ¡ empresas reales con email, telÃ©fono y decisor usando Google Maps.' },
-  { icon:'âœ¨', title:'Email hiperpersonalizado', body:'Abre cualquier lead y pulsa âœ¨ IA. Voltflow analiza las reseÃ±as de Google de esa empresa y escribe un email que menciona sus problemas concretos.' },
-  { icon:'ðŸ—‚ï¸', title:'Pipeline Kanban', body:'Usa el Kanban para gestionar visualmente en quÃ© estado estÃ¡ cada empresa. Arrastra las tarjetas entre columnas conforme avanza la conversaciÃ³n.' },
-  { icon:'ðŸŽ¯', title:'Configura las APIs', body:'Para activar la bÃºsqueda de empresas necesitas una Google Maps API Key (console.cloud.google.com). Para el email IA, una Gemini Key gratis en aistudio.google.com/apikey.' },
+  { icon:'⚡', title:'Bienvenido a Voltflow', body:'Tu herramienta de prospección B2B para Voltium Madrid. En 5 pasos aprenderás todo lo que necesitas saber.' },
+  { icon:'🔍', title:'Busca empresas con IA', body:'Ve a "Buscar Empresas", introduce una zona y sector. Voltflow encontrará empresas reales con email, teléfono y decisor usando Google Maps.' },
+  { icon:'✨', title:'Email hiperpersonalizado', body:'Abre cualquier lead y pulsa ✨ IA. Voltflow analiza las reseñas de Google de esa empresa y escribe un email que menciona sus problemas concretos.' },
+  { icon:'📋', title:'Pipeline Kanban', body:'Usa el Kanban para gestionar visualmente en qué estado está cada empresa. Arrastra las tarjetas entre columnas conforme avanza la conversación.' },
+  { icon:'🎯', title:'Configura las APIs', body:'Para activar la búsqueda de empresas necesitas una Google Maps API Key (console.cloud.google.com). Para el email IA, una Gemini Key gratis en aistudio.google.com/apikey.' },
 ];
 let tutStep = 0;
 function showTutorial() {
@@ -1145,7 +1102,7 @@ function renderTutorialStep() {
   document.getElementById('tutorial-body').textContent = s.body;
   document.getElementById('tutorial-dots').innerHTML = tutorialSteps.map((_,i) => `<div class="tutorial-dot${i===tutStep?' active':''}"></div>`).join('');
   document.getElementById('tutorial-prev').style.display = tutStep > 0 ? 'inline-flex' : 'none';
-  document.getElementById('tutorial-next').textContent = tutStep < tutorialSteps.length - 1 ? 'Siguiente â†’' : 'Â¡Empezar!';
+  document.getElementById('tutorial-next').textContent = tutStep < tutorialSteps.length - 1 ? 'Siguiente ->' : '¡Empezar!';
 }
 function nextTutorial() {
   if (tutStep < tutorialSteps.length - 1) { tutStep++; renderTutorialStep(); }
@@ -1198,7 +1155,7 @@ function renderDailyStats() {
     if (l.archived) return;
     const day = (l.date || '').slice(0, 10);
     if (map[day]) map[day].added++;
-    if (l.status === 'Contactado' || l.status === 'En negociaciÃ³n' || l.status === 'Cerrado') {
+    if (l.status === 'Contactado' || l.status === 'En negociación' || l.status === 'Cerrado') {
       const actDay = (l.activity || []).find(a => a.action && a.action.toLowerCase().includes('email'));
       const cDay = actDay ? actDay.date.slice(0, 10) : day;
       if (map[cDay]) map[cDay].contacted++;
@@ -1213,11 +1170,11 @@ function renderDailyStats() {
   const avgPerDay = (totalAdded / days).toFixed(1);
   const bestDay = sorted.reduce((best, cur) => cur[1].added > best[1].added ? cur : best, sorted[0]);
   let html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.75rem;margin-bottom:1.25rem">'
-    + '<div style="background:var(--glass);border-radius:10px;padding:.75rem;text-align:center"><div style="font-size:1.4rem;font-weight:700;color:var(--primary)">' + totalAdded + '</div><div style="font-size:.72rem;color:var(--text-muted);margin-top:.2rem">Leads aÃ±adidos</div></div>'
+    + '<div style="background:var(--glass);border-radius:10px;padding:.75rem;text-align:center"><div style="font-size:1.4rem;font-weight:700;color:var(--primary)">' + totalAdded + '</div><div style="font-size:.72rem;color:var(--text-muted);margin-top:.2rem">Leads añadidos</div></div>'
     + '<div style="background:var(--glass);border-radius:10px;padding:.75rem;text-align:center"><div style="font-size:1.4rem;font-weight:700;color:var(--success)">' + totalContacted + '</div><div style="font-size:.72rem;color:var(--text-muted);margin-top:.2rem">Contactados</div></div>'
     + '<div style="background:var(--glass);border-radius:10px;padding:.75rem;text-align:center"><div style="font-size:1.4rem;font-weight:700;color:#a78bfa">' + totalConverted + '</div><div style="font-size:.72rem;color:var(--text-muted);margin-top:.2rem">Cerrados</div></div>'
-    + '<div style="background:var(--glass);border-radius:10px;padding:.75rem;text-align:center"><div style="font-size:1.4rem;font-weight:700;color:#f59e0b">' + avgPerDay + '</div><div style="font-size:.72rem;color:var(--text-muted);margin-top:.2rem">Media/dÃ­a</div></div>'
-    + '<div style="background:var(--glass);border-radius:10px;padding:.75rem;text-align:center"><div style="font-size:1.1rem;font-weight:700;color:#f472b6">' + bestDay[0].slice(5) + '</div><div style="font-size:.72rem;color:var(--text-muted);margin-top:.2rem">Mejor dÃ­a (' + bestDay[1].added + ')</div></div>'
+    + '<div style="background:var(--glass);border-radius:10px;padding:.75rem;text-align:center"><div style="font-size:1.4rem;font-weight:700;color:#f59e0b">' + avgPerDay + '</div><div style="font-size:.72rem;color:var(--text-muted);margin-top:.2rem">Media/día</div></div>'
+    + '<div style="background:var(--glass);border-radius:10px;padding:.75rem;text-align:center"><div style="font-size:1.1rem;font-weight:700;color:#f472b6">' + bestDay[0].slice(5) + '</div><div style="font-size:.72rem;color:var(--text-muted);margin-top:.2rem">Mejor día (' + bestDay[1].added + ')</div></div>'
     + '</div>';
   html += '<div style="display:flex;align-items:flex-end;gap:3px;height:88px;overflow-x:auto;padding-bottom:.5rem">';
   const todayKey = now.toISOString().slice(0, 10);
@@ -1233,13 +1190,13 @@ function renderDailyStats() {
   });
   html += '</div><div style="display:flex;justify-content:space-between;font-size:.65rem;color:var(--text-dim);margin-top:.25rem"><span>' + sorted[0][0].slice(5) + '</span><span>' + sorted[sorted.length-1][0].slice(5) + '</span></div>';
   const last7 = sorted.slice(-7).reverse();
-  const dias = ['Dom','Lun','Mar','MiÃ©','Jue','Vie','SÃ¡b'];
-  html += '<div style="margin-top:1rem"><div style="font-size:.72rem;font-weight:600;color:var(--text-muted);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.06em">Ãšltimos 7 dÃ­as</div><div style="display:grid;gap:.35rem">';
+  const dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  html += '<div style="margin-top:1rem"><div style="font-size:.72rem;font-weight:600;color:var(--text-muted);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.06em">Últimos 7 días</div><div style="display:grid;gap:.35rem">';
   last7.forEach(([date, val]) => {
     const isToday = date === todayKey;
     const pct = Math.round((val.added / maxVal) * 100);
     const diaSemana = dias[new Date(date + 'T12:00:00').getDay()];
-    const label = isToday ? 'ðŸ”µ Hoy' : diaSemana + ' ' + date.slice(5);
+    const label = isToday ? '🔵 Hoy' : diaSemana + ' ' + date.slice(5);
     const barColor = isToday ? 'var(--primary)' : 'var(--success)';
     html += '<div style="display:grid;grid-template-columns:65px 1fr 45px;align-items:center;gap:.5rem">'
       + '<div style="font-size:.72rem;color:' + (isToday ? 'var(--primary)' : 'var(--text-muted)') + ';font-weight:' + (isToday ? 700 : 400) + '">' + label + '</div>'
@@ -1253,7 +1210,7 @@ function renderDailyStats() {
 
 
 /**
- * Popula dinÃ¡micamente todos los selectores de segmentos en la aplicaciÃ³n.
+ * Popula dinámicamente todos los selectores de segmentos en la aplicación.
  * Centraliza la fuente de verdad en SEGMENT_LABELS (email-templates.js).
  */
 function populateSegmentDropdowns() {
@@ -1277,7 +1234,7 @@ function populateSegmentDropdowns() {
     if (cur && segments.includes(cur)) filterSel.value = cur;
   }
 
-  // 3. Selector en plan de acciÃ³n
+  // 3. Selector en plan de acción
   const planSel = document.getElementById('plan-segment');
   if (planSel) {
     const cur = planSel.value;
@@ -1286,7 +1243,7 @@ function populateSegmentDropdowns() {
   }
   if (typeof renderMultiSectorPicker === 'function') renderMultiSectorPicker();
 
-  // 4. Selector en creaciÃ³n de campaÃ±a
+  // 4. Selector en creación de campaña
   const campSel = document.getElementById('camp-segment');
   if (campSel) {
     const cur = campSel.value;
@@ -1296,13 +1253,13 @@ function populateSegmentDropdowns() {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ══════════════════════════════════════════════════════════════════════════════
 // GOOGLE MAPS AUTO-INIT
 // En el monolito index.html, loadGoogleMapsScript() se llamaba al guardar la
-// API Key. En la versiÃ³n modular esa llamada se perdiÃ³ al separar init.js.
-// Esta funciÃ³n lo resuelve: se ejecuta al arrancar (si ya hay key guardada)
-// y tambiÃ©n puede llamarse desde init.js / saveApiKey() tras guardar una key.
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// API Key. En la versión modular esa llamada se perdió al separar init.js.
+// Esta función lo resuelve: se ejecuta al arrancar (si ya hay key guardada)
+// y también puede llamarse desde init.js / saveApiKey() tras guardar una key.
+// ══════════════════════════════════════════════════════════════════════════════
 function ensureGoogleMapsLoaded() {
   const apiKey = localStorage.getItem('gordi_api_key');
   if (!apiKey) return;
@@ -1311,19 +1268,6 @@ function ensureGoogleMapsLoaded() {
   }
 }
 
-// Arrancar automÃ¡ticamente cuando todos los mÃ³dulos estÃ©n listos
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(ensureGoogleMapsLoaded, 500);
-});
-
-function cleanVisibleText(value) {
-  const text = String(value ?? '');
-  try {
-    return decodeURIComponent(escape(text));
-  } catch {
-    return text;
-  }
-}
 
 function showToast(msg) {
   const t = document.createElement('div');
@@ -1367,20 +1311,6 @@ function applyLightMode(on) {
   if (btn) btn.textContent = on ? 'Claro' : 'Oscuro';
 }
 
-function cleanVisibleText(value) {
-  let text = String(value ?? '');
-  for (let i = 0; i < 3; i++) {
-    if (!/[ÃÂðâÅ]/.test(text)) break;
-    try {
-      const next = decodeURIComponent(escape(text));
-      if (next === text) break;
-      text = next;
-    } catch {
-      break;
-    }
-  }
-  return text;
-}
 
 function normalizeVisibleTextNodes(root = document.body) {
   if (!root || !root.querySelectorAll) return;

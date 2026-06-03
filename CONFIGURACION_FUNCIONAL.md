@@ -77,8 +77,8 @@ Reglas:
 La version funcional actual usa:
 
 ```text
-version: 2.7.1
-build: 2026.06.02.2400
+version: 2.7.7
+build: 2026.06.03.0600
 ```
 
 Cada publicacion real debe mantener alineados:
@@ -93,8 +93,8 @@ Cada publicacion real debe mantener alineados:
 Ejemplo correcto:
 
 ```html
-<link rel="stylesheet" href="styles/main.css?v=2026.06.02.2400">
-<script src="modules/search.js?v=2026.06.02.2400"></script>
+<link rel="stylesheet" href="styles/main.css?v=2026.06.03.0600">
+<script src="modules/search.js?v=2026.06.03.0600"></script>
 ```
 
 Regla obligatoria:
@@ -105,6 +105,14 @@ Regla obligatoria:
 - Al publicar cambios visibles, actualizar `version.json` y revisar los pasos/textos de `UPDATE_TOUR_STEPS` en `modules/help-system.js` para explicar lo nuevo.
 
 Los meta tags anti-cache de `app.html` ayudan, pero no sustituyen al cache busting por build.
+
+Reglas de rendimiento obligatorias:
+
+- No volver a incrustar logos o imagenes grandes como `data:image` dentro de `app.html`; deben vivir en `assets/`.
+- Service Workers y CacheStorage solo deben limpiarse cuando cambia `window.GORDI_APP_BUILD`, no en cada apertura normal.
+- Las librerias externas no criticas deben cargar con `defer` o bajo demanda.
+- Durante scraping no se debe repintar la lista completa de resultados en cada empresa; usar renders programados/debounce.
+- Cobertura debe reutilizar indices temporales para no recalcular todos los leads por cada celda CP/sector.
 
 ## Tours De Novedades En Cada Actualizacion
 
@@ -185,9 +193,28 @@ gordi_coverage_update_tour
 gordi_professional_update_tour
 gordi_manual_state
 gordi_map_geocode_cache
+gordi_disk_backup_enabled
+gordi_disk_backup_last_date
+gordi_disk_backup_last_status
+gordi_disk_backup_last_file
+gordi_disk_backup_last_error
 ```
 
 Tambien debe conservarse cualquier clave nueva que empiece por `gordi_`, salvo que sea una cache tecnica claramente desechable y el cambio lo documente.
+
+## Backup Automatico En Disco
+
+La herramienta debe proteger los datos fuera del navegador con `modules/disk-backup.js`.
+
+- El navegador no puede escribir en disco sin permiso del usuario.
+- En Chrome/Edge se debe usar File System Access API: el usuario elige una carpeta una vez desde Configuracion.
+- La app debe guardar el permiso de carpeta en IndexedDB, no en `localStorage`.
+- Mientras la app este abierta, debe comprobar una vez al dia si existe `gordi_backup_auto_YYYY-MM-DD.json`.
+- Si el backup del dia no existe y hay permiso de escritura, debe crearlo automaticamente.
+- El backup debe incluir el formato restaurable actual: `leads`, `emailHistory`, `campaigns`, `objectives`, `templates`, `portableSnapshot` e `integrity`.
+- `portableSnapshot` debe salir de `exportDataSnapshot()` para incluir leads, API keys, cobertura, scraping, campañas, historial, configuracion y cualquier clave `gordi_*` no excluida.
+- `exportDataSnapshot()` tambien debe incluir claves historicas `voltium_*` si existieran.
+- Si el permiso falta o el navegador no soporta escritura a carpeta, la app debe mostrar estado claro en Configuracion y no borrar datos.
 
 ## Recuperacion De Datos
 
@@ -434,3 +461,4 @@ Las pruebas simuladas validan la logica interna. El scraping real depende tambie
 - Webs externas.
 
 Si no se ha probado contra Google/web real, decirlo explicitamente.
+

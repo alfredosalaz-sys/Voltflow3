@@ -130,7 +130,7 @@ function _looksLikeCompany(val) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// MAPEO DE ETAPA CRM → ESTADO VOLTFLOW
+// MAPEO DE ETAPA CRM -> ESTADO VOLTFLOW
 // Traduce los valores de etapa que exportan los CRMs (HubSpot, Salesforce,
 // exportaciones manuales...) a los estados internos de Voltflow.
 // ══════════════════════════════════════════════════════════════════════════
@@ -177,7 +177,7 @@ function _mapRowToLead(row, colMap, sourceFileName) {
   if (!company && colMap.name >= 0 && _looksLikeCompany(get(colMap.name))) {
     company = get(colMap.name);
   }
-  if (!company) return null; // Sin empresa → descartar fila
+  if (!company) return null; // Sin empresa -> descartar fila
 
   // ── Nombre del contacto ──────────────────────────────────────────────────
   let contactName = 'Responsable';
@@ -209,7 +209,7 @@ function _mapRowToLead(row, colMap, sourceFileName) {
   // ── Dirección ────────────────────────────────────────────────────────────
   const address = colMap.address >= 0 ? get(colMap.address) : '';
 
-  // ── Etapa → Status ────────────────────────────────────────────────────────
+  // ── Etapa -> Status ────────────────────────────────────────────────────────
   const etapaRaw = colMap.etapa >= 0 ? get(colMap.etapa) : '';
   const status   = _etapaToStatus(etapaRaw);
 
@@ -306,7 +306,7 @@ function _mapObrasRow(row, headers, fileName) {
 
   // ── Nombre del contacto: persona de contacto del promotor ──────────────
   const contactRaw = get('Promotor1:Persona contacto') || get('Promotor:Persona contacto') || '';
-  // Limpiar cargo entre paréntesis: "Pablo García (Head of Dev)" → "Pablo García"
+  // Limpiar cargo entre paréntesis: "Pablo García (Head of Dev)" -> "Pablo García"
   const name = contactRaw.replace(/\s*\([^)]*\)\s*/g, '').trim() || 'Responsable';
 
   // ── Email: preferir email personal sobre el genérico ───────────────────
@@ -381,7 +381,7 @@ function _mapObrasRow(row, headers, fileName) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// PROCESAR ARCHIVO COMPLETO → LEADS MAPEADOS
+// PROCESAR ARCHIVO COMPLETO -> LEADS MAPEADOS
 // ══════════════════════════════════════════════════════════════════════════
 function _processRows(rawRows, fileName) {
   if (!rawRows || rawRows.length < 2) return [];

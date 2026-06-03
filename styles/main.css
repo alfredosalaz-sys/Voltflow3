@@ -3292,7 +3292,7 @@ textarea { resize: vertical; }
    RESPONSIVE MÓVIL — Voltflow v2.6
    Breakpoint principal: 768px
    Estrategia:
-     - Sidebar lateral → barra inferior fija (bottom nav)
+     - Sidebar lateral -> barra inferior fija (bottom nav)
      - Cards apiladas en columna
      - Tablas con scroll horizontal
      - Botones con área táctil mínima de 44px
@@ -3414,7 +3414,7 @@ textarea { resize: vertical; }
     gap: .75rem !important;
   }
 
-  /* ── Leads table → scroll horizontal ─────────────────────────── */
+  /* ── Leads table -> scroll horizontal ─────────────────────────── */
   .leads-table-wrap,
   .table-wrap {
     overflow-x: auto;
@@ -3506,7 +3506,7 @@ textarea { resize: vertical; }
     gap: .6rem !important;
   }
 
-  /* ── Inputs y textareas → sin zoom en iOS ─────────────────────── */
+  /* ── Inputs y textareas -> sin zoom en iOS ─────────────────────── */
   input, select, textarea {
     font-size: 16px !important;
   }

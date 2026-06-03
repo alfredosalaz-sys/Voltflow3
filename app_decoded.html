@@ -9,7 +9,7 @@
   <meta http-equiv="Expires" content="0">
   <title>Voltium CRM</title>
   <script>
-    window.GORDI_APP_BUILD = '2026.06.03.0600';
+    window.GORDI_APP_BUILD = '2026.06.03.0300';
     (function guardFreshBuild() {
       try {
         var current = window.GORDI_APP_BUILD;
@@ -56,7 +56,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/themes/dark.min.css">
 
   <!-- CSS principal -->
-  <link rel="stylesheet" href="styles/main.css?v=2026.06.03.0600">
+  <link rel="stylesheet" href="styles/main.css?v=2026.06.03.0300">
 
   <!-- Librerías externas -->
   <script defer src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
@@ -65,13 +65,13 @@
 </head>
 <body>
 <!-- SIDEBAR -->
-<!-- --  MMOVIL: overlay del sidebar --  -->
+<!-- ── MÓVIL: overlay del sidebar ── -->
 <div id="sidebar-overlay" onclick="closeMobileSidebar()"></div>
 
-<!-- --  MMOVIL: botón hamburguesa --  -->
-<button id="mobile-menu-btn" onclick="openMobileSidebar()" aria-label="Menú">Menu</button>
+<!-- ── MÓVIL: botón hamburguesa ── -->
+<button id="mobile-menu-btn" onclick="openMobileSidebar()" aria-label="Menú">☰</button>
 
-<!-- --  MMOVIL: barra de navegación inferior --  -->
+<!-- ── MÓVIL: barra de navegación inferior ── -->
 <nav id="mobile-bottom-nav" style="display:none">
   <button class="mob-nav-btn active" onclick="showView('dashboard');setMobileNav(this)" data-view="dashboard">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -112,7 +112,7 @@
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;gap:.5rem">
       <button onclick="toggleLightMode()" id="theme-btn" title="Modo claro/oscuro"
         style="background:var(--glass);border:1px solid var(--glass-border);color:var(--text-muted);border-radius:8px;padding:4px 8px;font-size:.75rem;cursor:pointer;flex:1">
-        Oscuro
+        🌙 Oscuro
       </button>
       <select onchange="setFontSize(this.value)"
         style="background:var(--glass);border:1px solid var(--glass-border);color:var(--text-muted);border-radius:8px;padding:4px 6px;font-size:.72rem;cursor:pointer;flex:1">
@@ -146,7 +146,7 @@
           Mapa de Leads
         </li>
       </ul>
-      <div class="nav-group-label">PROSPECCION</div>
+      <div class="nav-group-label">PROSPECCIÓN</div>
       <ul>
         <li data-view="planner" onclick="showView('planner')">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -204,15 +204,15 @@
     <div class="page-header">
       <div>
         <h1>Panel de Control</h1>
-        <p class="page-sub" id="current-date">-</p>
+        <p class="page-sub" id="current-date">—</p>
       </div>
       <div style="display:flex;align-items:center;gap:.6rem">
         <div id="cloud-sync-pill" style="display:none;align-items:center;gap:.35rem;font-size:.72rem;
           padding:.25rem .65rem;border-radius:20px;border:1px solid rgba(16,217,124,.3);
           background:rgba(16,217,124,.07);color:var(--success);cursor:pointer"
-          onclick="showView('settings')" title="Sync JSONBin - click para configurar">
+          onclick="showView('settings')" title="Sync JSONBin — click para configurar">
           <span id="cloud-sync-dot" style="width:6px;height:6px;border-radius:50%;background:var(--success);display:inline-block"></span>
-          <span id="cloud-sync-label">Sync</span>
+          <span id="cloud-sync-label">☁️ Sync</span>
         </div>
         <a href="https://www.voltiummadrid.es" target="_blank" class="btn-outline">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -247,7 +247,7 @@
 
     <!-- Panel HOY -->
     <div class="today-panel" id="today-panel" style="margin-top:1.25rem">
-      <div class="today-header">HOY - <span id="today-date-label"></span></div>
+      <div class="today-header">📅 HOY — <span id="today-date-label"></span></div>
       <div id="today-content" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.75rem"></div>
     </div>
 
@@ -276,22 +276,22 @@
       </div>
       <div class="glass-panel">
         <div class="panel-header">
-          <h3>Contactar Ahora</h3>
+          <h3>🎯 Contactar Ahora</h3>
           <span style="font-size:.72rem;color:var(--text-muted)">Ordenado por señales reales</span>
         </div>
         <div id="top-leads-list"></div>
-        <button class="btn-text" onclick="showView('leads')">Ver todos -></button>
+        <button class="btn-text" onclick="showView('leads')">Ver todos →</button>
       </div>
     </div>
 
     <!-- Fila 2: Métricas de negocio (Nivel 6) -->
     <div class="dash-grid" style="margin-top:1.5rem">
       <div class="glass-panel">
-        <div class="panel-header"><h3>Métricas de Conversión</h3></div>
+        <div class="panel-header"><h3>📊 Métricas de Conversión</h3></div>
         <div id="conversion-metrics" style="display:grid;gap:.75rem;margin-top:.5rem"></div>
       </div>
       <div class="glass-panel">
-        <div class="panel-header"><h3>Rendimiento por Sector</h3></div>
+        <div class="panel-header"><h3>🏆 Rendimiento por Sector</h3></div>
         <div id="sector-performance" style="display:grid;gap:.5rem;margin-top:.5rem"></div>
       </div>
     </div>
@@ -299,12 +299,12 @@
     <!-- Fila 3: Embudo + Pipeline Value -->
     <div class="dash-grid" style="margin-top:1.5rem">
       <div class="glass-panel">
-        <div class="panel-header"><h3> Embudo de Conversión</h3></div>
+        <div class="panel-header"><h3>🔽 Embudo de Conversión</h3></div>
         <div id="funnel-chart" class="funnel-wrap"></div>
       </div>
       <div class="glass-panel">
         <div class="panel-header">
-          <h3>Valor del Pipeline</h3>
+          <h3>💰 Valor del Pipeline</h3>
           <span style="font-size:.72rem;color:var(--text-muted)">Basado en presupuestos estimados</span>
         </div>
         <div id="pipeline-value-panel" style="margin-top:.5rem"></div>
@@ -315,15 +315,15 @@
     <div class="dash-grid" style="margin-top:1.5rem">
       <div class="glass-panel">
         <div class="panel-header">
-          <h3>Objetivos Semanales</h3>
+          <h3>🎯 Objetivos Semanales</h3>
           <button class="btn-outline btn-sm" onclick="openObjectivesModal()">Editar</button>
         </div>
         <div id="objectives-panel" style="margin-top:.5rem"></div>
       </div>
       <div class="glass-panel">
-        <div class="panel-header"><h3>Racha de Prospección</h3></div>
+        <div class="panel-header"><h3>🔥 Racha de Prospección</h3></div>
         <div id="streak-panel" style="margin-top:.5rem"></div>
-        <div class="panel-header" style="margin-top:1rem"><h3>Actividad mensual</h3></div>
+        <div class="panel-header" style="margin-top:1rem"><h3>📅 Actividad mensual</h3></div>
         <div id="heatmap-panel" style="margin-top:.5rem"></div>
       </div>
     </div>
@@ -331,7 +331,7 @@
     <!-- Fila 5: Inteligencia competitiva (Nivel 4) -->
     <div class="glass-panel" style="margin-top:1.5rem" id="intel-panel">
       <div class="panel-header">
-        <h3>Inteligencia de Zona</h3>
+        <h3>🔍 Inteligencia de Zona</h3>
         <span style="font-size:.72rem;color:var(--text-muted)">Comparativa de leads vs media del sector</span>
       </div>
       <div id="intel-content" style="margin-top:.75rem"></div>
@@ -340,7 +340,7 @@
     <!-- Fila 6: Señales que predicen el cierre (MEJORA 5) -->
     <div class="glass-panel" style="margin-top:1.5rem" id="signal-corr-panel">
       <div class="panel-header">
-        <h3> Lo que funciona en tu mercado</h3>
+        <h3>🔬 Lo que funciona en tu mercado</h3>
         <span style="font-size:.72rem;color:var(--text-muted)">Señales que predicen el cierre en tu historial real</span>
       </div>
       <div id="signal-corr-content" style="margin-top:.75rem"></div>
@@ -349,8 +349,8 @@
     <!-- Fila 7: Estadísticas diarias -->
     <div class="glass-panel" style="margin-top:1.5rem">
       <div class="panel-header">
-        <h3>Leads Procesados por Día</h3>
-        <span style="font-size:.72rem;color:var(--text-muted)">Ultimos 30 días - efectividad diaria</span>
+        <h3>📈 Leads Procesados por Día</h3>
+        <span style="font-size:.72rem;color:var(--text-muted)">Últimos 30 días — efectividad diaria</span>
       </div>
       <div id="daily-stats-panel" style="margin-top:.75rem"></div>
     </div>
@@ -376,7 +376,7 @@
     </div>
 
     <div class="glass-panel collapsible" id="lead-form-panel" style="display:none;margin-bottom:1.5rem">
-      <div class="panel-header"><h3>Nuevo Lead Estratégico</h3><div style="display:flex;align-items:center;gap:.75rem"><span id="autosave-indicator" style="font-size:.7rem;color:var(--text-dim);display:none"><span id="autosave-text">Borrador guardado</span></span><button class="btn-icon" onclick="toggleLeadForm()">
+      <div class="panel-header"><h3>Nuevo Lead Estratégico</h3><div style="display:flex;align-items:center;gap:.75rem"><span id="autosave-indicator" style="font-size:.7rem;color:var(--text-dim);display:none">💾 <span id="autosave-text">Borrador guardado</span></span><button class="btn-icon" onclick="toggleLeadForm()">✕</button></div></div>
       <form id="lead-form" class="grid-form" style="margin-top:1.5rem">
         <div class="input-group">
           <label>Nombre del Decisor</label>
@@ -427,7 +427,7 @@
           <textarea id="lead-notes" rows="2" placeholder="Notas privadas sobre este lead..."></textarea>
         </div>
         <div class="input-group">
-          <label>Presupuesto estimado (EUR)</label>
+          <label>Presupuesto estimado (€)</label>
           <input type="number" id="lead-budget" placeholder="Ej: 25000" min="0">
         </div>
         <div class="input-group">
@@ -448,7 +448,7 @@
       </form>
     </div>
 
-    <!-- Filters + Search - Smart Filter System -->
+    <!-- Filters + Search — Smart Filter System -->
     <div id="leads-sf-bar" class="sf-bar">
       <div class="sf-search-wrap">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -457,13 +457,13 @@
       <div class="sf-sort-wrap">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18M7 12h10M11 18h2"/></svg>
         <select id="sort-leads" onchange="renderLeads()">
-          <option value="score">Score</option>
-          <option value="date">Mas recientes</option>
-          <option value="company">A-Z Empresa</option>
-          <option value="next_contact">Proximo contacto</option>
-          <option value="days_status">Dias en estado</option>
-          <option value="rating">Rating Google</option>
-          <option value="name">A-Z Nombre</option>
+          <option value="score">↓ Score</option>
+          <option value="date">↓ Más recientes</option>
+          <option value="company">A→Z Empresa</option>
+          <option value="next_contact">↑ Próximo contacto</option>
+          <option value="days_status">↓ Días en estado</option>
+          <option value="rating">↓ Rating Google</option>
+          <option value="name">A→Z Nombre</option>
         </select>
       </div>
       <button class="sf-more-btn" id="leads-more-btn" onclick="sfTogglePanel('leads')">
@@ -471,7 +471,7 @@
         Filtros
         <span class="sf-badge" id="leads-sf-badge">0</span>
       </button>
-      <button onclick="exportFilteredData()" style="margin-left:auto;background:none;border:1px solid var(--glass-border);border-radius:7px;padding:.3rem .65rem;font-size:.75rem;color:var(--text-muted);cursor:pointer" title="Exportar vista filtrada">
+      <button onclick="exportFilteredData()" style="margin-left:auto;background:none;border:1px solid var(--glass-border);border-radius:7px;padding:.3rem .65rem;font-size:.75rem;color:var(--text-muted);cursor:pointer" title="Exportar vista filtrada">⬇</button>
       <button onclick="openLostOpportunitiesPanel()" style="background:none;border:1px solid var(--glass-border);border-radius:7px;padding:.3rem .65rem;font-size:.75rem;color:var(--warning);cursor:pointer" title="Oportunidades perdidas">Perdidas</button>
       <span class="sf-count" id="leads-count-bar"></span>
     </div>
@@ -491,9 +491,9 @@
       </select>
       <select id="filter-source" onchange="renderLeads(); sfUpdateChips('leads')">
         <option value="">Todos los orígenes</option>
-        <option value="search">Búsqueda</option>
-        <option value="import">Importado</option>
-        <option value="manual">Manual</option>
+        <option value="search">🔵 Búsqueda</option>
+        <option value="import">🟡 Importado</option>
+        <option value="manual">🟢 Manual</option>
       </select>
       <select id="filter-score-min" onchange="renderLeads(); sfUpdateChips('leads')">
         <option value="">Score mín.</option>
@@ -507,16 +507,16 @@
         <option value="today">Añadido hoy</option>
         <option value="week">Esta semana</option>
         <option value="month">Este mes</option>
-        <option value="3months">Ultimos 3 meses</option>
+        <option value="3months">Últimos 3 meses</option>
       </select>
       <select id="filter-next-contact" onchange="renderLeads(); sfUpdateChips('leads')">
         <option value="">Cualquier seguimiento</option>
-        <option value="overdue">Aviso:️ Vencidos</option>
-        <option value="today">Hoy</option>
+        <option value="overdue">⚠️ Vencidos</option>
+        <option value="today">📅 Hoy</option>
         <option value="week">Esta semana</option>
         <option value="none">Sin fecha</option>
       </select>
-      <button onclick="resetLeadsFilters()" class="sf-more-btn" style="color:var(--danger);border-color:rgba(239,68,68,.3)"> Limpiar todo</button>
+      <button onclick="resetLeadsFilters()" class="sf-more-btn" style="color:var(--danger);border-color:rgba(239,68,68,.3)">✕ Limpiar todo</button>
     </div>
 
     <!-- Active filter chips -->
@@ -527,19 +527,19 @@
       <span id="bulk-count">0 seleccionados</span>
       <div style="display:flex;align-items:center;gap:.4rem;flex-shrink:0">
         <select id="bulk-status-select" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:7px;color:#fff;padding:.25rem .5rem;font-size:.78rem;cursor:pointer;max-width:160px">
-          <option value="">-> Cambiar estado...</option>
+          <option value="">→ Cambiar estado...</option>
           <option value="Contactado">Contactado</option>
           <option value="Respuesta del cliente">Respuesta del cliente</option>
           <option value="Visita">Visita</option>
           <option value="Entrega de presupuesto">Entrega de presupuesto</option>
-          <option value="Cerrado">OK Cerrado</option>
-          <option value="No interesa">No interesa</option>
+          <option value="Cerrado">✅ Cerrado</option>
+          <option value="No interesa">🚫 No interesa</option>
         </select>
         <button class="bulk-btn" onclick="bulkApplyStatus()" style="white-space:nowrap">Aplicar</button>
       </div>
-      <button class="bulk-btn" onclick="bulkExport()">Exportar</button>
-      <button class="bulk-btn" onclick="bulkArchive()" style="background:rgba(239,68,68,.3)">Archivar</button>
-      <button class="bulk-btn" onclick="clearBulkSelection()" style="margin-left:auto;background:rgba(255,255,255,.1)"> Cancelar</button>
+      <button class="bulk-btn" onclick="bulkExport()">📥 Exportar</button>
+      <button class="bulk-btn" onclick="bulkArchive()" style="background:rgba(239,68,68,.3)">🗑️ Archivar</button>
+      <button class="bulk-btn" onclick="clearBulkSelection()" style="margin-left:auto;background:rgba(255,255,255,.1)">✕ Cancelar</button>
     </div>
 
     <div id="leads-pagination" style="display:none;justify-content:center;align-items:center;gap:.75rem;padding:.65rem 0;margin-bottom:.25rem"></div>
@@ -561,7 +561,7 @@
       <div id="leads-empty" class="empty-state" style="display:none">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
         <p>No hay leads que mostrar</p>
-        <button class="btn-primary" onclick="showView('planner')">Buscar empresas</button>
+        <button class="btn-primary" onclick="showView('planner')">🔍 Buscar empresas</button>
       </div>
     </div>
   </section>
@@ -580,11 +580,11 @@
       <div class="sf-sort-wrap">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18M7 12h10M11 18h2"/></svg>
         <select id="kanban-sort" onchange="renderKanban()">
-          <option value="score">Score</option>
-          <option value="company">A-Z Empresa</option>
-          <option value="days">Dias en estado</option>
-          <option value="next_contact">Proximo contacto</option>
-          <option value="budget">Presupuesto</option>
+          <option value="score">↓ Score</option>
+          <option value="company">A→Z Empresa</option>
+          <option value="days">↓ Días en estado</option>
+          <option value="next_contact">↑ Próximo contacto</option>
+          <option value="budget">↓ Presupuesto</option>
         </select>
       </div>
       <button class="sf-more-btn" id="kanban-more-btn" onclick="sfTogglePanel('kanban')">
@@ -616,8 +616,8 @@
         <option value="50">Score 50+</option>
         <option value="25">Score 25+</option>
       </select>
-      <label><input type="checkbox" id="kanban-filter-overdue" onchange="renderKanban(); sfUpdateChips('kanban')" style="accent-color:var(--danger)"> Aviso:️ Solo vencidos</label>
-      <button onclick="resetKanbanFilters()" class="sf-more-btn" style="color:var(--danger);border-color:rgba(239,68,68,.3)"> Limpiar</button>
+      <label><input type="checkbox" id="kanban-filter-overdue" onchange="renderKanban(); sfUpdateChips('kanban')" style="accent-color:var(--danger)"> ⚠️ Solo vencidos</label>
+      <button onclick="resetKanbanFilters()" class="sf-more-btn" style="color:var(--danger);border-color:rgba(239,68,68,.3)">✕ Limpiar</button>
     </div>
     <div class="sf-chips" id="kanban-sf-chips"></div>
 
@@ -654,7 +654,7 @@
       </div>
       <div class="kanban-col" id="col-Cerrado" ondragover="event.preventDefault()" ondrop="dropLead(event,'Cerrado')">
         <div class="kanban-col-header kanban-green">
-          <span>Cerrado S</span><span class="kanban-count" id="cnt-Cerrado">0</span><span class="kanban-col-value" id="val-Cerrado"></span>
+          <span>Cerrado ✓</span><span class="kanban-count" id="cnt-Cerrado">0</span><span class="kanban-col-value" id="val-Cerrado"></span>
         </div>
         <div class="kanban-cards" id="cards-Cerrado"></div>
       </div>
@@ -696,7 +696,7 @@
     <div class="page-header">
       <div>
         <h1>Buscador Inteligente</h1>
-        <p class="page-sub">Motor de 3 capas: Google Places -> Enriquecimiento web -> Hunter.io</p>
+        <p class="page-sub">Motor de 3 capas: Google Places → Enriquecimiento web → Hunter.io</p>
       </div>
     </div>
 
@@ -729,7 +729,7 @@
             <option value="100">100 empresas</option>
             <option value="200">200 empresas</option>
             <option value="500">500 empresas (completo)</option>
-            <option value="9999">Todas las que haya x</option>
+            <option value="9999">Todas las que haya 🔍</option>
           </select>
         </div>
         <div class="input-group" style="flex:0.8;min-width:130px">
@@ -744,7 +744,7 @@
         </div>
         <div style="display:flex;flex-direction:column;justify-content:flex-end">
           <button class="btn-primary" onclick="searchBusinesses()" id="btn-search" style="height:38px;white-space:nowrap">
-            Buscar y Enriquecer
+            🔍 Buscar y Enriquecer
           </button>
         </div>
       </div>
@@ -768,11 +768,11 @@
       <!-- MEJORA 5: Búsquedas guardadas -->
       <div id="saved-searches-panel" style="margin-top:.75rem;display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem">
-          <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim);font-weight:600">Búsquedas guardadas</div>
-          <button id="ss-compare-btn" onclick="openCompareModal()" style="display:none;background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.3);border-radius:6px;font-size:.65rem;font-weight:600;padding:.15rem .45rem;cursor:pointer"> Comparar</button>
+          <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim);font-weight:600">📂 Búsquedas guardadas</div>
+          <button id="ss-compare-btn" onclick="openCompareModal()" style="display:none;background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.3);border-radius:6px;font-size:.65rem;font-weight:600;padding:.15rem .45rem;cursor:pointer">⚖ Comparar</button>
         </div>
         <div class="ss-filter-wrap">
-          <span class="ss-filter-icon">x</span>
+          <span class="ss-filter-icon">🔍</span>
           <input class="ss-filter-input" id="ss-filter" type="text" placeholder="Filtrar búsquedas..." oninput="filterSavedSearches(this.value)">
         </div>
         <div class="ss-count-badge">
@@ -786,8 +786,8 @@
       <div id="ss-compare-modal" onclick="if(event.target===this)closeCompareModal()">
         <div class="ss-compare-box">
           <div class="ss-compare-header">
-            <div style="font-weight:700;font-size:.95rem"> Comparar búsquedas</div>
-            <button onclick="closeCompareModal()" style="background:none;border:none;color:var(--text-muted);font-size:1.1rem;cursor:pointer">
+            <div style="font-weight:700;font-size:.95rem">⚖ Comparar búsquedas</div>
+            <button onclick="closeCompareModal()" style="background:none;border:none;color:var(--text-muted);font-size:1.1rem;cursor:pointer">✕</button>
           </div>
           <div id="ss-compare-content"></div>
         </div>
@@ -803,47 +803,47 @@
             <div class="step-label">Google Places</div>
             <div class="step-status" id="st-places">En espera</div>
           </div>
-          <div class="pipeline-arrow">-></div>
+          <div class="pipeline-arrow">→</div>
           <div class="pipeline-step" id="step-web">
             <div class="step-dot"></div>
             <div class="step-label">Web Scraping</div>
             <div class="step-status" id="st-web">En espera</div>
           </div>
-          <div class="pipeline-arrow">-></div>
+          <div class="pipeline-arrow">→</div>
           <div class="pipeline-step" id="step-hunter">
             <div class="step-dot"></div>
             <div class="step-label">Hunter.io</div>
             <div class="step-status" id="st-hunter">En espera</div>
           </div>
-          <div class="pipeline-arrow">-></div>
+          <div class="pipeline-arrow">→</div>
           <div class="pipeline-step" id="step-apollo">
             <div class="step-dot"></div>
             <div class="step-label">Apollo.io</div>
             <div class="step-status" id="st-apollo">En espera</div>
           </div>
-          <div class="pipeline-arrow">-></div>
+          <div class="pipeline-arrow">→</div>
           <div class="pipeline-step" id="step-social">
             <div class="step-dot"></div>
             <div class="step-label">Social</div>
             <div class="step-status" id="st-social">En espera</div>
           </div>
-          <div class="pipeline-arrow">-></div>
+          <div class="pipeline-arrow">→</div>
           <div class="pipeline-step" id="step-whois">
             <div class="step-dot"></div>
             <div class="step-label">WHOIS</div>
             <div class="step-status" id="st-whois">En espera</div>
           </div>
-          <div class="pipeline-arrow">-></div>
+          <div class="pipeline-arrow">→</div>
           <div class="pipeline-step" id="step-opencorp">
             <div class="step-dot"></div>
             <div class="step-label">OpenCorporates</div>
             <div class="step-status" id="st-opencorp">En espera</div>
           </div>
-          <div class="pipeline-arrow">-></div>
+          <div class="pipeline-arrow">→</div>
           <div class="pipeline-step" id="step-done">
             <div class="step-dot"></div>
             <div class="step-label">Fichas listas</div>
-            <div class="step-status" id="st-done">-</div>
+            <div class="step-status" id="st-done">—</div>
           </div>
         </div>
         <div class="enrich-progress-bar">
@@ -881,8 +881,8 @@
           <div style="display:flex;align-items:center;gap:1rem">
             <h3>Resultados <span id="search-count" style="color:var(--primary);font-size:.83rem;font-weight:400"></span></h3>
             <div class="view-toggle">
-              <button class="vtoggle active" id="vtog-cards" onclick="switchResultView('cards')">Cards</button>
-              <button class="vtoggle" id="vtog-table" onclick="switchResultView('table')">Tabla</button>
+              <button class="vtoggle active" id="vtog-cards" onclick="switchResultView('cards')">⊞ Cards</button>
+              <button class="vtoggle" id="vtog-table" onclick="switchResultView('table')">☰ Tabla</button>
             </div>
           </div>
           <div style="display:flex;gap:.75rem;align-items:center">
@@ -894,8 +894,8 @@
             <button class="btn-outline btn-sm" onclick="runOpportunityRadar()">Radar</button>
             <button class="btn-outline btn-sm" id="autoprospect-btn" onclick="runAutonomousProspecting()">Prospeccion autonoma</button>
             <button class="btn-outline btn-sm" onclick="toggleScrapingQualityPanel()">Calidad scraping</button>
-            <button class="btn-outline btn-sm" onclick="showAndRunAiRanking()" style="border-color:rgba(99,102,241,.5);color:#a78bfa">Ranking IA</button>
-            <button class="btn-primary btn-sm" onclick="importSelectedSearch()">Volcar a Leads -></button>
+            <button class="btn-outline btn-sm" onclick="showAndRunAiRanking()" style="border-color:rgba(99,102,241,.5);color:#a78bfa">🏆 Ranking IA</button>
+            <button class="btn-primary btn-sm" onclick="importSelectedSearch()">Volcar a Leads →</button>
           </div>
         </div>
 
@@ -910,10 +910,10 @@
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18M7 12h10M11 18h2"/></svg>
               <select id="search-results-sort" onchange="applyAdvancedFilters()">
                 <option value="default">Orden original</option>
-                <option value="rating_desc">Mayor rating</option>
-                <option value="reviews_desc">Mas resenas</option>
-                <option value="name_asc">A-Z Nombre</option>
-                <option value="distance_asc">Mas cercano</option>
+                <option value="rating_desc">↓ Mayor rating</option>
+                <option value="reviews_desc">↓ Más reseñas</option>
+                <option value="name_asc">A→Z Nombre</option>
+                <option value="distance_asc">↑ Más cercano</option>
               </select>
             </div>
             <button class="sf-more-btn" id="search-more-btn" onclick="sfTogglePanel('search')">
@@ -926,15 +926,15 @@
           <div class="sf-panel" id="search-sf-panel">
             <select id="search-results-has" onchange="applyAdvancedFilters(); sfUpdateChips('search')">
               <option value="">Cualquier dato</option>
-              <option value="email">Con email</option>
-              <option value="phone">Con teléfono</option>
-              <option value="web">Con web</option>
-              <option value="social">Con redes</option>
-              <option value="decision">Con decisor</option>
-              <option value="whatsapp">Con WhatsApp</option>
-              <option value="pain">Aviso: Con dolores web</option>
+              <option value="email">✉️ Con email</option>
+              <option value="phone">📞 Con teléfono</option>
+              <option value="web">🌐 Con web</option>
+              <option value="social">📱 Con redes</option>
+              <option value="decision">👤 Con decisor</option>
+              <option value="whatsapp">💬 Con WhatsApp</option>
+              <option value="pain">⚡ Con dolores web</option>
             </select>
-            <button onclick="resetSearchResultsFilters()" class="sf-more-btn" style="color:var(--danger);border-color:rgba(239,68,68,.3)"> Limpiar</button>
+            <button onclick="resetSearchResultsFilters()" class="sf-more-btn" style="color:var(--danger);border-color:rgba(239,68,68,.3)">✕ Limpiar</button>
           </div>
           <div class="sf-chips" id="search-sf-chips"></div>
         </div>
@@ -943,15 +943,15 @@
           <div style="display:flex;flex-wrap:wrap;gap:.4rem;align-items:center">
             <span style="font-size:.72rem;color:var(--text-muted);margin-right:.3rem">Filtrar:</span>
             <button class="rfilt active" onclick="filterResults('all',this)">Todos</button>
-            <button class="rfilt" onclick="filterResults('email',this)">Con email</button>
-            <button class="rfilt" onclick="filterResults('phone',this)">Con teléfono</button>
-            <button class="rfilt" onclick="filterResults('social',this)">Con redes</button>
-            <button class="rfilt" onclick="filterResults('noemail',this)">Aviso:️ Sin email</button>
-            <button class="rfilt" onclick="filterResults('decision',this)">Con decisor</button>
-            <button class="rfilt" onclick="filterResults('signals',this)">Con señales</button>
-            <button class="rfilt" onclick="filterResults('pain',this)">Aviso: Dolores web</button>
-            <button class="rfilt" onclick="filterResults('new_domain',this)"> ⬢ Dominio reciente</button>
-            <button class="rfilt" onclick="filterResults('verified',this)">OK Verificada</button>
+            <button class="rfilt" onclick="filterResults('email',this)">✉️ Con email</button>
+            <button class="rfilt" onclick="filterResults('phone',this)">📞 Con teléfono</button>
+            <button class="rfilt" onclick="filterResults('social',this)">📱 Con redes</button>
+            <button class="rfilt" onclick="filterResults('noemail',this)">⚠️ Sin email</button>
+            <button class="rfilt" onclick="filterResults('decision',this)">👤 Con decisor</button>
+            <button class="rfilt" onclick="filterResults('signals',this)">🔥 Con señales</button>
+            <button class="rfilt" onclick="filterResults('pain',this)">⚡ Dolores web</button>
+            <button class="rfilt" onclick="filterResults('new_domain',this)">🆕 Dominio reciente</button>
+            <button class="rfilt" onclick="filterResults('verified',this)">✅ Verificada</button>
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:.6rem;align-items:center">
             <span style="font-size:.72rem;color:var(--text-muted)">Rating mín:</span>
@@ -974,20 +974,20 @@
             <label style="font-size:.72rem;color:var(--text-muted);display:flex;align-items:center;gap:.3rem">
               <input type="checkbox" id="filter-no-leads" onchange="applyAdvancedFilters()" style="accent-color:var(--primary)"> Excluir ya en Voltflow2
             </label>
-            <button class="btn-outline btn-sm" onclick="resetAdvancedFilters()" style="font-size:.7rem;padding:2px 8px">Reset</button>
+            <button class="btn-outline btn-sm" onclick="resetAdvancedFilters()" style="font-size:.7rem;padding:2px 8px">↺ Reset</button>
           </div>
         </div>
 
-        <!-- -- AI RANKING PANEL -- -->
+        <!-- ══ AI RANKING PANEL ══ -->
         <div id="ai-ranking-panel" style="display:none;margin:1rem 0;
           border:1px solid rgba(99,102,241,.35);border-radius:14px;
           background:rgba(99,102,241,.05);overflow:hidden">
           <div style="display:flex;align-items:center;justify-content:space-between;
             padding:.75rem 1.1rem;border-bottom:1px solid rgba(99,102,241,.2)">
             <div style="display:flex;align-items:center;gap:.6rem">
-              <span style="font-size:1.1rem"></span>
+              <span style="font-size:1.1rem">🏆</span>
               <div>
-                <div style="font-weight:700;font-size:.88rem">Ranking IA - Top 5 oportunidades</div>
+                <div style="font-weight:700;font-size:.88rem">Ranking IA — Top 5 oportunidades</div>
                 <div id="ai-ranking-sub" style="font-size:.7rem;color:var(--text-dim)">Analizando resultados con Gemini...</div>
               </div>
             </div>
@@ -995,14 +995,14 @@
               <button onclick="runAiRanking()" id="ai-ranking-btn"
                 style="font-size:.72rem;padding:.3rem .75rem;border-radius:7px;
                 background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;
-                border:none;cursor:pointer;font-weight:600">Aviso: Analizar</button>
+                border:none;cursor:pointer;font-weight:600">⚡ Analizar</button>
               <button onclick="document.getElementById('ai-ranking-panel').style.display='none'"
-                style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:.9rem">
+                style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:.9rem">✕</button>
             </div>
           </div>
           <div id="ai-ranking-content" style="padding:.85rem 1.1rem">
             <div style="font-size:.78rem;color:var(--text-dim);text-align:center;padding:.5rem">
-              Pulsa <strong>Aviso: Analizar</strong> para que la IA identifique las 5 empresas con mayor potencial de conversión.
+              Pulsa <strong>⚡ Analizar</strong> para que la IA identifique las 5 empresas con mayor potencial de conversión.
             </div>
           </div>
         </div>
@@ -1042,8 +1042,8 @@
 
     <!-- Tabs -->
     <div class="import-tabs">
-      <button class="import-tab active" onclick="switchImportTab('csv', this)">Subir Archivo (CSV / Excel)</button>
-      <button class="import-tab" onclick="switchImportTab('paste', this)">Pegar Datos</button>
+      <button class="import-tab active" onclick="switchImportTab('csv', this)">📂 Subir Archivo (CSV / Excel)</button>
+      <button class="import-tab" onclick="switchImportTab('paste', this)">📋 Pegar Datos</button>
     </div>
 
     <!-- CSV Upload -->
@@ -1061,7 +1061,7 @@
     <!-- Paste -->
     <div id="import-paste-tab" class="glass-panel import-tab-content" style="display:none">
       <div class="input-group">
-        <label>Pega aquí tus datos (Nombre, Empresa, Email, Señal - separados por coma o tabulación)</label>
+        <label>Pega aquí tus datos (Nombre, Empresa, Email, Señal — separados por coma o tabulación)</label>
         <textarea id="import-area" rows="10" placeholder="Javier García, Oficinas Tech SL, javier@tech.com, Nueva sede en C/ Mayor&#10;María López, Retail Shop, maria@shop.es, Local en reforma&#10;..."></textarea>
       </div>
       <div style="margin-top:1rem;display:flex;gap:1rem">
@@ -1075,7 +1075,7 @@
       <!-- Panel de duplicados detectados -->
       <div id="import-duplicates-panel" style="display:none;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem">
         <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem">
-          <span style="font-size:1rem">Aviso:️</span>
+          <span style="font-size:1rem">⚠️</span>
           <strong style="font-size:.82rem;color:var(--warning)">Posibles duplicados detectados</strong>
           <span id="dup-count-badge" style="background:rgba(245,158,11,.2);color:var(--warning);border-radius:8px;padding:1px 7px;font-size:.72rem;font-weight:700"></span>
         </div>
@@ -1105,7 +1105,7 @@
     </div>
   </section>
 
-  <!-- ======================== CAMPAAS ======================== -->
+  <!-- ======================== CAMPAÑAS ======================== -->
   <section id="campaigns-view" class="view">
     <div class="page-header">
       <div><h1>Modo Campaña</h1><p class="page-sub">Agrupa leads y gestiona secuencias completas de emails</p></div>
@@ -1120,10 +1120,10 @@
       <div class="sf-sort-wrap">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18M7 12h10M11 18h2"/></svg>
         <select id="campaigns-sort" onchange="renderCampaigns()">
-          <option value="date_desc">Mas reciente</option>
-          <option value="progress_desc">Mayor progreso</option>
-          <option value="leads_desc">Mas leads</option>
-          <option value="name">A-Z Nombre</option>
+          <option value="date_desc">↓ Más reciente</option>
+          <option value="progress_desc">↓ Mayor progreso</option>
+          <option value="leads_desc">↓ Más leads</option>
+          <option value="name">A→Z Nombre</option>
         </select>
       </div>
       <button class="sf-more-btn" id="campaigns-more-btn" onclick="sfTogglePanel('campaigns')">
@@ -1156,7 +1156,7 @@
         <option value="empty">Sin envíos</option>
         <option value="complete">100% completadas</option>
       </select>
-      <button onclick="resetCampaignsFilters()" class="sf-more-btn" style="color:var(--danger);border-color:rgba(239,68,68,.3)"> Limpiar</button>
+      <button onclick="resetCampaignsFilters()" class="sf-more-btn" style="color:var(--danger);border-color:rgba(239,68,68,.3)">✕ Limpiar</button>
     </div>
     <div class="sf-chips" id="campaigns-sf-chips"></div>
 
@@ -1183,10 +1183,10 @@
       <div class="sf-sort-wrap">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18M7 12h10M11 18h2"/></svg>
         <select id="tracking-sort" onchange="renderTracking()">
-          <option value="date_desc">Mas reciente</option>
-          <option value="date_asc">Mas antiguo</option>
-          <option value="company">A-Z Empresa</option>
-          <option value="segment">A-Z Sector</option>
+          <option value="date_desc">↓ Más reciente</option>
+          <option value="date_asc">↑ Más antiguo</option>
+          <option value="company">A→Z Empresa</option>
+          <option value="segment">A→Z Sector</option>
         </select>
       </div>
       <button class="sf-more-btn" id="tracking-more-btn" onclick="sfTogglePanel('tracking')">
@@ -1214,23 +1214,23 @@
       </select>
       <select id="tracking-filter-channel" onchange="renderTracking(); sfUpdateChips('tracking')">
         <option value="">Todos los canales</option>
-        <option value="email">Email</option>
-        <option value="whatsapp">WhatsApp</option>
+        <option value="email">📧 Email</option>
+        <option value="whatsapp">💬 WhatsApp</option>
       </select>
       <select id="tracking-filter-date" onchange="renderTracking(); sfUpdateChips('tracking')">
         <option value="">Cualquier fecha</option>
         <option value="today">Hoy</option>
         <option value="week">Esta semana</option>
         <option value="month">Este mes</option>
-        <option value="3months">Ultimos 3 meses</option>
+        <option value="3months">Últimos 3 meses</option>
       </select>
-      <button onclick="resetTrackingFilters()" class="sf-more-btn" style="color:var(--danger);border-color:rgba(239,68,68,.3)"> Limpiar</button>
+      <button onclick="resetTrackingFilters()" class="sf-more-btn" style="color:var(--danger);border-color:rgba(239,68,68,.3)">✕ Limpiar</button>
     </div>
     <div class="sf-chips" id="tracking-sf-chips"></div>
 
         <div class="stats-grid" style="margin-bottom:1.5rem">
       <div class="stat-card stat-blue"><div class="stat-value" id="stat-sent2">0</div><div class="stat-label">Enviados</div></div>
-      <div class="stat-card stat-green"><div class="stat-value" id="stat-contacted">0</div><div class="stat-label">Empresas Aviso:nicas</div></div>
+      <div class="stat-card stat-green"><div class="stat-value" id="stat-contacted">0</div><div class="stat-label">Empresas Únicas</div></div>
       <div class="stat-card stat-orange"><div class="stat-value" id="stat-waiting">0</div><div class="stat-label">Sin Respuesta</div></div>
     </div>
     <div class="glass-panel">
@@ -1252,29 +1252,29 @@
     <div class="page-header">
       <div>
         <h1>Bandeja de Outlook</h1>
-        <p class="page-sub">Pega emails recibidos - la IA detecta respuestas de tus leads y actualiza el CRM automáticamente</p>
+        <p class="page-sub">Pega emails recibidos — la IA detecta respuestas de tus leads y actualiza el CRM automáticamente</p>
       </div>
       <div style="display:flex;gap:.6rem">
-        <button class="btn-outline" id="inbox-clear-btn" onclick="clearInboxPaste()" style="display:none">Limpiar</button>
-        <button class="btn-primary" onclick="processInboxEmails()" id="inbox-process-btn" disabled>Procesar con IA</button>
+        <button class="btn-outline" id="inbox-clear-btn" onclick="clearInboxPaste()" style="display:none">🗑️ Limpiar</button>
+        <button class="btn-primary" onclick="processInboxEmails()" id="inbox-process-btn" disabled>✨ Procesar con IA</button>
       </div>
     </div>
 
     <!-- Paste area -->
     <div class="glass-panel" style="margin-bottom:1.25rem">
       <div class="panel-header">
-        <h3>Pegar emails</h3>
-        <span style="font-size:.72rem;color:var(--text-muted)">Selecciona varios emails en Outlook -> Ctrl+A -> Ctrl+C -> pega aquí</span>
+        <h3>📋 Pegar emails</h3>
+        <span style="font-size:.72rem;color:var(--text-muted)">Selecciona varios emails en Outlook → Ctrl+A → Ctrl+C → pega aquí</span>
       </div>
       <textarea id="inbox-paste-area"
         rows="10"
         placeholder="Pega aquí el contenido de los emails recibidos de Outlook...
 
 Puedes pegar uno o varios emails a la vez. Voltflow2 detectará automáticamente:
-⬢ El remitente (email + nombre)
-⬢ La fecha
-⬢ El asunto
-⬢ Un extracto del contenido
+• El remitente (email + nombre)
+• La fecha
+• El asunto
+• Un extracto del contenido
 
 Y cruzará los remitentes con tus leads para actualizar el CRM."
         oninput="onInboxPaste(this)"
@@ -1289,10 +1289,10 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
     <div id="inbox-results-panel" style="display:none">
       <div class="glass-panel" style="margin-bottom:1rem">
         <div class="panel-header">
-          <h3> Respuestas detectadas</h3>
+          <h3>📬 Respuestas detectadas</h3>
           <div style="display:flex;gap:.5rem;align-items:center">
             <span id="inbox-match-count" style="font-size:.78rem;color:var(--text-muted)"></span>
-            <button class="btn-primary btn-sm" id="inbox-apply-btn" onclick="applyInboxMatches()">OK Aplicar todos</button>
+            <button class="btn-primary btn-sm" id="inbox-apply-btn" onclick="applyInboxMatches()">✅ Aplicar todos</button>
           </div>
         </div>
         <div id="inbox-results-list" style="margin-top:.75rem;display:flex;flex-direction:column;gap:.6rem"></div>
@@ -1301,7 +1301,7 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
       <!-- No-match panel -->
       <div id="inbox-nomatch-panel" style="display:none">
         <div class="glass-panel">
-          <div class="panel-header"><h3> Sin coincidencia en CRM</h3></div>
+          <div class="panel-header"><h3>❓ Sin coincidencia en CRM</h3></div>
           <div id="inbox-nomatch-list" style="margin-top:.75rem;display:flex;flex-direction:column;gap:.4rem"></div>
         </div>
       </div>
@@ -1311,7 +1311,7 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
     <div id="inbox-empty-state" class="empty-state">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 13 16 13 14 16 10 16 8 13 2 13"/><path d="M5.45 5.11L2 13v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-7.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
       <p>Pega emails de Outlook para detectar respuestas de tus leads</p>
-      <p style="font-size:.75rem;opacity:.6">En Outlook: selecciona emails -> Ctrl+A -> Ctrl+C -> pega arriba</p>
+      <p style="font-size:.75rem;opacity:.6">En Outlook: selecciona emails → Ctrl+A → Ctrl+C → pega arriba</p>
     </div>
   </section>
 
@@ -1349,7 +1349,7 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
           <input type="hidden" id="tpl-current-key">
         </div>
         <div id="template-preview-box" style="display:none;margin-top:1.5rem">
-          <div class="panel-header"><h3>Vista Previa</h3><button class="btn-icon" onclick="document.getElementById('template-preview-box').style.display='none'">
+          <div class="panel-header"><h3>Vista Previa</h3><button class="btn-icon" onclick="document.getElementById('template-preview-box').style.display='none'">✕</button></div>
           <div id="template-preview-content" class="email-preview"></div>
         </div>
       </div>
@@ -1403,7 +1403,7 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
 
     <div class="glass-panel" style="margin-bottom:1.5rem">
       <div class="panel-header"><h3>API Key de Google Places</h3></div>
-      <p style="color:var(--text-muted);font-size:0.85rem;margin:1rem 0">Necesaria para buscar empresas reales. <a href="https://console.cloud.google.com" target="_blank" style="color:var(--primary)">Google Cloud Console</a> -> Habilita «Places API (New)».</p>
+      <p style="color:var(--text-muted);font-size:0.85rem;margin:1rem 0">Necesaria para buscar empresas reales. <a href="https://console.cloud.google.com" target="_blank" style="color:var(--primary)">Google Cloud Console</a> → Habilita «Places API (New)».</p>
       <div class="input-group">
         <input type="text" id="api-key-input" placeholder="AIzaSy...">
       </div>
@@ -1427,13 +1427,13 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
 
     <div class="glass-panel" style="margin-bottom:1.5rem">
       <div class="panel-header">
-        <h3>API Key de Apollo.io (decisores)</h3>
+        <h3>🚀 API Key de Apollo.io (decisores)</h3>
         <span style="background:linear-gradient(135deg,#f59e0b,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:.75rem;font-weight:700">50 GRATIS/MES</span>
       </div>
       <p style="color:var(--text-muted);font-size:0.85rem;margin:1rem 0">
         Encuentra el decisor (nombre, cargo, email) de cada empresa.<br>
         <strong style="color:var(--success)">50 créditos/mes gratis</strong> sin tarjeta.<br>
-        <a href="https://app.apollo.io/#/settings/integrations/api" target="_blank" style="color:var(--primary)">app.apollo.io -> Settings -> API</a> -> copia tu API Key.
+        <a href="https://app.apollo.io/#/settings/integrations/api" target="_blank" style="color:var(--primary)">app.apollo.io → Settings → API</a> → copia tu API Key.
       </p>
       <div class="input-group">
         <input type="text" id="apollo-key-input" placeholder="Tu API Key de Apollo.io">
@@ -1446,13 +1446,13 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
 
     <div class="glass-panel" style="margin-bottom:1.5rem">
       <div class="panel-header">
-        <h3>API Key de Gemini (IA de emails)</h3>
+        <h3>✨ API Key de Gemini (IA de emails)</h3>
         <span style="background:linear-gradient(135deg,#4285f4,#34a853);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:.75rem;font-weight:700">GRATIS TOTAL</span>
       </div>
       <p style="color:var(--text-muted);font-size:0.85rem;margin:1rem 0">
         Genera emails hiperpersonalizados analizando las reseñas reales de cada empresa.<br>
-        <strong style="color:var(--success)">100% gratuito</strong> - 1.500 peticiones/día sin tarjeta de crédito.<br>
-        <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--primary)">aistudio.google.com/apikey</a> -> Get API Key -> Create API key (con tu cuenta Google).
+        <strong style="color:var(--success)">100% gratuito</strong> — 1.500 peticiones/día sin tarjeta de crédito.<br>
+        <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--primary)">aistudio.google.com/apikey</a> → Get API Key → Create API key (con tu cuenta Google).
       </p>
       <div class="input-group">
         <input type="password" id="claude-key-input" placeholder="AIzaSy...">
@@ -1463,16 +1463,16 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
       </div>
     </div>
 
-    <!-- --  IA Multi-Proveedor: Groq --  -->
+    <!-- ── IA Multi-Proveedor: Groq ── -->
     <div class="glass-panel" style="margin-bottom:1.5rem">
       <div class="panel-header">
-        <h3>Aviso: API Key de Groq (IA de respaldo)</h3>
+        <h3>⚡ API Key de Groq (IA de respaldo)</h3>
         <span style="background:linear-gradient(135deg,#f55036,#ff9500);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:.75rem;font-weight:700">GRATIS · ULTRA-RÁPIDO</span>
       </div>
       <p style="color:var(--text-muted);font-size:0.85rem;margin:1rem 0">
         Groq es un proveedor de IA gratuito con modelos de alta calidad (Llama 3.3 70B).<br>
-        Se activa <strong style="color:var(--success)">automáticamente</strong> cuando Gemini alcanza su límite diario - sin interrupciones para ti.<br>
-        <strong>14.400 peticiones/día gratuitas.</strong> <a href="https://console.groq.com" target="_blank" style="color:var(--primary)">console.groq.com</a> -> API Keys -> Create API key (solo necesitas email).
+        Se activa <strong style="color:var(--success)">automáticamente</strong> cuando Gemini alcanza su límite diario — sin interrupciones para ti.<br>
+        <strong>14.400 peticiones/día gratuitas.</strong> <a href="https://console.groq.com" target="_blank" style="color:var(--primary)">console.groq.com</a> → API Keys → Create API key (solo necesitas email).
       </p>
       <div class="input-group">
         <input type="password" id="groq-key-input" placeholder="gsk_...">
@@ -1483,16 +1483,16 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
       </div>
     </div>
 
-    <!-- --  IA Multi-Proveedor: OpenRouter --  -->
+    <!-- ── IA Multi-Proveedor: OpenRouter ── -->
     <div class="glass-panel" style="margin-bottom:1.5rem">
       <div class="panel-header">
-        <h3> API Key de OpenRouter (IA de respaldo 2)</h3>
+        <h3>🔀 API Key de OpenRouter (IA de respaldo 2)</h3>
         <span style="background:linear-gradient(135deg,#6366f1,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:.75rem;font-weight:700">GRATIS · 50+ MODELOS</span>
       </div>
       <p style="color:var(--text-muted);font-size:0.85rem;margin:1rem 0">
         OpenRouter da acceso a 50+ modelos gratuitos y se usa como último respaldo.<br>
-        Se activa solo cuando Gemini y Groq están limitados - <strong style="color:var(--success)">totalmente transparente</strong> para ti.<br>
-        <a href="https://openrouter.ai" target="_blank" style="color:var(--primary)">openrouter.ai</a> -> Sign in -> Keys -> Create Key (solo email, sin tarjeta).
+        Se activa solo cuando Gemini y Groq están limitados — <strong style="color:var(--success)">totalmente transparente</strong> para ti.<br>
+        <a href="https://openrouter.ai" target="_blank" style="color:var(--primary)">openrouter.ai</a> → Sign in → Keys → Create Key (solo email, sin tarjeta).
       </p>
       <div class="input-group">
         <input type="password" id="openrouter-key-input" placeholder="sk-or-...">
@@ -1503,20 +1503,20 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
       </div>
     </div>
 
-    <!-- --  Estado IA Multi-Proveedor --  -->
+    <!-- ── Estado IA Multi-Proveedor ── -->
     <div class="glass-panel" style="margin-bottom:1.5rem;background:rgba(16,217,124,.04);border-color:rgba(16,217,124,.12)">
-      <div class="panel-header"><h3>Estado IA en tiempo real</h3></div>
+      <div class="panel-header"><h3>🤖 Estado IA en tiempo real</h3></div>
       <div id="ai-router-status" style="font-size:.82rem;color:var(--text-muted);margin-top:.5rem">
         <em>Cargando estado...</em>
       </div>
       <button class="btn-outline" style="margin-top:.75rem;font-size:.78rem" onclick="refreshAiRouterStatus()">Actualizar estado</button>
     </div>
 
-    <!-- --  Alertas de Email --  -->
+    <!-- ── Alertas de Email ── -->
     <div class="glass-panel">
       <div class="panel-header">
-        <h3>Alertas de email automáticas</h3>
-        <span id="email-alerts-connected-badge" style="display:none;background:rgba(16,217,124,.15);color:var(--success);border:1px solid rgba(16,217,124,.3);border-radius:8px;padding:2px 10px;font-size:.72rem;font-weight:700">OK Conectado</span>
+        <h3>📧 Alertas de email automáticas</h3>
+        <span id="email-alerts-connected-badge" style="display:none;background:rgba(16,217,124,.15);color:var(--success);border:1px solid rgba(16,217,124,.3);border-radius:8px;padding:2px 10px;font-size:.72rem;font-weight:700">✅ Conectado</span>
       </div>
       <p style="color:var(--text-muted);font-size:.85rem;margin:.75rem 0">
         Recibe un email cuando el agente detecte leads urgentes, seguimientos vencidos o acciones importantes.
@@ -1526,15 +1526,15 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
       <div style="display:flex;gap:.5rem;margin-bottom:1.25rem;flex-wrap:wrap">
         <button id="method-btn-emailjs" onclick="selectEmailMethod('emailjs')"
           style="flex:1;min-width:120px;padding:.6rem .75rem;border-radius:10px;border:2px solid var(--primary);background:rgba(10,132,255,.1);color:var(--primary);font-weight:700;font-size:.8rem;cursor:pointer;transition:all .15s">
-          Aviso: EmailJS <span style="display:block;font-size:.68rem;font-weight:400;color:var(--text-muted);margin-top:1px">Recomendado · 2 min</span>
+          ⚡ EmailJS <span style="display:block;font-size:.68rem;font-weight:400;color:var(--text-muted);margin-top:1px">Recomendado · 2 min</span>
         </button>
         <button id="method-btn-gmail" onclick="selectEmailMethod('gmail')"
           style="flex:1;min-width:120px;padding:.6rem .75rem;border-radius:10px;border:2px solid var(--glass-border);background:var(--glass);color:var(--text-muted);font-weight:600;font-size:.8rem;cursor:pointer;transition:all .15s">
-           Gmail OAuth <span style="display:block;font-size:.68rem;font-weight:400;margin-top:1px">Avanzado · 10 min</span>
+          🔐 Gmail OAuth <span style="display:block;font-size:.68rem;font-weight:400;margin-top:1px">Avanzado · 10 min</span>
         </button>
       </div>
 
-      <!-- --  M0TODO EMAILJS --  -->
+      <!-- ── MÉTODO EMAILJS ── -->
       <div id="emailjs-setup" style="display:block">
         <!-- Pasos visuales -->
         <div style="display:flex;flex-direction:column;gap:.6rem;margin-bottom:1rem">
@@ -1545,7 +1545,7 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
               <div style="color:var(--text-muted);font-size:.75rem;margin-top:2px">Solo email, sin tarjeta. 200 emails/mes gratuitos.</div>
               <a href="https://www.emailjs.com/docs/tutorial/overview/" target="_blank"
                 style="display:inline-block;margin-top:5px;background:var(--primary);color:#fff;border-radius:6px;padding:3px 12px;font-size:.75rem;text-decoration:none;font-weight:600">
-                Ir a emailjs.com ->
+                Ir a emailjs.com →
               </a>
             </div>
           </div>
@@ -1553,21 +1553,21 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
             <span style="background:var(--primary);color:#000;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0;margin-top:1px">2</span>
             <div style="font-size:.8rem">
               <strong>Crea un Email Service</strong>
-              <div style="color:var(--text-muted);font-size:.75rem;margin-top:2px">Dashboard -> Email Services -> Add New Service -> Gmail (conecta tu cuenta Google con 1 clic) -> copia el <strong>Service ID</strong>.</div>
+              <div style="color:var(--text-muted);font-size:.75rem;margin-top:2px">Dashboard → Email Services → Add New Service → Gmail (conecta tu cuenta Google con 1 clic) → copia el <strong>Service ID</strong>.</div>
             </div>
           </div>
           <div style="display:flex;gap:.75rem;align-items:flex-start;padding:.6rem .75rem;background:var(--glass);border-radius:8px">
             <span style="background:var(--primary);color:#000;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0;margin-top:1px">3</span>
             <div style="font-size:.8rem">
               <strong>Crea una plantilla de email</strong>
-              <div style="color:var(--text-muted);font-size:.75rem;margin-top:2px">Email Templates -> Create New -> añade variables <code style="background:rgba(99,102,241,.15);padding:1px 5px;border-radius:3px">{{subject}}</code> y <code style="background:rgba(99,102,241,.15);padding:1px 5px;border-radius:3px">{{message}}</code> -> copia el <strong>Template ID</strong>.</div>
+              <div style="color:var(--text-muted);font-size:.75rem;margin-top:2px">Email Templates → Create New → añade variables <code style="background:rgba(99,102,241,.15);padding:1px 5px;border-radius:3px">{{subject}}</code> y <code style="background:rgba(99,102,241,.15);padding:1px 5px;border-radius:3px">{{message}}</code> → copia el <strong>Template ID</strong>.</div>
             </div>
           </div>
           <div style="display:flex;gap:.75rem;align-items:flex-start;padding:.6rem .75rem;background:var(--glass);border-radius:8px">
             <span style="background:var(--primary);color:#000;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0;margin-top:1px">4</span>
             <div style="font-size:.8rem">
               <strong>Copia tu Public Key</strong>
-              <div style="color:var(--text-muted);font-size:.75rem;margin-top:2px">Account -> API Keys -> Public Key.</div>
+              <div style="color:var(--text-muted);font-size:.75rem;margin-top:2px">Account → API Keys → Public Key.</div>
             </div>
           </div>
         </div>
@@ -1595,15 +1595,15 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
         </div>
         <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
           <button class="btn-primary" onclick="saveEmailJsConfig()">Guardar y conectar</button>
-          <button class="btn-outline" onclick="testEmailJsAlert()">Enviar email de prueba</button>
+          <button class="btn-outline" onclick="testEmailJsAlert()">📧 Enviar email de prueba</button>
           <div id="ejs-status" style="font-size:.82rem;color:var(--text-muted)"></div>
         </div>
       </div>
 
-      <!-- --  M0TODO GMAIL OAUTH (colapsado por defecto) --  -->
+      <!-- ── MÉTODO GMAIL OAUTH (colapsado por defecto) ── -->
       <div id="gmail-oauth-setup" style="display:none">
         <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:.6rem .75rem;margin-bottom:.75rem;font-size:.78rem;color:var(--warning)">
-          Aviso:️ Este método requiere crear un proyecto en Google Cloud Console. Usa EmailJS si quieres algo más rápido.
+          ⚠️ Este método requiere crear un proyecto en Google Cloud Console. Usa EmailJS si quieres algo más rápido.
         </div>
         <div style="display:grid;gap:.65rem;margin-bottom:.75rem">
           <div class="input-group">
@@ -1624,7 +1624,7 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
         </div>
         <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
           <button class="btn-primary" onclick="saveGmailConfig()">Guardar y Conectar Gmail</button>
-          <button class="btn-outline" onclick="testGmailAlert()">Enviar email de prueba</button>
+          <button class="btn-outline" onclick="testGmailAlert()">📧 Enviar email de prueba</button>
           <div id="gmail-status" style="font-size:.82rem;color:var(--text-muted)"></div>
         </div>
       </div>
@@ -1646,10 +1646,10 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
 
 
 
-    <!-- -- QR SYNC PANEL -- -->
+    <!-- ══ QR SYNC PANEL ══ -->
     <div class="glass-panel" style="margin-bottom:1.5rem;border:1px solid rgba(99,102,241,.3);box-shadow:0 0 0 3px rgba(99,102,241,.06)">
       <div class="panel-header" style="display:flex;align-items:center;justify-content:space-between">
-        <h3>Sincronización por QR</h3>
+        <h3>📱 Sincronización por QR</h3>
         <span style="font-size:.7rem;font-weight:700;padding:.2rem .55rem;border-radius:6px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff">NUEVO</span>
       </div>
       <p style="color:var(--text-muted);font-size:.85rem;margin:.75rem 0 1rem">
@@ -1660,10 +1660,10 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
       <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem">
         <label style="font-size:.78rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em">¿Qué incluir en el QR?</label>
         <div style="display:flex;flex-wrap:wrap;gap:.5rem">
-          <label class="qr-check-label"><input type="checkbox" id="qr-inc-keys" checked> API Keys</label>
-          <label class="qr-check-label"><input type="checkbox" id="qr-inc-profile" checked> Perfil corporativo</label>
-          <label class="qr-check-label"><input type="checkbox" id="qr-inc-sheets" checked> Google Sheets config</label>
-          <label class="qr-check-label"><input type="checkbox" id="qr-inc-templates"> Plantillas email</label>
+          <label class="qr-check-label"><input type="checkbox" id="qr-inc-keys" checked> 🔑 API Keys</label>
+          <label class="qr-check-label"><input type="checkbox" id="qr-inc-profile" checked> 👤 Perfil corporativo</label>
+          <label class="qr-check-label"><input type="checkbox" id="qr-inc-sheets" checked> 📊 Google Sheets config</label>
+          <label class="qr-check-label"><input type="checkbox" id="qr-inc-templates"> ✉ Plantillas email</label>
         </div>
       </div>
 
@@ -1671,7 +1671,7 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
         <!-- QR display -->
         <div id="qr-container" style="flex-shrink:0;width:180px;height:180px;border-radius:12px;border:2px dashed var(--glass-border);display:flex;align-items:center;justify-content:center;background:var(--glass);cursor:pointer" onclick="generateQR()">
           <div id="qr-placeholder" style="text-align:center;padding:1rem">
-            <div style="font-size:2.5rem;margin-bottom:.5rem">x</div>
+            <div style="font-size:2.5rem;margin-bottom:.5rem">📱</div>
             <div style="font-size:.72rem;color:var(--text-dim)">Clic para generar QR</div>
           </div>
           <canvas id="qr-canvas" style="display:none;border-radius:10px;width:176px;height:176px"></canvas>
@@ -1683,34 +1683,34 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
             Haz clic en el cuadro para generar el código QR con tu configuración actual.
           </div>
           <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-            <button class="btn-primary" onclick="generateQR()" style="font-size:.8rem">Aviso: Generar QR</button>
-            <button class="btn-outline" onclick="openQRImportScanner()" style="font-size:.8rem"> Importar QR</button>
-            <button class="btn-outline" id="qr-download-btn" onclick="downloadQR()" style="font-size:.8rem;display:none"> Descargar PNG</button>
-            <button class="btn-outline" id="qr-refresh-btn" onclick="generateQR()" style="font-size:.8rem;display:none">Regenerar</button>
+            <button class="btn-primary" onclick="generateQR()" style="font-size:.8rem">⚡ Generar QR</button>
+            <button class="btn-outline" onclick="openQRImportScanner()" style="font-size:.8rem">📷 Importar QR</button>
+            <button class="btn-outline" id="qr-download-btn" onclick="downloadQR()" style="font-size:.8rem;display:none">⬇ Descargar PNG</button>
+            <button class="btn-outline" id="qr-refresh-btn" onclick="generateQR()" style="font-size:.8rem;display:none">🔄 Regenerar</button>
           </div>
           <div id="qr-expire-info" style="font-size:.68rem;color:var(--text-dim);margin-top:.6rem;display:none">
             ⏱ El QR caduca en <span id="qr-expire-countdown" style="color:var(--primary);font-weight:700"></span>
           </div>
           <div style="margin-top:.75rem;font-size:.72rem;color:var(--text-dim);line-height:1.6;padding:.55rem .7rem;background:rgba(99,102,241,.07);border-radius:8px;border:1px solid rgba(99,102,241,.2)">
-            <strong>Seguro:</strong> el QR solo funciona mientras esta pestaña esté abierta. Las keys van cifradas.
+            🔒 <strong>Seguro:</strong> el QR solo funciona mientras esta pestaña esté abierta. Las keys van cifradas.
           </div>
         </div>
       </div>
     </div>
 
-    <!-- -- JSONBIN SYNC PANEL -- -->
+    <!-- ══ JSONBIN SYNC PANEL ══ -->
 
-    <!-- --  GitHub Sync Panel --  -->
+    <!-- ── GitHub Sync Panel ── -->
     <div class="glass-panel">
       <div class="panel-header">
-        <h3>GitHub - Sincronización automática (gratis e ilimitada)</h3>
-        <span id="github-badge" style="font-size:.7rem;font-weight:700;padding:.2rem .55rem;border-radius:6px;background:rgba(16,217,124,.15);color:var(--success);display:none">Activo</span>
+        <h3>🐙 GitHub — Sincronización automática (gratis e ilimitada)</h3>
+        <span id="github-badge" style="font-size:.7rem;font-weight:700;padding:.2rem .55rem;border-radius:6px;background:rgba(16,217,124,.15);color:var(--success);display:none">✓ Activo</span>
       </div>
       <p style="color:var(--text-muted);font-size:.85rem;margin:.75rem 0 1rem">
         Guarda tus datos directamente en tu repositorio de GitHub. <strong>Gratis, ilimitado, sin caducidad.</strong><br>
         <strong>Setup (2 min):</strong>
         <a href="https://github.com/settings/tokens/new?description=Voltflow2&scopes=repo" target="_blank" style="color:var(--primary)">Crear token aquí</a>
-        -> selecciona scope <code style="background:var(--glass);padding:1px 5px;border-radius:4px">repo</code> -> copia el token.
+        → selecciona scope <code style="background:var(--glass);padding:1px 5px;border-radius:4px">repo</code> → copia el token.
       </p>
       <div style="display:grid;gap:.75rem;margin-bottom:1rem">
         <div class="input-group">
@@ -1733,8 +1733,8 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
       </div>
       <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
         <button class="btn-primary" onclick="saveGithubConfig()">Guardar y conectar</button>
-        <button class="btn-outline" onclick="githubPush(true)">  Subir ahora</button>
-        <button class="btn-outline" onclick="githubPull(true)"> Descargar ahora</button>
+        <button class="btn-outline" onclick="githubPush(true)">⬆ Subir ahora</button>
+        <button class="btn-outline" onclick="githubPull(true)">⬇ Descargar ahora</button>
         <div id="github-status" style="font-size:.82rem;color:var(--text-muted)"></div>
       </div>
       <div style="margin-top:1rem;display:flex;align-items:center;gap:.5rem">
@@ -1748,27 +1748,28 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
 
     <div class="glass-panel">
       <div class="panel-header"><h3>Gestión de Datos</h3></div>
-      <div style="font-size:.8rem;color:var(--text-muted);padding:.6rem .8rem;background:rgba(10,132,255,.05);border:1px solid rgba(10,132,255,.15);border-radius:8px;margin-top:.75rem;line-height:1.6"> <strong>Actualizaciones desde GitHub:</strong> GitHub debe usarse para actualizar los archivos, pero el trabajo diario debe abrirse siempre desde la misma URL de siempre.<br>
+      <div style="font-size:.8rem;color:var(--text-muted);padding:.6rem .8rem;background:rgba(10,132,255,.05);border:1px solid rgba(10,132,255,.15);border-radius:8px;margin-top:.75rem;line-height:1.6">
+        💡 <strong>Actualizaciones desde GitHub:</strong> GitHub debe usarse para actualizar los archivos, pero el trabajo diario debe abrirse siempre desde la misma URL de siempre.<br>
         Si ya trabajas con <strong>app.html</strong> local, sigue con esa entrada. Si trabajas desde GitHub Pages, sigue con GitHub Pages. Cambiar entre GitHub Pages, localhost, file:// u otro puerto hace que el navegador use otro almacén.
       </div>
       <div style="display:flex;gap:1rem;margin-top:1rem;flex-wrap:wrap">
         <button class="btn-outline" onclick="exportFilteredData()">Exportar leads (CSV)</button>
         <button class="btn-outline" onclick="exportTracking()">Exportar historial (CSV)</button>
-        <button class="btn-outline" onclick="exportFullBackup()">Backup completo (JSON)</button>
+        <button class="btn-outline" onclick="exportFullBackup()">💾 Backup completo (JSON)</button>
         <button class="btn-primary" onclick="connectDiskBackupFolder()" title="Elige una carpeta del disco. Despues la app creara un backup automatico al dia mientras este abierta">Activar backup diario en disco</button>
         <button class="btn-outline" onclick="runDiskBackupNow(true, { requestPermission: true, force: true })" title="Crea ahora el backup de hoy en la carpeta autorizada">Crear backup diario ahora</button>
         <button class="btn-outline" onclick="disconnectDiskBackupFolder()" title="Quita el permiso guardado para la carpeta de backups">Desactivar backup en disco</button>
-        <button class="btn-outline" onclick="exportPortableData()" title="Genera un archivo que puedes importar en cualquier versión de Voltflow2"> Exportar datos portátiles</button>
-        <button class="btn-outline" onclick="openSafetySnapshotsModal()" title="Ver puntos de recuperación automáticos antes de importaciones, restauraciones y sincronizaciones"> Snapshots de seguridad</button>
-        <button class="btn-outline" onclick="createSafetySnapshot('manual', { download: true })" title="Crea un snapshot ahora y descarga una copia fuera del navegador"> Snapshot manual</button>
+        <button class="btn-outline" onclick="exportPortableData()" title="Genera un archivo que puedes importar en cualquier versión de Voltflow2">📦 Exportar datos portátiles</button>
+        <button class="btn-outline" onclick="openSafetySnapshotsModal()" title="Ver puntos de recuperación automáticos antes de importaciones, restauraciones y sincronizaciones">🛡️ Snapshots de seguridad</button>
+        <button class="btn-outline" onclick="createSafetySnapshot('manual', { download: true })" title="Crea un snapshot ahora y descarga una copia fuera del navegador">⬇ Snapshot manual</button>
         <button class="btn-outline" onclick="showStorageDiagnostics()" title="Muestra la URL y los datos visibles para este navegador">Diagnosticar almacenamiento</button>
         <button class="btn-outline" onclick="showCriticalRescueDiagnostics()" title="Muestra las copias críticas automáticas disponibles">Ver rescates críticos</button>
         <button class="btn-outline" onclick="exportLatestCriticalRescue()" title="Descarga la mejor copia crítica automática">Exportar rescate crítico</button>
         <button class="btn-outline" onclick="openPasteRecoveryModal()" title="Pega un JSON exportado desde otra versión o URL">Pegar backup JSON</button>
         <input type="file" id="import-portable-file" accept=".json" style="display:none" onchange="restoreBackup(event)">
-        <button class="btn-primary" onclick="openImportFromLocalStorage()" title="Lee los datos de Voltflow2 guardados en este navegador" style="display:flex;align-items:center;gap:.4rem">Importar desde versión anterior</button>
-        <button class="btn-outline" onclick="document.getElementById('restore-file').click()">Restaurar backup</button>
-        <button class="btn-outline" onclick="cleanObsoleteLeads()">Limpiar leads obsoletos</button>
+        <button class="btn-primary" onclick="openImportFromLocalStorage()" title="Lee los datos de Voltflow2 guardados en este navegador" style="display:flex;align-items:center;gap:.4rem">📥 Importar desde versión anterior</button>
+        <button class="btn-outline" onclick="document.getElementById('restore-file').click()">📂 Restaurar backup</button>
+        <button class="btn-outline" onclick="cleanObsoleteLeads()">🧹 Limpiar leads obsoletos</button>
         <button class="btn-danger" onclick="clearAllLeads()">Borrar TODOS los leads</button>
         <input type="file" id="restore-file" accept=".json" style="display:none" onchange="restoreBackup(event)">
       </div>
@@ -1782,7 +1783,7 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
 
     <!-- PIN Protection -->
     <div class="glass-panel" style="margin-top:1.5rem">
-      <div class="panel-header"><h3>Protección con PIN</h3></div>
+      <div class="panel-header"><h3>🔒 Protección con PIN</h3></div>
       <p style="color:var(--text-muted);font-size:.85rem;margin:1rem 0">PIN de 4 dígitos para proteger el acceso a Voltflow2. Déjalo vacío para desactivarlo.</p>
       <div style="display:flex;gap:.75rem;align-items:center">
         <input type="password" id="pin-input" maxlength="4" placeholder="4 dígitos" style="width:120px" oninput="this.value=this.value.replace(/\D/g,'')">
@@ -1795,7 +1796,7 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
     <!-- API Error Log -->
     <div class="glass-panel" style="margin-top:1.5rem">
       <div class="panel-header">
-        <h3>Log de errores de API</h3>
+        <h3>📋 Log de errores de API</h3>
         <button class="btn-outline btn-sm" onclick="clearApiLog()">Limpiar</button>
       </div>
       <div id="api-error-log" style="margin-top:.75rem;font-size:.72rem;color:var(--text-dim);max-height:150px;overflow-y:auto;font-family:monospace;background:var(--bg3);border-radius:8px;padding:.75rem"></div>
@@ -1809,7 +1810,7 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
   <div class="modal-box">
     <div class="modal-header">
       <h3 id="modal-lead-title">Detalle del Lead</h3>
-      <button class="btn-icon" onclick="closeLead()">
+      <button class="btn-icon" onclick="closeLead()">✕</button>
     </div>
     <div id="modal-lead-content"></div>
   </div>
@@ -1820,7 +1821,7 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
   <div class="modal-box">
     <div class="modal-header">
       <h3>Nueva Campaña</h3>
-      <button class="btn-icon" onclick="closeCampaignModal()">
+      <button class="btn-icon" onclick="closeCampaignModal()">✕</button>
     </div>
     <div style="padding:1.5rem">
       <div class="input-group" style="margin-bottom:1rem">
@@ -1855,26 +1856,26 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
   <div class="modal-box" style="max-width:700px">
     <div class="modal-header">
       <div style="display:flex;align-items:center;gap:.75rem">
-        <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#5E5CE6,#0A84FF);display:flex;align-items:center;justify-content:center;font-size:1rem">S</div>
+        <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#5E5CE6,#0A84FF);display:flex;align-items:center;justify-content:center;font-size:1rem">✨</div>
         <div>
           <h3 id="ai-modal-title">Generar email con IA</h3>
           <div style="font-size:.72rem;color:var(--text-muted)" id="ai-modal-sub">Analizando reseñas y generando email personalizado...</div>
         </div>
       </div>
-      <button class="btn-icon" onclick="closeAiModal()">
+      <button class="btn-icon" onclick="closeAiModal()">✕</button>
     </div>
 
-    <!-- --  Selector de punto de ataque --  -->
+    <!-- ── Selector de punto de ataque ── -->
     <div id="ai-pain-picker" style="display:none;padding:1.5rem">
       <div style="margin-bottom:1rem">
-        <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.25rem">¿Qué punto débil quieres atacar?</div>
-        <div style="font-size:.75rem;color:var(--text-dim)">Hemos analizado la empresa. Elige el enfoque del email - la IA lo desarrollará en detalle.</div>
+        <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:.25rem">🎯 ¿Qué punto débil quieres atacar?</div>
+        <div style="font-size:.75rem;color:var(--text-dim)">Hemos analizado la empresa. Elige el enfoque del email — la IA lo desarrollará en detalle.</div>
       </div>
       <div id="ai-pain-options" style="display:flex;flex-direction:column;gap:.6rem;margin-bottom:1.25rem"></div>
       <div style="display:flex;gap:.75rem">
         <button onclick="confirmPainAndGenerate()" id="btn-confirm-pain" class="btn-primary" disabled
-          style="font-size:.8rem">Generar email con este enfoque</button>
-        <button onclick="skipPainPicker()" class="btn-outline" style="font-size:.8rem">  Dejar que la IA elija</button>
+          style="font-size:.8rem">✨ Generar email con este enfoque</button>
+        <button onclick="skipPainPicker()" class="btn-outline" style="font-size:.8rem">↩ Dejar que la IA elija</button>
       </div>
     </div>
 
@@ -1895,10 +1896,10 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
       <!-- Reviews insight -->
       <div id="ai-reviews-insight" style="margin-bottom:1.25rem;padding:1rem;background:rgba(94,92,230,0.08);border:1px solid rgba(94,92,230,0.2);border-radius:10px;font-size:.82rem;line-height:1.6"></div>
 
-      <!-- Asunto - 3 opciones -->
+      <!-- Asunto — 3 opciones -->
       <div style="margin-bottom:1rem">
         <label style="font-size:.78rem;color:var(--text-muted);display:block;margin-bottom:.5rem">
-          Elige el asunto - <span style="color:var(--primary)">3 variantes generadas</span>
+          Elige el asunto — <span style="color:var(--primary)">3 variantes generadas</span>
         </label>
         <div id="ai-subjects-list" style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:.5rem"></div>
         <input type="text" id="ai-subject-out" style="font-weight:600;margin-top:.4rem" placeholder="O escribe tu propio asunto...">
@@ -1907,7 +1908,7 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
       <!-- Editor visual con formato -->
       <div style="margin-bottom:.5rem">
         <label style="font-size:.78rem;color:var(--text-muted);display:block;margin-bottom:.5rem">
-          Cuerpo del email - <span style="color:var(--primary)">selecciona texto y usa los botones para formatear</span>
+          Cuerpo del email — <span style="color:var(--primary)">selecciona texto y usa los botones para formatear</span>
         </label>
         <!-- Toolbar de formato -->
         <div class="editor-toolbar">
@@ -1915,9 +1916,9 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
           <button class="editor-tool" onclick="formatText('underline')" title="Subrayado (Ctrl+U)"><u>S</u></button>
           <button class="editor-tool" onclick="formatText('italic')" title="Cursiva (Ctrl+I)"><em>C</em></button>
           <div class="editor-sep"></div>
-          <button class="editor-tool" onclick="clearFormat()" title="Quitar formato"> formato</button>
+          <button class="editor-tool" onclick="clearFormat()" title="Quitar formato">✕ formato</button>
           <div class="editor-sep"></div>
-          <span style="font-size:.7rem;color:var(--text-dim);margin-left:.25rem">Selecciona texto -> aplica formato</span>
+          <span style="font-size:.7rem;color:var(--text-dim);margin-left:.25rem">Selecciona texto → aplica formato</span>
         </div>
         <!-- Editor contenteditable -->
         <div id="ai-body-editor"
@@ -1935,16 +1936,16 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
 
       <!-- Instrucción de pegado -->
       <div style="margin-bottom:1.25rem;padding:.6rem .9rem;background:rgba(16,217,124,0.06);border:1px solid rgba(16,217,124,0.2);border-radius:8px;font-size:.75rem;color:var(--text-muted);line-height:1.5">
-        <strong style="color:var(--success)">Cómo enviar con formato:</strong>
-        Pulsa <strong>"Copiar con formato"</strong> -> abre Gmail/Outlook -> nuevo email -> pega con <strong>Ctrl+V</strong>. El formato (negritas, subrayados) se conserva automáticamente.
+        💡 <strong style="color:var(--success)">Cómo enviar con formato:</strong>
+        Pulsa <strong>"📋 Copiar con formato"</strong> → abre Gmail/Outlook → nuevo email → pega con <strong>Ctrl+V</strong>. El formato (negritas, subrayados) se conserva automáticamente.
       </div>
 
       <div style="display:flex;gap:.75rem;flex-wrap:wrap">
-        <button class="btn-primary" onclick="copyHtmlEmail()" id="btn-copy-html">Copiar con formato</button>
-        <button class="btn-outline" onclick="sendAiEmail()">Enviar sin formato</button>
-        <button class="btn-outline" onclick="regenerateAiEmail()"> º Regenerar</button>
-        <button class="btn-outline" onclick="regenerateSubjectOnly()">Nuevo asunto</button>
-        <button class="btn-outline" onclick="saveAiEmailAsTemplate()">Guardar como plantilla</button>
+        <button class="btn-primary" onclick="copyHtmlEmail()" id="btn-copy-html">📋 Copiar con formato</button>
+        <button class="btn-outline" onclick="sendAiEmail()">✉️ Enviar sin formato</button>
+        <button class="btn-outline" onclick="regenerateAiEmail()">↺ Regenerar</button>
+        <button class="btn-outline" onclick="regenerateSubjectOnly()">🔄 Nuevo asunto</button>
+        <button class="btn-outline" onclick="saveAiEmailAsTemplate()">💾 Guardar como plantilla</button>
         <button class="btn-outline" onclick="closeAiModal()">Cancelar</button>
       </div>
       <!-- Spam check + word count -->
@@ -1954,26 +1955,26 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
       </div>
       <!-- Follow-up suggestion -->
       <div id="followup-suggestion" class="followup-box" style="display:none">
-        <span>x</span>
+        <span>💡</span>
         <span id="followup-text"></span>
       </div>
 
-      <!-- --  Calendario de contactos futuros --  -->
+      <!-- ── Calendario de contactos futuros ── -->
       <div id="contact-calendar-panel" style="display:none;margin-top:1rem">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
           <div style="font-size:.78rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.4rem">
-            <span>Calendario de seguimiento - si no contesta</span>
+            📅 <span>Calendario de seguimiento — si no contesta</span>
           </div>
           <button onclick="document.getElementById('contact-calendar-panel').style.display='none'"
-            style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:.85rem">
+            style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:.85rem">✕</button>
         </div>
         <div id="contact-calendar-list" style="display:flex;flex-direction:column;gap:.5rem"></div>
         <div style="margin-top:.6rem;display:flex;gap:.5rem">
           <button onclick="applyContactCalendar()" class="btn-primary" style="font-size:.75rem;padding:.35rem .8rem">
-            OK Aplicar al lead
+            ✅ Aplicar al lead
           </button>
           <button onclick="regenerateContactCalendar()" class="btn-outline" style="font-size:.75rem;padding:.35rem .8rem">
-            Regenerar
+            🔄 Regenerar
           </button>
         </div>
       </div>
@@ -1990,37 +1991,38 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
   </div>
 </div>
 
-<!-- -- CHAT DE AYUDA - Voltflow2 ASSISTANT -- -->
+<!-- ══ CHAT DE AYUDA — Voltflow2 ASSISTANT ══ -->
 <button id="chat-bubble" onclick="toggleChat()" title="Ayuda con Voltflow2">
+  🤖
   <div class="chat-notif" id="chat-notif"></div>
 </button>
 
 <div id="chat-window">
   <div class="chat-header">
-    <div class="chat-avatar">x</div>
+    <div class="chat-avatar">🤖</div>
     <div class="chat-header-info">
       <strong>Voltflow2 Assistant</strong>
-      <span id="chat-status-label"> Online - Listo para ayudarte</span>
+      <span id="chat-status-label">● Online — Listo para ayudarte</span>
     </div>
-    <button onclick="toggleAgentMode()" id="agent-mode-btn" title="Modo Agente - trabaja por ti"
+    <button onclick="toggleAgentMode()" id="agent-mode-btn" title="Modo Agente — trabaja por ti"
       style="background:none;border:1px solid rgba(99,102,241,.3);border-radius:7px;
       padding:.2rem .55rem;font-size:.7rem;color:var(--text-muted);cursor:pointer;
       margin-right:.25rem;transition:all .2s;position:relative">
-      Agente
+      🤖 Agente
       <span id="agent-queue-badge"></span>
     </button>
-    <button onclick="toggleChat()">
+    <button onclick="toggleChat()">✕</button>
   </div>
 
   <div id="chat-messages"></div>
 
   <div class="chat-suggestions" id="chat-suggestions">
-    <button class="chat-sug" onclick="chatAsk('Dame el briefing del día')">Briefing hoy</button>
-    <button class="chat-sug" onclick="chatExecute('topLeads')">Leads prioritarios</button>
-    <button class="chat-sug" onclick="generateWeeklyPlan()"> Plan semanal</button>
-    <button class="chat-sug" onclick="toggleAgentMode()">Modo agente</button>
-    <button class="chat-sug" onclick="runAutoMaintenance(false)">Limpiar DB</button>
-    <button class="chat-sug" onclick="sendManualAlert('overdue')">Alertar vencidos</button>
+    <button class="chat-sug" onclick="chatAsk('Dame el briefing del día')">📅 Briefing hoy</button>
+    <button class="chat-sug" onclick="chatExecute('topLeads')">🔥 Leads prioritarios</button>
+    <button class="chat-sug" onclick="generateWeeklyPlan()">🗓️ Plan semanal</button>
+    <button class="chat-sug" onclick="toggleAgentMode()">🤖 Modo agente</button>
+    <button class="chat-sug" onclick="runAutoMaintenance(false)">🧹 Limpiar DB</button>
+    <button class="chat-sug" onclick="sendManualAlert('overdue')">📧 Alertar vencidos</button>
   </div>
 
   <div id="chat-command-panel" style="display:none;padding:.65rem .75rem;border-top:1px solid var(--glass-border);background:rgba(255,255,255,.025)">
@@ -2045,10 +2047,10 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
     <button id="chat-mic-btn" onclick="toggleChatVoice()" title="Hablar con el asistente"
       style="width:34px;height:34px;border-radius:8px;flex-shrink:0;background:var(--glass);
       border:1px solid var(--glass-border);cursor:pointer;display:flex;align-items:center;
-      justify-content:center;font-size:.9rem;transition:all .2s;color:var(--text-muted)">
+      justify-content:center;font-size:.9rem;transition:all .2s;color:var(--text-muted)">🎙️</button>
     <textarea id="chat-input" placeholder="Pregunta, habla o di qué mejorar..." rows="1"
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatSend()}"></textarea>
-    <button id="chat-send" onclick="chatSend()">
+    <button id="chat-send" onclick="chatSend()">➤</button>
   </div>
   <!-- Voice indicator bar -->
   <div id="chat-voice-bar" style="display:none;padding:.4rem .9rem;background:rgba(239,68,68,.08);
@@ -2058,7 +2060,7 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
       animation:pulse 1s infinite;display:inline-block"></span>
     <span id="chat-voice-text">Escuchando... habla ahora</span>
     <button onclick="stopChatVoice()" style="margin-left:auto;background:none;border:none;
-      color:var(--danger);cursor:pointer;font-size:.75rem"> Parar</button>
+      color:var(--danger);cursor:pointer;font-size:.75rem">✕ Parar</button>
   </div>
 </div>
 
@@ -2074,8 +2076,8 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
 <div id="objectives-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeObjectivesModal()">
   <div class="modal-box" style="max-width:420px">
     <div class="modal-header">
-      <h3>Objetivos Semanales</h3>
-      <button class="btn-icon" onclick="closeObjectivesModal()">
+      <h3>🎯 Objetivos Semanales</h3>
+      <button class="btn-icon" onclick="closeObjectivesModal()">✕</button>
     </div>
     <div style="padding:1.5rem;display:grid;gap:1rem">
       <div class="input-group">
@@ -2101,37 +2103,37 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
 <!-- TUTORIAL OVERLAY -->
 <div id="tutorial-overlay" style="display:none">
   <div class="tutorial-card">
-    <div id="tutorial-icon" style="font-size:3rem;margin-bottom:1rem">Aviso:</div>
+    <div id="tutorial-icon" style="font-size:3rem;margin-bottom:1rem">⚡</div>
     <h2 id="tutorial-title" style="margin-bottom:.5rem">Bienvenido a Voltflow2</h2>
     <p id="tutorial-body" style="color:var(--text-muted);font-size:.88rem;line-height:1.6;margin-bottom:1.25rem"></p>
     <div class="tutorial-steps-dots" id="tutorial-dots"></div>
     <div style="display:flex;gap:.75rem;justify-content:center">
-      <button class="btn-outline" onclick="prevTutorial()" id="tutorial-prev" style="display:none"><- Anterior</button>
-      <button class="btn-primary" onclick="nextTutorial()" id="tutorial-next">Siguiente -></button>
+      <button class="btn-outline" onclick="prevTutorial()" id="tutorial-prev" style="display:none">← Anterior</button>
+      <button class="btn-primary" onclick="nextTutorial()" id="tutorial-next">Siguiente →</button>
       <button class="btn-outline" onclick="closeTutorial()" id="tutorial-skip" style="font-size:.78rem">Saltar tutorial</button>
     </div>
   </div>
 </div>
 
-<!-- MODAL IMPORTACIN MANUAL ENTRE VERSIONES -->
+<!-- MODAL IMPORTACIÓN MANUAL ENTRE VERSIONES -->
 <div id="import-modal-overlay" onclick="if(event.target===this)closeImportModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:200;align-items:center;justify-content:center;padding:1rem">
   <div style="background:var(--bg2);border:1px solid var(--glass-border);border-radius:18px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,.6)">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.5rem;border-bottom:1px solid var(--glass-border)">
       <div style="display:flex;align-items:center;gap:.75rem">
-        <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--primary),var(--secondary));display:flex;align-items:center;justify-content:center;font-size:1rem">x</div>
+        <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--primary),var(--secondary));display:flex;align-items:center;justify-content:center;font-size:1rem">📥</div>
         <div>
           <div style="font-weight:700;font-size:.95rem">Importar desde versión anterior</div>
           <div style="font-size:.72rem;color:var(--text-muted)">Selecciona cómo quieres traer los datos</div>
         </div>
       </div>
-      <button onclick="closeImportModal()" style="background:none;border:none;color:var(--text-muted);font-size:1.2rem;cursor:pointer;padding:4px 8px;border-radius:6px">
+      <button onclick="closeImportModal()" style="background:none;border:none;color:var(--text-muted);font-size:1.2rem;cursor:pointer;padding:4px 8px;border-radius:6px">✕</button>
     </div>
     <div id="import-modal-content"></div>
   </div>
 </div>
 
 <!-- GLOBAL SEARCH MODAL -->
-<div id="global-search-overlay" style="display:none" onclick="if(event.target===this)closeGlobalSearch()">
+<div id="global-search-overlay" onclick="if(event.target===this)closeGlobalSearch()">
   <div id="global-search-box">
     <div id="global-search-wrap">
       <svg id="global-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -2139,7 +2141,7 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
     </div>
     <div id="global-search-results"></div>
     <div id="global-search-footer">
-      <span><kbd>Anterior / siguiente</kbd> navegar</span>
+      <span><kbd>↑↓</kbd> navegar</span>
       <span><kbd>Enter</kbd> abrir</span>
       <span><kbd>Esc</kbd> cerrar</span>
       <span style="margin-left:auto;opacity:.5">Ctrl+K para abrir</span>
@@ -2153,11 +2155,11 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
 <!-- LEAD DRAWER -->
 <div id="lead-drawer">
   <div class="drawer-header">
-    <button class="drawer-nav-btn" id="drawer-prev" onclick="drawerNav(-1)" title="Lead anterior">Ant.</button>
-    <button class="drawer-nav-btn" id="drawer-next" onclick="drawerNav(1)" title="Lead siguiente">Sig.</button>
+    <button class="drawer-nav-btn" id="drawer-prev" onclick="drawerNav(-1)" title="Lead anterior (↑)">↑</button>
+    <button class="drawer-nav-btn" id="drawer-next" onclick="drawerNav(1)" title="Lead siguiente (↓)">↓</button>
     <span id="drawer-pos" style="font-size:.72rem;color:var(--text-dim);margin-left:.25rem"></span>
     <span id="drawer-company-title" style="font-weight:700;font-size:.9rem;margin-left:.25rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
-    <button onclick="closeDrawer()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.1rem;padding:2px 6px;border-radius:6px" title="Cerrar (Esc)">
+    <button onclick="closeDrawer()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.1rem;padding:2px 6px;border-radius:6px" title="Cerrar (Esc)">✕</button>
   </div>
   <div id="lead-drawer-body"></div>
 </div>
@@ -2167,73 +2169,73 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
 <div id="slash-popup" style="display:none"></div>
 
 
-<!-- -- MEJORA 1: Voice FAB + Modal -- -->
-<button id="voice-fab" onclick="openVoiceModal()" title="Registrar llamada por voz">x}"️</button>
+<!-- ══ MEJORA 1: Voice FAB + Modal ══ -->
+<button id="voice-fab" onclick="openVoiceModal()" title="Registrar llamada por voz 🎙️">🎙️</button>
 
-<div id="voice-modal" style="display:none">
+<div id="voice-modal">
   <div class="voice-box">
-    <div class="voice-orb" id="voice-orb"></div>
+    <div class="voice-orb" id="voice-orb">🎙️</div>
     <h3 style="margin-bottom:.35rem">Registrar llamada por voz</h3>
     <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:.75rem">Habla. Di la empresa, lo que pasó y qué acordasteis. La IA lo convierte en nota estructurada.</p>
     <div class="voice-transcript" id="voice-transcript">Pulsa "Iniciar" y habla...</div>
     <div class="voice-result" id="voice-result"></div>
     <div style="display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap">
-      <button class="btn-primary" id="voice-start-btn" onclick="startVoiceRecording()">Iniciar</button>
-      <button class="btn-outline" id="voice-process-btn" style="display:none" onclick="processVoiceNote()">Procesar con IA</button>
-      <button class="btn-outline" id="voice-save-btn" style="display:none" onclick="saveVoiceNote()">OK Guardar en lead</button>
+      <button class="btn-primary" id="voice-start-btn" onclick="startVoiceRecording()">🎙️ Iniciar</button>
+      <button class="btn-outline" id="voice-process-btn" style="display:none" onclick="processVoiceNote()">✨ Procesar con IA</button>
+      <button class="btn-outline" id="voice-save-btn" style="display:none" onclick="saveVoiceNote()">✅ Guardar en lead</button>
       <button class="btn-outline" onclick="closeVoiceModal()">Cancelar</button>
     </div>
   </div>
 </div>
 
-<!-- -- MEJORA 2: Scan FAB + Modal -- -->
-<button id="scan-fab" onclick="openScanModal()" title="Escanear fachada / cartel">x</button>
+<!-- ══ MEJORA 2: Scan FAB + Modal ══ -->
+<button id="scan-fab" onclick="openScanModal()" title="Escanear fachada / cartel 📸">📸</button>
 
-<div id="scan-modal" style="display:none">
+<div id="scan-modal">
   <div class="scan-box">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
-      <h3>Escanear empresa</h3>
-      <button onclick="closeScanModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.1rem">S"</button>
+      <h3>📸 Escanear empresa</h3>
+      <button onclick="closeScanModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.1rem">✕</button>
     </div>
     <p style="font-size:.78rem;color:var(--text-muted);margin-bottom:.5rem">Fotografía la fachada o el cartel. La IA extrae nombre, sector y crea el lead automáticamente.</p>
     <div class="scan-drop-zone" id="scan-drop-zone" onclick="document.getElementById('scan-file-input').click()">
-      <div style="font-size:2rem;margin-bottom:.5rem">
+      <div style="font-size:2rem;margin-bottom:.5rem">📷</div>
       <div style="font-size:.83rem;color:var(--text-muted)">Toca para abrir cámara o seleccionar foto</div>
     </div>
     <input type="file" id="scan-file-input" accept="image/*" capture="environment" style="display:none" onchange="handleScanFile(this)">
     <img id="scan-preview" alt="preview">
     <div class="scan-result" id="scan-result"></div>
     <div id="scan-actions" style="display:none;margin-top:.75rem;display:none;gap:.6rem;flex-wrap:wrap">
-      <button class="btn-primary" onclick="saveScanLead()">OK Crear lead</button>
+      <button class="btn-primary" onclick="saveScanLead()">✅ Crear lead</button>
       <button class="btn-outline" onclick="closeScanModal()">Cancelar</button>
     </div>
   </div>
 </div>
 
-<!-- -- MEJORA 3: Focus Mode -- -->
-<div id="focus-mode-overlay" style="display:none">
+<!-- ══ MEJORA 3: Focus Mode ══ -->
+<div id="focus-mode-overlay">
   <div class="focus-header">
-    <span style="font-size:1.5rem">Aviso:</span>
+    <span style="font-size:1.5rem">⚡</span>
     <div style="flex:1">
       <h2 style="font-size:1.1rem;margin:0">Modo Enfoque</h2>
       <div style="font-size:.75rem;color:var(--text-muted)" id="focus-subtitle">Los leads que necesitan tu atención ahora</div>
     </div>
-    <button class="btn-outline" onclick="closeFocusMode()" style="white-space:nowrap"> Salir</button>
+    <button class="btn-outline" onclick="closeFocusMode()" style="white-space:nowrap">✕ Salir</button>
   </div>
   <div class="focus-progress"><div class="focus-progress-fill" id="focus-progress-fill" style="width:0%"></div></div>
   <div class="focus-list" id="focus-list"></div>
 </div>
 
-<!-- -- MEJORA 5: Briefing Chat Modal -- -->
-<div id="briefing-modal" style="display:none">
+<!-- ══ MEJORA 5: Briefing Chat Modal ══ -->
+<div id="briefing-modal">
   <div class="briefing-box">
     <div class="briefing-header">
-      <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#5E5CE6,#0A84FF);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">x</div>
+      <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#5E5CE6,#0A84FF);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0">🧠</div>
       <div style="flex:1;min-width:0">
         <h3 style="font-size:.92rem;margin:0" id="briefing-title">Briefing de visita</h3>
         <div style="font-size:.72rem;color:var(--text-muted)" id="briefing-subtitle">Preparándote para la reunión...</div>
       </div>
-      <button onclick="closeBriefingModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.1rem;padding:2px 6px">
+      <button onclick="closeBriefingModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.1rem;padding:2px 6px">✕</button>
     </div>
     <div class="briefing-messages" id="briefing-messages"></div>
     <div class="briefing-input-row">
@@ -2245,25 +2247,25 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
 
 <!-- integrity badge removed -->
 
-<div id="integrity-modal" style="display:none">
+<div id="integrity-modal">
   <div class="integrity-box">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
       <div>
-        <h3 style="font-size:.95rem;margin:0"> Voltflow2 Guardian</h3>
+        <h3 style="font-size:.95rem;margin:0">🛡️ Voltflow2 Guardian</h3>
         <div style="font-size:.72rem;color:var(--text-muted);margin-top:.2rem">Integridad del código verificada en cada carga</div>
       </div>
-      <button onclick="closeIntegrityModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.1rem">
+      <button onclick="closeIntegrityModal()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.1rem">✕</button>
     </div>
     <div id="integrity-report"></div>
     <div style="margin-top:1rem;font-size:.7rem;color:var(--text-dim);border-top:1px solid var(--glass-border);padding-top:.6rem">
-      Versión: <strong id="integrity-version">-</strong> &nbsp;·&nbsp; 
-      Funciones: <strong id="integrity-funccount">-</strong> &nbsp;·&nbsp;
-      Aviso:ltima verificación: <strong id="integrity-timestamp">-</strong>
+      Versión: <strong id="integrity-version">—</strong> &nbsp;·&nbsp; 
+      Funciones: <strong id="integrity-funccount">—</strong> &nbsp;·&nbsp;
+      Última verificación: <strong id="integrity-timestamp">—</strong>
     </div>
   </div>
 </div>
 
-<!-- -- REPLY MODAL ---------------------------------------------- -->
+<!-- ══ REPLY MODAL ══════════════════════════════════════════════ -->
 <div id="reply-modal-overlay" onclick="if(event.target===this)closeReplyModal()"
   style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.7);
   backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:1rem">
@@ -2278,14 +2280,14 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
       <div style="display:flex;align-items:center;gap:.75rem">
         <div style="width:34px;height:34px;border-radius:9px;
           background:linear-gradient(135deg,#6366f1,#8b5cf6);
-          display:flex;align-items:center;justify-content:center;font-size:1rem">S</div>
+          display:flex;align-items:center;justify-content:center;font-size:1rem">✨</div>
         <div>
           <div id="reply-modal-title" style="font-weight:700;font-size:.95rem">Contestar con IA</div>
           <div id="reply-modal-sub" style="font-size:.72rem;color:var(--text-muted)">Generando respuesta personalizada...</div>
         </div>
       </div>
       <button onclick="closeReplyModal()" style="background:none;border:none;
-        color:var(--text-muted);font-size:1.2rem;cursor:pointer;padding:4px 8px;border-radius:6px">
+        color:var(--text-muted);font-size:1.2rem;cursor:pointer;padding:4px 8px;border-radius:6px">✕</button>
     </div>
 
     <!-- Email recibido (contexto) -->
@@ -2296,7 +2298,7 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
 
     <!-- Loading -->
     <div id="reply-loading" style="padding:2rem;text-align:center">
-      <div style="font-size:2rem;margin-bottom:.5rem;animation:spin 1s linear infinite">Aviso:"️</div>
+      <div style="font-size:2rem;margin-bottom:.5rem;animation:spin 1s linear infinite">⚙️</div>
       <div id="reply-loading-text" style="font-size:.82rem;color:var(--text-muted)">Analizando el email recibido...</div>
     </div>
 
@@ -2328,17 +2330,17 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
       <!-- Tone selector -->
       <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem">
         <span style="font-size:.72rem;color:var(--text-dim);align-self:center">Tono:</span>
-        <button class="reply-tone-btn active" onclick="setReplyTone(this,'profesional')" data-tone="profesional">Profesional</button>
-        <button class="reply-tone-btn" onclick="setReplyTone(this,'cercano')" data-tone="cercano">Cercano</button>
-        <button class="reply-tone-btn" onclick="setReplyTone(this,'urgente')" data-tone="urgente">Aviso: Urgente</button>
-        <button class="reply-tone-btn" onclick="setReplyTone(this,'conciso')" data-tone="conciso"> Muy breve</button>
+        <button class="reply-tone-btn active" onclick="setReplyTone(this,'profesional')" data-tone="profesional">💼 Profesional</button>
+        <button class="reply-tone-btn" onclick="setReplyTone(this,'cercano')" data-tone="cercano">🤝 Cercano</button>
+        <button class="reply-tone-btn" onclick="setReplyTone(this,'urgente')" data-tone="urgente">⚡ Urgente</button>
+        <button class="reply-tone-btn" onclick="setReplyTone(this,'conciso')" data-tone="conciso">✂️ Muy breve</button>
       </div>
 
       <!-- Actions -->
       <div style="display:flex;gap:.65rem;flex-wrap:wrap">
-        <button class="btn-primary" style="flex:1;min-width:120px" onclick="sendReplyEmail()">Abrir en email</button>
-        <button class="btn-outline" onclick="regenerateReply()" style="min-width:80px">Regenerar</button>
-        <button class="btn-outline" onclick="copyReplyToClipboard()" style="min-width:80px">Copiar</button>
+        <button class="btn-primary" style="flex:1;min-width:120px" onclick="sendReplyEmail()">📧 Abrir en email</button>
+        <button class="btn-outline" onclick="regenerateReply()" style="min-width:80px">🔄 Regenerar</button>
+        <button class="btn-outline" onclick="copyReplyToClipboard()" style="min-width:80px">📋 Copiar</button>
       </div>
     </div>
 
@@ -2348,10 +2350,10 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
 </div>
 
 
-<!-- -------------------------------------------------------
-     MODULOS JS - orden de dependencia
-     v2.7.7 (Production Ready)
-------------------------------------------------------- -->
+<!-- ═══════════════════════════════════════════════════════
+     MÓDULOS JS — orden de dependencia
+     v2.7.4 (Production Ready)
+═══════════════════════════════════════════════════════ -->
 <script>
   (function installBootWatchdog() {
     var bootErrors = [];
@@ -2394,24 +2396,25 @@ Y cruzará los remitentes con tus leads para actualizar el CRM."
     }, 8000);
   })();
 </script>
-<script src="modules/state.js?v=2026.06.03.0600" charset="UTF-8"></script>
-<script src="modules/email-templates.js?v=2026.06.03.0600" charset="UTF-8"></script>
-<script src="modules/scoring.js?v=2026.06.03.0600" charset="UTF-8"></script>
-<script src="modules/init.js?v=2026.06.03.0600" charset="UTF-8"></script>
-<script src="modules/search.js?v=2026.06.03.0600" charset="UTF-8"></script>
-<script src="modules/leads.js?v=2026.06.03.0600" charset="UTF-8"></script>
-<script src="modules/dashboard.js?v=2026.06.03.0600" charset="UTF-8"></script>
-<script src="modules/ai-email.js?v=2026.06.03.0600" charset="UTF-8"></script>
-<script src="modules/chat.js?v=2026.06.03.0600" charset="UTF-8"></script>
-<script src="modules/ui.js?v=2026.06.03.0600" charset="UTF-8"></script>
-<script src="modules/inbox.js?v=2026.06.03.0600" charset="UTF-8"></script>
-<script src="modules/ai-router.js?v=2026.06.03.0600" charset="UTF-8"></script>
-<script src="modules/coverage.js?v=2026.06.03.0600" charset="UTF-8"></script>
-<script src="modules/misc.js?v=2026.06.03.0600" charset="UTF-8"></script>
-<script src="modules/smart-import.js?v=2026.06.03.0600" charset="UTF-8"></script>
-<script src="modules/disk-backup.js?v=2026.06.03.0600" charset="UTF-8"></script>
-<script src="modules/workflow.js?v=2026.06.03.0600" charset="UTF-8"></script>
-<script src="modules/help-system.js?v=2026.06.03.0600" charset="UTF-8"></script>
+<script src="modules/state.js?v=2026.06.03.0300" charset="UTF-8"></script>
+<script src="modules/email-templates.js?v=2026.06.03.0300" charset="UTF-8"></script>
+<script src="modules/scoring.js?v=2026.06.03.0300" charset="UTF-8"></script>
+<script src="modules/init.js?v=2026.06.03.0300" charset="UTF-8"></script>
+<script src="modules/search.js?v=2026.06.03.0300" charset="UTF-8"></script>
+<script src="modules/leads.js?v=2026.06.03.0300" charset="UTF-8"></script>
+<script src="modules/dashboard.js?v=2026.06.03.0300" charset="UTF-8"></script>
+<script src="modules/ai-email.js?v=2026.06.03.0300" charset="UTF-8"></script>
+<script src="modules/chat.js?v=2026.06.03.0300" charset="UTF-8"></script>
+<script src="modules/ui.js?v=2026.06.03.0300" charset="UTF-8"></script>
+<script src="modules/inbox.js?v=2026.06.03.0300" charset="UTF-8"></script>
+<script src="modules/ai-router.js?v=2026.06.03.0300" charset="UTF-8"></script>
+<script src="modules/coverage.js?v=2026.06.03.0300" charset="UTF-8"></script>
+<script src="modules/misc.js?v=2026.06.03.0300" charset="UTF-8"></script>
+<script src="modules/smart-import.js?v=2026.06.03.0300" charset="UTF-8"></script>
+<script src="modules/disk-backup.js?v=2026.06.03.0300" charset="UTF-8"></script>
+<script src="modules/workflow.js?v=2026.06.03.0300" charset="UTF-8"></script>
+<script src="modules/help-system.js?v=2026.06.03.0300" charset="UTF-8"></script>
 
 </body>
 </html>
+

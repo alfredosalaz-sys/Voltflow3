@@ -5,7 +5,7 @@
   if (window.__gordiHelpSystemBooted) return;
   window.__gordiHelpSystemBooted = true;
 
-  const HELP_BUILD = window.GORDI_APP_BUILD || '2026.06.02.2400';
+  const HELP_BUILD = window.GORDI_APP_BUILD || '2026.06.03.0600';
   const COVERAGE_TOUR_KEY = 'gordi_coverage_update_tour';
   const UPDATE_TOUR_KEY = 'gordi_professional_update_tour';
   const MANUAL_STATE_KEY = 'gordi_manual_state';
@@ -757,10 +757,11 @@ MANUAL OPERATIVO ACTUAL DE LA APP, BUILD ${HELP_BUILD}:
     try {
       if (typeof VOLTFLOW_VERSION !== 'undefined' && VOLTFLOW_VERSION) return VOLTFLOW_VERSION;
     } catch {}
-    return '2.7.1';
+    return '2.7.7';
   }
 
   function renderHelpSystem() {
+    if (document.hidden) return;
     addHelpToStaticUi();
     addHelpToDynamicUi();
     installAssistantKnowledge();
@@ -780,24 +781,25 @@ MANUAL OPERATIVO ACTUAL DE LA APP, BUILD ${HELP_BUILD}:
     const target = document.getElementById('app-content') || document.body;
     if (!target) return;
     helpObserver = new MutationObserver(mutations => {
+      if (document.hidden || activeTour) return;
       if (mutations.some(mutation => mutation.addedNodes && mutation.addedNodes.length)) {
-        scheduleHelpRender(120);
+        scheduleHelpRender(450);
       }
     });
-    helpObserver.observe(target, { childList: true, subtree: true });
+    helpObserver.observe(target, { childList: true, subtree: false });
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) scheduleHelpRender(120);
+      if (!document.hidden) scheduleHelpRender(400);
     });
   }
 
   function bootHelp() {
-    renderHelpSystem();
-    installHelpObserver();
-    maybeStartUpdateTour();
-    maybeStartCoverageTour();
+    scheduleHelpRender(1400);
+    setTimeout(installHelpObserver, 5000);
+    setTimeout(maybeStartUpdateTour, 7000);
+    setTimeout(maybeStartCoverageTour, 10000);
     setInterval(() => {
-      if (!document.hidden) scheduleHelpRender(0);
-    }, 8000);
+      if (!document.hidden && document.getElementById('help-popover')) scheduleHelpRender(0);
+    }, 60000);
     document.addEventListener('click', event => {
       const pop = document.getElementById('help-popover');
       if (!pop) return;
@@ -824,3 +826,4 @@ MANUAL OPERATIVO ACTUAL DE LA APP, BUILD ${HELP_BUILD}:
   window.snoozeUpdateTour = snoozeUpdateTour;
   window.openAppManual = openAppManual;
 })();
+
