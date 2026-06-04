@@ -1,6 +1,6 @@
 {
-  "version": "2.7.7",
-  "build": "2026.06.03.0600",
+  "version": "2.7.8",
+  "build": "2026.06.04.0100",
   "date": "2026-06-03",
   "changelog": [
     {
@@ -85,6 +85,13 @@
     }
   ],
   "history": [
+    {
+      "version": "2.7.8",
+      "build": "2026.06.04.0100",
+      "date": "2026-06-04",
+      "title": "Arranque seguro en navegadores con muchos datos",
+      "description": "Se difieren snapshots y backups pesados, se evita renderizar Cobertura al abrir Dashboard y se a?ade un control de calidad para impedir textos visibles con prefijos corruptos."
+    },
     {
       "version": "2.7.7",
       "build": "2026.06.03.0600",

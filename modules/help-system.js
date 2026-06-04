@@ -5,7 +5,7 @@
   if (window.__gordiHelpSystemBooted) return;
   window.__gordiHelpSystemBooted = true;
 
-  const HELP_BUILD = window.GORDI_APP_BUILD || '2026.06.03.0600';
+  const HELP_BUILD = window.GORDI_APP_BUILD || '2026.06.04.0100';
   const COVERAGE_TOUR_KEY = 'gordi_coverage_update_tour';
   const UPDATE_TOUR_KEY = 'gordi_professional_update_tour';
   const MANUAL_STATE_KEY = 'gordi_manual_state';
@@ -757,7 +757,7 @@ MANUAL OPERATIVO ACTUAL DE LA APP, BUILD ${HELP_BUILD}:
     try {
       if (typeof VOLTFLOW_VERSION !== 'undefined' && VOLTFLOW_VERSION) return VOLTFLOW_VERSION;
     } catch {}
-    return '2.7.7';
+    return '2.7.8';
   }
 
   function renderHelpSystem() {

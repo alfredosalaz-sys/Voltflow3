@@ -178,6 +178,12 @@ function leadMatchesCoverageCell(lead, location, sector) {
 
 function getCoverageLeadIndex() {
   const source = Array.isArray(window.leads) ? window.leads : (typeof leads !== 'undefined' ? leads : []);
+  const now = Date.now();
+  if (_coverageLeadIndexCache?.source === source
+    && _coverageLeadIndexCache?.length === source.length
+    && now - (_coverageLeadIndexCache.at || 0) < 5000) {
+    return _coverageLeadIndexCache.index;
+  }
   const signature = `${source.length}:${source.map(l => `${l.id || l.email || l.company || l.name || ''}:${l.status || ''}:${l.archived ? 1 : 0}:${l.coverageLocation || ''}:${l.coverageSector || l.segment || ''}`).join('|')}`;
   if (_coverageLeadIndexCache?.signature === signature) return _coverageLeadIndexCache.index;
   const index = new Map();
@@ -197,7 +203,7 @@ function getCoverageLeadIndex() {
     add(lead.coverageLocation, lead.coverageSector || lead.segment, lead);
     if (lead.coverageSector && lead.segment && lead.coverageSector !== lead.segment) add(lead.coverageLocation, lead.segment, lead);
   });
-  _coverageLeadIndexCache = { signature, index };
+  _coverageLeadIndexCache = { signature, index, source, length: source.length, at: now };
   return index;
 }
 
@@ -949,6 +955,7 @@ function renderCoverageMatrix(model, cells) {
       <button class="btn-primary btn-sm" onclick="showView('planner')">Ir a Buscar</button>
     </div>`;
   }
+  const cellByKey = new Map(cells.map(cell => [coverageKey(cell.location, cell.sector), cell]));
   return `<div class="coverage-matrix-wrap">
     <table class="coverage-matrix">
       <thead><tr><th>CP/Zona</th>${model.sectors.map(s => {
@@ -964,7 +971,7 @@ function renderCoverageMatrix(model, cells) {
         <tr>
           <th>${renderCoverageLocationHeader(location, model.sectors, cells)}</th>
           ${model.sectors.map(sector => {
-            const cell = cells.find(c => c.location === location && c.sector === sector);
+            const cell = cellByKey.get(coverageKey(location, sector));
             if (!cell) return '<td><div class="coverage-cell coverage-filtered"><small>Filtro</small></div></td>';
             const meta = coverageStatusMeta(cell.status);
             const e = cell.entry;
@@ -2089,5 +2096,8 @@ document.addEventListener('DOMContentLoaded', () => {
     showView._coverageFlowWrapped = true;
   }
   renderCoverageFlowBar();
-  setTimeout(renderCoverage, 900);
+  setTimeout(() => {
+    const view = document.getElementById('coverage-view');
+    if (view && view.classList.contains('active')) renderCoverage();
+  }, 900);
 });

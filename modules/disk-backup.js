@@ -100,11 +100,6 @@
       appVersion: typeof VOLTFLOW_VERSION !== 'undefined' ? VOLTFLOW_VERSION : '',
       build: window.GORDI_APP_BUILD || '',
       origin: location.href,
-      leads: Array.isArray(window.leads) ? window.leads : parseArray('gordi_leads'),
-      emailHistory: Array.isArray(window.emailHistory) ? window.emailHistory : parseArray('gordi_email_history'),
-      campaigns: Array.isArray(window.campaigns) ? window.campaigns : parseArray('gordi_campaigns'),
-      objectives: typeof window.objectives !== 'undefined' ? window.objectives : parseArray('gordi_objectives'),
-      templates: typeof window.emailTemplates !== 'undefined' ? window.emailTemplates : null,
       portableSnapshot: snapshot,
       integrity: summary
     };
@@ -274,9 +269,18 @@
   window.maybeCreateDailyDiskBackup = maybeCreateDailyDiskBackup;
   window.renderDiskBackupStatus = renderDiskBackupStatus;
 
+  function scheduleDailyDiskBackup() {
+    const run = () => maybeCreateDailyDiskBackup();
+    if ('requestIdleCallback' in window) {
+      setTimeout(() => requestIdleCallback(run, { timeout: 60000 }), 30000);
+    } else {
+      setTimeout(run, 45000);
+    }
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => setTimeout(maybeCreateDailyDiskBackup, 2600));
+    document.addEventListener('DOMContentLoaded', scheduleDailyDiskBackup);
   } else {
-    setTimeout(maybeCreateDailyDiskBackup, 2600);
+    scheduleDailyDiskBackup();
   }
 })();

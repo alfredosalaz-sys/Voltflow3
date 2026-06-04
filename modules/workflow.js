@@ -3,7 +3,7 @@
 (function () {
   'use strict';
 
-  const BUILD = '2026.06.03.0600';
+  const BUILD = '2026.06.04.0100';
   const RESTORE_KEY = 'gordi_workflow_restore_points';
   const AUDIT_KEY = 'gordi_workflow_audit_log';
   const MAX_RESTORE_POINTS = 8;
@@ -133,15 +133,18 @@
       delete snapshot[RESTORE_KEY];
       delete snapshot[AUDIT_KEY];
       if (typeof createSafetySnapshot === 'function') {
-        try { createSafetySnapshot(`workflow_${reason || 'auto'}`, { throttleMs: 0 }); } catch {}
+        try { createSafetySnapshot(`workflow_${reason || 'auto'}`, { throttleMs: 0, maxBytes: 1200000 }); } catch {}
       }
+      const summary = typeof getSnapshotSummary === 'function' ? getSnapshotSummary(snapshot) : dataSummary();
+      const storeSnapshot = !summary.bytes || summary.bytes <= 1200000;
       const points = readJson(RESTORE_KEY, []);
       const point = {
         id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         reason: reason || 'auto',
         at: new Date().toISOString(),
-        summary: typeof getSnapshotSummary === 'function' ? getSnapshotSummary(snapshot) : dataSummary(),
-        snapshot
+        summary,
+        snapshot: storeSnapshot ? snapshot : null,
+        skippedSnapshot: storeSnapshot ? false : 'too_large_for_local_storage'
       };
       points.unshift(point);
       writeJson(RESTORE_KEY, points.slice(0, MAX_RESTORE_POINTS));

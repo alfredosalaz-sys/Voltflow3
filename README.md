@@ -22,7 +22,7 @@ Tambien se puede abrir la raiz del proyecto:
 index.html
 ```
 
-`index.html` redirige automaticamente a `app.html?build=2026.06.03.0600` para evitar que GitHub o el navegador muestren una portada antigua.
+`index.html` redirige automaticamente a `app.html?build=2026.06.04.0100` para evitar que GitHub o el navegador muestren una portada antigua.
 
 ## Actualizar Desde GitHub Sin Perder Datos
 
@@ -37,7 +37,7 @@ La app conserva leads, scraping, seguimiento, cobertura, campanas, memoria comer
 La version actual usa un identificador unico de build:
 
 ```text
-2026.06.03.0600
+2026.06.04.0100
 ```
 
 Ese identificador se aplica a `app.html`, `version.json`, `main.css` y todos los modulos JavaScript. Cuando el usuario abre la version actualizada, el navegador pide los archivos como recursos nuevos y no reutiliza los antiguos de cache.

@@ -77,8 +77,8 @@ Reglas:
 La version funcional actual usa:
 
 ```text
-version: 2.7.7
-build: 2026.06.03.0600
+version: 2.7.8
+build: 2026.06.04.0100
 ```
 
 Cada publicacion real debe mantener alineados:
@@ -93,8 +93,8 @@ Cada publicacion real debe mantener alineados:
 Ejemplo correcto:
 
 ```html
-<link rel="stylesheet" href="styles/main.css?v=2026.06.03.0600">
-<script src="modules/search.js?v=2026.06.03.0600"></script>
+<link rel="stylesheet" href="styles/main.css?v=2026.06.04.0100">
+<script src="modules/search.js?v=2026.06.04.0100"></script>
 ```
 
 Regla obligatoria:

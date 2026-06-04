@@ -8,8 +8,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (autoRescued) loadAllData();
   const recoverySummary = getLocalRecoverySummary();
   runIdleStartupTask('critical-rescue-snapshot', () => {
-    createCriticalRescueSnapshot(`startup_${VOLTFLOW_VERSION}`, { throttleMs: 12 * 60 * 60 * 1000 });
-  }, 2400);
+    createCriticalRescueSnapshot(`startup_${VOLTFLOW_VERSION}`, {
+      throttleMs: 12 * 60 * 60 * 1000,
+      maxBytes: 1200000
+    });
+  }, 9000);
 
   updateDate();
   runStartupTask('dashboard-visible', () => {
@@ -94,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (scale) setFontSize(scale, true);
 
   // Auto backup weekly
-  runIdleStartupTask('weekly-backup', () => autoWeeklyBackup(), 2600);
+  runIdleStartupTask('weekly-backup', () => autoWeeklyBackup(), 12000);
 
   // Purgar cachés de enriquecimiento caducadas (>7 días)
   runIdleStartupTask('purge-stale-caches', () => purgeStaleCaches(), 3200);
@@ -149,7 +152,7 @@ function runIdleStartupTask(name, fn, delay) {
 // Todas las versiones de Voltflow comparten el mismo localStorage en file://
 // Al arrancar por primera vez esta versión, se vuelcan todos los datos automáticamente.
 
-let VOLTFLOW_VERSION = '2.7.7'; // Fallback
+let VOLTFLOW_VERSION = '2.7.8'; // Fallback
 let VOLTFLOW_CHANGELOG = [];
 
 // ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ 
@@ -258,7 +261,8 @@ const VOLTFLOW_SNAPSHOT_EXCLUDED_KEYS = new Set([
   'gordi_auto_backup'
 ]);
 
-function exportDataSnapshot() {
+function exportDataSnapshot(options = {}) {
+  const includeCaches = options.includeCaches === true;
   const snapshot = { _voltflow_version: VOLTFLOW_VERSION, _exported: new Date().toISOString() };
   for (const key of VOLTFLOW_DATA_KEYS) {
     if (VOLTFLOW_SNAPSHOT_EXCLUDED_KEYS.has(key)) continue;
@@ -268,7 +272,7 @@ function exportDataSnapshot() {
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
     if (!k || VOLTFLOW_SNAPSHOT_EXCLUDED_KEYS.has(k)) continue;
-    if (k && k.startsWith('gordi_ecache_')) snapshot[k] = localStorage.getItem(k);
+    if (includeCaches && k && k.startsWith('gordi_ecache_')) snapshot[k] = localStorage.getItem(k);
     if (k && k.startsWith('gordi_') && snapshot[k] === undefined) snapshot[k] = localStorage.getItem(k);
     if (k && k.startsWith('voltium_') && snapshot[k] === undefined) snapshot[k] = localStorage.getItem(k);
   }
@@ -286,13 +290,16 @@ function parseSnapshotArray(snapshot, key) {
 
 function getSnapshotSummary(snapshot = exportDataSnapshot()) {
   const localKeys = Object.keys(snapshot || {}).filter(key => key.startsWith('gordi_'));
+  const bytes = Object.entries(snapshot || {}).reduce((sum, [key, value]) => {
+    return sum + String(key).length + String(value == null ? '' : value).length;
+  }, 0);
   return {
     leads: parseSnapshotArray(snapshot, 'gordi_leads').length,
     emails: parseSnapshotArray(snapshot, 'gordi_email_history').length,
     campaigns: parseSnapshotArray(snapshot, 'gordi_campaigns').length,
     searches: parseSnapshotArray(snapshot, 'gordi_search_history').length + parseSnapshotArray(snapshot, 'gordi_saved_searches').length,
     keys: localKeys.length,
-    bytes: JSON.stringify(snapshot || {}).length
+    bytes
   };
 }
 
@@ -366,13 +373,16 @@ function createSafetySnapshot(reason = 'manual', options = {}) {
     const snapshot = exportDataSnapshot();
     const summary = getSnapshotSummary(snapshot);
     if (!summary.keys) return null;
+    const maxBytes = options.maxBytes || 1200000;
+    const storeSnapshot = options.download || summary.bytes <= maxBytes;
 
     const item = {
       id: `snap_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       date: new Date().toISOString(),
       reason,
       summary,
-      snapshot
+      snapshot: storeSnapshot ? snapshot : null,
+      skippedSnapshot: storeSnapshot ? false : 'too_large_for_local_storage'
     };
 
     let items = [item, ...readSafetySnapshots()].slice(0, VOLTFLOW_MAX_SAFETY_SNAPSHOTS);
@@ -420,6 +430,16 @@ function createCriticalRescueSnapshot(reason = 'auto', options = {}) {
 
     const snapshot = exportDataSnapshot();
     const summary = getSnapshotSummary(snapshot);
+    const maxBytes = options.maxBytes || 1200000;
+    if (summary.bytes > maxBytes) {
+      localStorage.setItem('_voltflow_last_large_snapshot_skip', JSON.stringify({
+        date: new Date(now).toISOString(),
+        reason,
+        bytes: summary.bytes,
+        maxBytes
+      }));
+      return null;
+    }
     const hasApiKeys = ['gordi_api_key','gordi_hunter_key','gordi_apollo_key','gordi_gemini_key','gordi_claude_key','gordi_groq_key','gordi_openrouter_key']
       .some(key => !!snapshot[key]);
     if (!summary.keys || (!summary.leads && !summary.emails && !summary.campaigns && !summary.searches && !hasApiKeys)) return null;

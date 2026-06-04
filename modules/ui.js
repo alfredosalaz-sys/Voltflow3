@@ -1023,7 +1023,7 @@ function autoWeeklyBackup() {
     localStorage.setItem('gordi_last_backup', now.toString());
     if (leads.length > 0) {
       if (typeof createSafetySnapshot === 'function') {
-        const item = createSafetySnapshot('auto_weekly');
+        const item = createSafetySnapshot('auto_weekly', { maxBytes: 1200000 });
         if (item) localStorage.setItem('gordi_auto_backup', JSON.stringify({ version:'2.0', date:item.date, snapshotId:item.id, summary:item.summary }));
       } else {
         const data = { version:'2.0', date:new Date().toISOString(), leads, emailHistory, campaigns };
