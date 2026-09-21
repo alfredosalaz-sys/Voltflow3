@@ -152,7 +152,7 @@ function runIdleStartupTask(name, fn, delay) {
 // Todas las versiones de Voltflow comparten el mismo localStorage en file://
 // Al arrancar por primera vez esta versión, se vuelcan todos los datos automáticamente.
 
-let VOLTFLOW_VERSION = '2.7.8'; // Fallback
+let VOLTFLOW_VERSION = '2.7.9'; // Fallback
 let VOLTFLOW_CHANGELOG = [];
 
 // ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ 

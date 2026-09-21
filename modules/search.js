@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // MOTOR DE BÚSQUEDA — 3 CAPAS + SCRAPING AVANZADO
 // Capa 1: Google Places API  -> nombre, dirección, rating, web, teléfono, horario
 // Capa 2: Web Scraping PRO   -> emails, redes, decisor, descripción, JSON-LD, Schema.org
@@ -1107,24 +1107,72 @@ function getCityDistricts(locationStr) {
 }
 
 // ─── HELPER CENTRALIZADO: locationBias para Google Places API v3 ──────────────
-// IMPORTANTE: La Places API v3 (Place.searchByText) NO acepta el formato
-// { circle: { center, radius } } — solo acepta un bounding box rectangular.
-// Esta función es el ÚNICO lugar donde se construye locationBias.
-// Si Google cambia el formato en el futuro, solo hay que tocar AQUÍ.
+// La API JS actual acepta CircleLiteral como locationBias. Usar circulo evita
+// sesgos demasiado estrechos en codigos postales y cambios de forma de barrios.
+// Esta funcion es el unico lugar donde se construye locationBias.
+// Si Google cambia el formato en el futuro, solo hay que tocar AQUI.
 //
 // @param {number} lat       - Latitud del centro
 // @param {number} lng       - Longitud del centro
 // @param {number} radiusM   - Radio en METROS
-// @returns {Object}         - Bounding box { south, west, north, east }
+// @returns {Object}         - CircleLiteral { center, radius }
 function buildLocationBias(lat, lng, radiusM) {
-  const latDelta = radiusM / 111320;
-  const lngDelta = radiusM / (111320 * Math.cos(lat * Math.PI / 180));
+  const safeRadius = Math.max(500, Math.min(50000, Number(radiusM) || 10000));
   return {
-    south: lat - latDelta,
-    west:  lng - lngDelta,
-    north: lat + latDelta,
-    east:  lng + lngDelta,
+    center: { lat, lng },
+    radius: safeRadius,
   };
+}
+
+function formatPlacesLocationLabel(location = '') {
+  const value = String(location || '').trim();
+  if (!value) return '';
+  if (/españa|spain/i.test(value)) return value;
+  if (/^\d{5}$/.test(value)) return `${value}, España`;
+  return `${value}, España`;
+}
+
+function buildPlacesTextQueries(query, point, location) {
+  const pointLabel = point?.label || location;
+  const labels = uniqueList([
+    formatPlacesLocationLabel(pointLabel),
+    pointLabel,
+    formatPlacesLocationLabel(location),
+  ]);
+  return labels.map(label => label ? `${query} en ${label}` : query);
+}
+
+let _lastPlacesZeroDiagnosticAt = 0;
+async function diagnosePlacesZeroResults(Place, searchedLocation) {
+  const now = Date.now();
+  if (now - _lastPlacesZeroDiagnosticAt < 60000) return;
+  _lastPlacesZeroDiagnosticAt = now;
+
+  const origin = (() => {
+    try { return window.location.origin || window.location.href.split('/').slice(0, 3).join('/'); }
+    catch { return 'origen desconocido'; }
+  })();
+
+  logEnrich(`Diagnostico Places: comprobando si la API responde desde ${origin}...`, 'warn');
+  try {
+    const res = await Place.searchByText({
+      textQuery: 'clinica dental en Madrid, España',
+      fields: ['displayName', 'id', 'location'],
+      language: 'es',
+      region: 'es',
+      maxResultCount: 3,
+      pureServiceAreaBusinessesIncluded: true,
+    });
+    const count = res?.places?.length || 0;
+    if (count > 0) {
+      logEnrich(`Diagnostico Places OK: la API responde (${count} resultados de control). Si tu busqueda da 0, prueba mas radio, otro CP/zona o un sector mas amplio.`, 'ok');
+    } else {
+      logEnrich('Diagnostico Places: la API no devolvio ni resultados de control. Revisa Places API (New), facturacion, cuota y restricciones HTTP referrer de la key.', 'err');
+    }
+  } catch (err) {
+    const msg = err?.message || String(err);
+    logEnrich(`Diagnostico Places fallo: ${msg}. Revisa que la key permita este dominio y tenga Maps JavaScript API + Places API (New).`, 'err');
+  }
 }
 
 // Genera una cuadrícula de puntos dentro del radio dado (en km)
@@ -1314,10 +1362,9 @@ async function fetchPlaces(segment, location, maxResults, opts = {}) {
         if (!exhaustive && allPlaces.length >= effectiveMax) break;
         queryAttempts++;
         try {
+          const textQueries = buildPlacesTextQueries(query, point, location);
           const request = {
-            textQuery: point.lat
-              ? `${query} en ${point.label || location}`   // Incluir ubicación siempre, aunque haya locationBias
-              : `${query} en ${point.label || location}`,
+            textQuery: textQueries[0],
             fields: [
               'displayName','formattedAddress','rating','websiteURI','id',
               'nationalPhoneNumber','internationalPhoneNumber',
@@ -1327,6 +1374,7 @@ async function fetchPlaces(segment, location, maxResults, opts = {}) {
             language: 'es',
             region: 'es',
             maxResultCount: 20, // Máximo que permite la API por llamada
+            pureServiceAreaBusinessesIncluded: true,
           };
 
           // Añadir bias geográfico — usar SIEMPRE buildLocationBias(), nunca construir aquí
@@ -1335,8 +1383,19 @@ async function fetchPlaces(segment, location, maxResults, opts = {}) {
             request.locationBias = buildLocationBias(point.lat, point.lng, cellRadiusM);
           }
 
-          const { places } = await Place.searchByText(request);
-          if (!places?.length) continue;
+          let places = [];
+          for (let tqIndex = 0; tqIndex < textQueries.length; tqIndex++) {
+            const retryRequest = { ...request, textQuery: textQueries[tqIndex] };
+            if (tqIndex > 0) delete retryRequest.locationBias;
+            const res = await Place.searchByText(retryRequest);
+            places = res?.places || [];
+            if (places.length) {
+              if (tqIndex > 0) logEnrich(`  Fallback Places OK: "${textQueries[tqIndex]}"`, 'ok');
+              break;
+            }
+            await sleep(120);
+          }
+          if (!places.length) continue;
 
           // ── FILTRO DE EXCLUSIÓN: tipos de negocio no deseados ─────────
           // Se aplica ANTES de añadir al resultado para no contaminar el pool.
@@ -1403,6 +1462,7 @@ async function fetchPlaces(segment, location, maxResults, opts = {}) {
     }
   }
 
+  if (!allPlaces.length) await diagnosePlacesZeroResults(Place, location);
   if (!allPlaces.length && failedQueries) {
     logEnrich(`Places no produjo resultados. Fallaron ${failedQueries}/${queryAttempts} consultas; ultimo error: ${lastQueryError || 'sin detalle'}. Revisa cuota/API key o prueba otra zona.`, 'err');
   } else if (!allPlaces.length) {
@@ -5305,7 +5365,7 @@ function loadGoogleMapsScript(apiKey) {
   if (document.getElementById('google-maps-script')) return;
   const script = document.createElement('script');
   script.id = 'google-maps-script';
-  script.textContent = `(g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]);for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src="https://maps.googleapis.com/maps/api/js?"+e.toString();d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once."):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({key:"${apiKey}",v:"weekly"});`;
+  script.textContent = `(g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]);for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src="https://maps.googleapis.com/maps/api/js?"+e.toString();d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once."):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({key:"${apiKey}",v:(window.GORDI_GOOGLE_MAPS_VERSION||"quarterly")});`;
   document.head.appendChild(script);
 }
 
@@ -5861,3 +5921,4 @@ function findSimilarLeads(idx) {
     if (btn) btn.click();
   }
 }
+

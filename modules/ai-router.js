@@ -1154,7 +1154,10 @@ function collectQRPayload() {
 }
 
 // URL pública de la app — el QR apunta siempre aquí
-const VOLTFLOW_PUBLIC_URL = 'https://alfredosalaz-sys.github.io/Voltflow/index.html';
+const VOLTFLOW_PUBLIC_URL = (() => {
+  try { return new URL('index.html', window.location.href).href; }
+  catch { return window.location.href.split('?')[0]; }
+})();
 
 function generateQR() {
   const payload = collectQRPayload();
