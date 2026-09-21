@@ -1,8 +1,16 @@
 {
-  "version": "2.7.8",
-  "build": "2026.06.04.0100",
-  "date": "2026-06-03",
+  "version": "2.7.9",
+  "build": "2026.09.21.0100",
+  "date": "2026-09-21",
   "changelog": [
+    {
+      "title": "Diagnostico automatico de Places",
+      "desc": "Cuando Google Places devuelve cero resultados, la app lanza una consulta de control para separar problemas de API/key de busquedas demasiado estrechas."
+    },
+    {
+      "title": "Google Places mas estable",
+      "desc": "La busqueda usa una version estable del SDK de Google Maps, mejora el sesgo por codigo postal/zona y reintenta consultas validas cuando Places devuelve cero resultados."
+    },
     {
       "title": "Correccion de caracteres visibles",
       "desc": "Se limpian comillas curvas, espacios especiales y separadores corruptos que algunos navegadores mostraban como caracteres raros en filtros, selectores y controles."
@@ -86,11 +94,18 @@
   ],
   "history": [
     {
+      "version": "2.7.9",
+      "build": "2026.09.21.0100",
+      "date": "2026-09-21",
+      "title": "Recuperacion de resultados de Google Places",
+      "description": "Se estabiliza la carga de Google Maps, se mejora la ubicacion enviada a Places y se anaden reintentos para evitar busquedas a cero por sesgo demasiado estrecho. Tambien se anade un diagnostico automatico de Places cuando una busqueda queda a cero."
+    },
+    {
       "version": "2.7.8",
       "build": "2026.06.04.0100",
       "date": "2026-06-04",
       "title": "Arranque seguro en navegadores con muchos datos",
-      "description": "Se difieren snapshots y backups pesados, se evita renderizar Cobertura al abrir Dashboard y se a?ade un control de calidad para impedir textos visibles con prefijos corruptos."
+      "description": "Se difieren snapshots y backups pesados, se evita renderizar Cobertura al abrir Dashboard y se anade un control de calidad para impedir textos visibles con prefijos corruptos."
     },
     {
       "version": "2.7.7",
