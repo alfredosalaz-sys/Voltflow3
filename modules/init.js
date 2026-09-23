@@ -1,4 +1,4 @@
-// ============ INIT ============
+﻿// ============ INIT ============
 document.addEventListener('DOMContentLoaded', () => {
   checkPin();
   populateSegmentDropdowns(); // Poblar dropdowns antes de cargar datos que puedan depender de ellos
@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
   runIdleStartupTask('storage-background', () => updateStorageInfo(), 1800);
   setTimeout(() => showStartupStorageRecoveryNotice(recoverySummary), 1200);
 
-  // Mostrar banner de migración automática si hubo volcado
+  // Mostrar banner de migraciÃ³n automÃ¡tica si hubo volcado
   if (migrationResult && typeof migrationResult === 'object' && migrationResult.leads > 0) {
     setTimeout(() => showMigrationBanner(migrationResult), 600);
   }
@@ -61,14 +61,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (e.key === 'Escape') {
       closeGlobalSearch();
-      // Cerrar paneles laterales de leads (si están abiertos)
+      // Cerrar paneles laterales de leads (si estÃ¡n abiertos)
       if (typeof closeLeadSidePanel === 'function') closeLeadSidePanel();
       closeLead(); closeAiModal(); closeCampaignModal(); closeObjectivesModal();
       document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
       return;
     }
 
-    // Atajos de navegación rápida
+    // Atajos de navegaciÃ³n rÃ¡pida
     const navMap = {
       'n': () => { showView('leads'); toggleLeadForm(); },
       'f': () => { openFocusMode(); },
@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Tutorial solo si es instalación completamente nueva (sin datos y sin migración)
+  // Tutorial solo si es instalaciÃ³n completamente nueva (sin datos y sin migraciÃ³n)
   if (!localStorage.getItem('gordi_tutorial_done') && leads.length === 0 && !migrationResult) {
     setTimeout(() => showTutorial(), 800);
   }
@@ -99,18 +99,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // Auto backup weekly
   runIdleStartupTask('weekly-backup', () => autoWeeklyBackup(), 12000);
 
-  // Purgar cachés de enriquecimiento caducadas (>7 días)
+  // Purgar cachÃ©s de enriquecimiento caducadas (>7 dÃ­as)
   runIdleStartupTask('purge-stale-caches', () => purgeStaleCaches(), 3200);
 
-  // MEJORA: Sistema de Actualizaciones Automático via version.json
+  // MEJORA: Sistema de Actualizaciones AutomÃ¡tico via version.json
   checkUpdates({ migrationResult, recoverySummary });
   window.__gordiBootReady = true;
 
-  // Auto-pull JSONBin al iniciar si está habilitado
+  // Auto-pull JSONBin al iniciar si estÃ¡ habilitado
   if (localStorage.getItem('gordi_jsonbin_auto') === 'true') {
     setTimeout(() => {
       if (typeof jsonbinPull === 'function') jsonbinPull(false);
-    }, 1000); // 1s delay para asegurar que renderAllFull ya terminó y se evita race condition visual
+    }, 1000); // 1s delay para asegurar que renderAllFull ya terminÃ³ y se evita race condition visual
   }
 });
 
@@ -148,16 +148,16 @@ function runIdleStartupTask(name, fn, delay) {
 }
 
 
-// --- MIGRACION AUTOMÁTICA DE DATOS ENTRE VERSIONES ---------------------------
+// --- MIGRACION AUTOMÃTICA DE DATOS ENTRE VERSIONES ---------------------------
 // Todas las versiones de Voltflow comparten el mismo localStorage en file://
-// Al arrancar por primera vez esta versión, se vuelcan todos los datos automáticamente.
+// Al arrancar por primera vez esta versiÃ³n, se vuelcan todos los datos automÃ¡ticamente.
 
-let VOLTFLOW_VERSION = '2.7.9'; // Fallback
+let VOLTFLOW_VERSION = '2.8.0'; // Fallback
 let VOLTFLOW_CHANGELOG = [];
 
-// ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ 
+// â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ 
 // Aviso: PERFORMANCE SYSTEM - debounce renders, smart batching, pagination
-// ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ 
+// â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ 
 
 // Debounce timers
 const _renderTimers = {};
@@ -656,8 +656,8 @@ function hasRecoveredLocalData(summary) {
   );
 }
 
-// Detecta si esta versión concreta se abre por primera vez en este navegador
-// Si hay datos de versiones anteriores en el mismo localStorage, los vuelca todo automáticamente.
+// Detecta si esta versiÃ³n concreta se abre por primera vez en este navegador
+// Si hay datos de versiones anteriores en el mismo localStorage, los vuelca todo automÃ¡ticamente.
 function showStorageDiagnostics() {
   const summary = getLocalRecoverySummary();
   const origin = summary.origin || location.href;
@@ -711,10 +711,10 @@ function dismissStorageRecoveryNotice() {
 function tryAutoMigrate() {
   const thisVersionKey = `_voltflow_opened_${VOLTFLOW_VERSION}`;
 
-  // Si ya se abrió esta versión antes -> no hacer nada
+  // Si ya se abriÃ³ esta versiÃ³n antes -> no hacer nada
   if (localStorage.getItem(thisVersionKey)) return false;
 
-  // Primera vez que se abre esta versión -> marcarla
+  // Primera vez que se abre esta versiÃ³n -> marcarla
   localStorage.setItem(thisVersionKey, Date.now().toString());
 
   // Contar datos disponibles en el localStorage (dejados por versiones anteriores)
@@ -734,7 +734,7 @@ function tryAutoMigrate() {
   const hasApiKeys      = !!(localStorage.getItem('gordi_api_key') || getGeminiKey() || localStorage.getItem('gordi_hunter_key'));
   const hasProfile      = !!localStorage.getItem('gordi_user_name');
 
-  // Si no hay ningún dato previo -> primera instalación, nada que migrar
+  // Si no hay ningÃºn dato previo -> primera instalaciÃ³n, nada que migrar
   const hasWorkData = existingLeads.length || existingHistory.length || existingCamps.length ||
     existingSearches.length || existingSavedSearches.length || Object.keys(existingMemory).length ||
     hasScrapeMemory || hasApiKeys || hasProfile;
@@ -742,8 +742,8 @@ function tryAutoMigrate() {
 
   const migrationSnapshot = createSafetySnapshot(`before_opening_${VOLTFLOW_VERSION}`);
 
-  // Hay datos -> volcado automático completo (ya están en localStorage, solo necesitamos cargarlos en memoria)
-  // Guardar un registro de la migración para mostrarlo
+  // Hay datos -> volcado automÃ¡tico completo (ya estÃ¡n en localStorage, solo necesitamos cargarlos en memoria)
+  // Guardar un registro de la migraciÃ³n para mostrarlo
   const migrationLog = {
     date: new Date().toISOString(),
     leads: existingLeads.length,
@@ -840,7 +840,7 @@ function loadAllData() {
   }
 
   if (corruptionDetected) {
-    alert("Aviso:️ ALERTA DE DATOS: Se han detectado datos corruptos o incompatibles en tu base de datos local.\n\nPor seguridad, los datos afectados no se han cargado para evitar sobreescribirlos. Por favor, ve a 'Configuración' y utiliza la opción 'Exportar Datos' para generar un backup sin procesar, y contacta con soporte.");
+    alert("Aviso:ï¸ ALERTA DE DATOS: Se han detectado datos corruptos o incompatibles en tu base de datos local.\n\nPor seguridad, los datos afectados no se han cargado para evitar sobreescribirlos. Por favor, ve a 'ConfiguraciÃ³n' y utiliza la opciÃ³n 'Exportar Datos' para generar un backup sin procesar, y contacta con soporte.");
   }
 
   // Cargar keys y perfil
@@ -849,7 +849,7 @@ function loadAllData() {
   const el = id => document.getElementById(id);
 
   const profile = {
-    name: localStorage.getItem('gordi_user_name') || 'Héctor Alfredo Salazar',
+    name: localStorage.getItem('gordi_user_name') || 'HÃ©ctor Alfredo Salazar',
     email: localStorage.getItem('gordi_user_email') || 'hector@voltiummadrid.es',
     company: localStorage.getItem('gordi_user_company') || 'Voltium Madrid',
     phone: localStorage.getItem('gordi_user_phone') || '',
@@ -922,13 +922,13 @@ function updateDate() {
 // ============ NAVEGACION ============
 
 
-// ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ 
+// â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ 
 //     MODULO: UI
 // --   Renderizado, vistas, modales, drawer y componentes visuales
 // --   Funciones: showView, showToast, setProgress, logEnrich, updateEnrichStats,
   //          renderLeads, renderKanban, updateCard, openLeadDrawer, closeDrawer,
   //          openGlobalSearch, openVoiceModal, openScanModal, openFocusMode
-// ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ 
+// â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ 
 
 function showView(view) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -948,6 +948,7 @@ function showView(view) {
   if (view === 'campaigns') renderCampaigns();
   if (view === 'tracking') renderTracking();
   if (view === 'coverage' && typeof renderCoverage === 'function') renderCoverage();
+  if (view === 'map' && typeof initLeadsMap === 'function') initLeadsMap();
   if (view === 'dashboard') { renderDashboardCharts(); renderRecentActivity(); renderTopLeads(); }
 }
 
@@ -975,9 +976,9 @@ function previewFirma() {
 }
 
 
-// ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ 
-//   MODULO: JSONBin Sync - Sincronización multi-dispositivo
-// ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ ⬢ 
+// â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ 
+//   MODULO: JSONBin Sync - SincronizaciÃ³n multi-dispositivo
+// â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ â¬¢ 
 
 const JSONBIN_API = 'https://api.jsonbin.io/v3';
 let _jsonbinPushing = false;
@@ -998,22 +999,22 @@ function jsonbinActivateUI() {
 }
 
 
-// --  Guardar configuración ---------------------------------------------------
+// --  Guardar configuraciÃ³n ---------------------------------------------------
 async function saveJsonBinConfig() {
   const key = document.getElementById('jsonbin-key-input')?.value.trim();
   if (!key || key.length < 10) {
-    jsonbinSetStatus('Aviso:️ Introduce tu Master Key de JSONBin', 'var(--danger)');
+    jsonbinSetStatus('Aviso:ï¸ Introduce tu Master Key de JSONBin', 'var(--danger)');
     return;
   }
   localStorage.setItem('gordi_jsonbin_key', key);
-  jsonbinSetStatus('⏳ Conectando con JSONBin...', 'var(--text-dim)');
+  jsonbinSetStatus('â³ Conectando con JSONBin...', 'var(--text-dim)');
 
   // Check if we already have a bin ID
   const existingBin = document.getElementById('jsonbin-bin-input')?.value.trim();
   if (existingBin) {
     localStorage.setItem('gordi_jsonbin_bin', existingBin);
     jsonbinActivateUI();
-    jsonbinSetStatus('OK Configuración guardada - bin existente vinculado', 'var(--success)');
+    jsonbinSetStatus('OK ConfiguraciÃ³n guardada - bin existente vinculado', 'var(--success)');
     showToast(' JSONBin configurado correctamente');
     return;
   }
@@ -1057,7 +1058,7 @@ async function jsonbinPush(showFeedback = true) {
   const key = localStorage.getItem('gordi_jsonbin_key');
   const binId = localStorage.getItem('gordi_jsonbin_bin');
   if (!key || !binId) {
-    if (showFeedback) jsonbinSetStatus('Aviso:️ Configura primero la Master Key y crea un bin', 'var(--warning)');
+    if (showFeedback) jsonbinSetStatus('Aviso:ï¸ Configura primero la Master Key y crea un bin', 'var(--warning)');
     return;
   }
   if (_jsonbinPushing) return; // debounce
@@ -1095,7 +1096,7 @@ async function jsonbinPull(showFeedback = true) {
   const key = localStorage.getItem('gordi_jsonbin_key');
   const binId = localStorage.getItem('gordi_jsonbin_bin');
   if (!key || !binId) {
-    if (showFeedback) jsonbinSetStatus('Aviso:️ Configura primero la Master Key', 'var(--warning)');
+    if (showFeedback) jsonbinSetStatus('Aviso:ï¸ Configura primero la Master Key', 'var(--warning)');
     return;
   }
 
@@ -1112,7 +1113,7 @@ async function jsonbinPull(showFeedback = true) {
     const snapshotValidation = validateDataSnapshot(snapshot, getCurrentDataSummary());
     if (!snapshotValidation.ok) throw new Error(snapshotValidation.errors.join(' '));
 
-    // Smart merge: solo importar si la nube es más reciente o tiene diferencias claras
+    // Smart merge: solo importar si la nube es mÃ¡s reciente o tiene diferencias claras
     const cloudUpdated = data.record?._updated || data.record?._created || '';
     const lastPush = localStorage.getItem('gordi_jsonbin_last_push') || '';
     const cloudLeadCount = (() => {
@@ -1120,7 +1121,7 @@ async function jsonbinPull(showFeedback = true) {
     })();
     const localLeadCount = leads.length;
 
-    // Hash rápido: longitud del JSON local vs nube para detectar cambios reales sin parsear todo
+    // Hash rÃ¡pido: longitud del JSON local vs nube para detectar cambios reales sin parsear todo
     const cloudLeadsRaw  = snapshot['gordi_leads'] || '[]';
     const localLeadsRaw  = localStorage.getItem('gordi_leads') || '[]';
     const dataIsDifferent = cloudLeadsRaw.length !== localLeadsRaw.length;
@@ -1131,24 +1132,24 @@ async function jsonbinPull(showFeedback = true) {
     if (cloudUpdated) {
       const cloudTime = new Date(cloudUpdated).getTime();
       const localTime = lastPush ? new Date(lastPush).getTime() : 0;
-      // Añadimos buffer de 5s para evitar pull de algo que acabamos de pushear
+      // AÃ±adimos buffer de 5s para evitar pull de algo que acabamos de pushear
       if (cloudTime > localTime + 5000) isNewer = true;
     }
 
     if (showFeedback) {
       if (cloudLeadCount !== localLeadCount || isNewer) {
-        const confirmMsg = `¿Descargar datos de la nube?\n\nNube: ${cloudLeadCount} leads (actualizado: ${cloudUpdated ? new Date(cloudUpdated).toLocaleString('es-ES') : 'desconocido'})\nLocal: ${localLeadCount} leads\n\nEsto reemplazará tus datos locales.`;
+        const confirmMsg = `Â¿Descargar datos de la nube?\n\nNube: ${cloudLeadCount} leads (actualizado: ${cloudUpdated ? new Date(cloudUpdated).toLocaleString('es-ES') : 'desconocido'})\nLocal: ${localLeadCount} leads\n\nEsto reemplazarÃ¡ tus datos locales.`;
         if (!confirm(confirmMsg)) {
           jsonbinSetStatus('Descarga cancelada por el usuario', 'var(--text-dim)');
           return;
         }
         shouldPull = true;
       } else {
-        shouldPull = true; // El usuario pulsó el botón manualmente y no hay diff grave, hacemos pull
+        shouldPull = true; // El usuario pulsÃ³ el botÃ³n manualmente y no hay diff grave, hacemos pull
       }
     } else {
-      // Descarga silenciosa (al arrancar): solo si la nube es realmente más reciente Y los datos difieren.
-      // Evita render extra + pérdida de ediciones tempranas cuando counts son iguales pero la nube
+      // Descarga silenciosa (al arrancar): solo si la nube es realmente mÃ¡s reciente Y los datos difieren.
+      // Evita render extra + pÃ©rdida de ediciones tempranas cuando counts son iguales pero la nube
       // tiene el mismo snapshot que acabamos de pushear hace menos de 5 s.
       if (isNewer && dataIsDifferent) {
         shouldPull = true;
@@ -1158,7 +1159,7 @@ async function jsonbinPull(showFeedback = true) {
     }
 
     if (!shouldPull) {
-      if (!showFeedback) console.log('JSONBin Pull omitido: los datos locales ya están actualizados.');
+      if (!showFeedback) console.log('JSONBin Pull omitido: los datos locales ya estÃ¡n actualizados.');
       return;
     }
 
@@ -1178,7 +1179,7 @@ async function jsonbinPull(showFeedback = true) {
 
     const now = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
     if (showFeedback) {
-      jsonbinSetStatus(`OK Datos descargados - ${cloudLeadCount} leads · ${now}`, 'var(--success)');
+      jsonbinSetStatus(`OK Datos descargados - ${cloudLeadCount} leads Â· ${now}`, 'var(--success)');
       showToast(` ${cloudLeadCount} leads descargados desde la nube`);
     } else {
       // Silent pull on app start - show subtle toast only if data changed
@@ -1192,11 +1193,11 @@ async function jsonbinPull(showFeedback = true) {
   }
 }
 
-// --  Test conexión ------------------------------------------------------------
+// --  Test conexiÃ³n ------------------------------------------------------------
 async function jsonbinTestConnection() {
   const key = localStorage.getItem('gordi_jsonbin_key');
   const binId = localStorage.getItem('gordi_jsonbin_bin');
-  jsonbinSetStatus(' Probando conexión...', 'var(--text-dim)');
+  jsonbinSetStatus(' Probando conexiÃ³n...', 'var(--text-dim)');
   try {
     const res = await fetch(`${JSONBIN_API}/b/${binId}/latest`, {
       headers: { 'X-Master-Key': key }
@@ -1205,11 +1206,11 @@ async function jsonbinTestConnection() {
     const data = await res.json();
     const updated = data.record?._updated || data.record?._created || '';
     jsonbinSetStatus(
-      `OK Conexión OK - última actualización: ${updated ? new Date(updated).toLocaleString('es-ES') : 'desconocida'}`,
+      `OK ConexiÃ³n OK - Ãºltima actualizaciÃ³n: ${updated ? new Date(updated).toLocaleString('es-ES') : 'desconocida'}`,
       'var(--success)'
     );
   } catch(e) {
-    jsonbinSetStatus(`Error: Error de conexión: ${e.message}`, 'var(--danger)');
+    jsonbinSetStatus(`Error: Error de conexiÃ³n: ${e.message}`, 'var(--danger)');
   }
 }
 
@@ -1403,7 +1404,9 @@ function showWhatsNewModal(oldV, newV, startupContext = {}) {
   const changelog = VOLTFLOW_CHANGELOG.length ? VOLTFLOW_CHANGELOG : [
     { title: 'Datos locales recuperados', desc: 'La app carga automaticamente los datos guardados en este navegador.' }
   ];
-  const items = changelog.map(item => `
+  const visibleChangelog = changelog.slice(0, 8);
+  const extraChangelogCount = Math.max(0, changelog.length - visibleChangelog.length);
+  const items = visibleChangelog.map(item => `
     <div style="margin-bottom:12px;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.05)">
       <strong style="display:block;color:var(--primary);margin-bottom:4px;font-size:15px">${item.title}</strong>
       <span style="font-size:13px;color:var(--text-dim);line-height:1.45">${item.desc}</span>
