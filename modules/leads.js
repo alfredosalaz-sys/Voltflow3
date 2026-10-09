@@ -8,7 +8,7 @@
   //          importLeads, syncToSheets, loadFromSheets, migrateLegacyData
 // ══════════════════════════════════════════════════════════════════════════
 
-function saveLead() {
+async function saveLead() {
   const g = id => document.getElementById(id).value;
   const name = g('lead-name').trim();
   const company = g('lead-company').trim();
@@ -36,17 +36,21 @@ function saveLead() {
     activity: [{ action: 'Creado manualmente', date: new Date().toISOString() }]
   };
   leads.unshift(lead);
-  saveLeads();
-  renderAll();
-  document.getElementById('lead-form').reset();
-  clearLeadFormDraft();
-  toggleLeadForm();
-  updateStreakData();
-  showToast('Lead guardado correctamente ✓');
+  try {
+    await saveLeads();
+    renderAll();
+    document.getElementById('lead-form').reset();
+    clearLeadFormDraft();
+    toggleLeadForm();
+    updateStreakData();
+    showToast('Lead guardado correctamente ✓');
+  } catch {
+    showToast('No se pudo confirmar el guardado del lead. Queda pendiente de recuperacion.');
+  }
 }
 
 let _saveLeadsTimer = null;
-function saveLeads() {
+async function saveLeads() {
   const currentLeads = Array.isArray(leads) ? leads : [];
   if (currentLeads.length > 0 && typeof createCriticalRescueSnapshot === 'function') {
     createCriticalRescueSnapshot('before_leads_save', { throttleMs: 5 * 60 * 1000 });
@@ -68,14 +72,18 @@ function saveLeads() {
   }
   try {
     localStorage.setItem('gordi_local_last_modified', new Date().toISOString());
-    localStorage.setItem('gordi_leads', JSON.stringify(currentLeads));
-  } catch (e) {
-    console.error('No se pudieron guardar los leads en localStorage:', e);
-    if (typeof createCriticalRescueSnapshot === 'function') {
-      try { createCriticalRescueSnapshot('localstorage_save_failed', { throttleMs: 0 }); } catch {}
+    if (typeof persistCriticalData === 'function') {
+      await persistCriticalData('gordi_leads', currentLeads, { label: 'leads' });
+    } else {
+      localStorage.setItem('gordi_leads', JSON.stringify(currentLeads));
     }
-    showToast('No se pudieron guardar los leads. Revisa espacio del navegador y exporta una copia de seguridad.');
-    return;
+  } catch (e) {
+    console.error('No se pudieron confirmar los leads en el almacenamiento autoritativo:', e);
+    if (typeof createCriticalRescueSnapshot === 'function') {
+      try { createCriticalRescueSnapshot('critical_save_failed', { throttleMs: 0 }); } catch {}
+    }
+    showToast('No se pudieron guardar los leads. El cambio queda pendiente de recuperacion.');
+    throw e;
   }
   _goldenProfile = null; // Invalidar cache lookalike
 
@@ -93,6 +101,7 @@ function saveLeads() {
       if (typeof jsonbinPush === 'function') jsonbinPush(false);
     }
   }, 2000); // wait 2s after last save before pushing to cloud
+  return { ok: true, count: currentLeads.length };
 }
 
 function getCoverageLeadScope() {
@@ -721,7 +730,7 @@ function openLeadDetail(id) {
   if (lead.psychProfile) setTimeout(() => renderLeadPsychProfile(lead), 100);
 }
 
-function saveLeadDetail(id) {
+async function saveLeadDetail(id) {
   const lead = leads.find(l => l.id == id);
   if (!lead) return;
   const oldStatus = lead.status;
@@ -741,10 +750,14 @@ function saveLeadDetail(id) {
     applySequenceRule(lead, lead.status); // MEJORA 2
   }
   lead.score = recalculateLeadScore(lead);
-  saveLeads();
-  renderAll();
-  closeLead();
-  showToast('Lead actualizado ✓');
+  try {
+    await saveLeads();
+    renderAll();
+    closeLead();
+    showToast('Lead actualizado ✓');
+  } catch {
+    showToast('No se pudo confirmar la actualizacion. Queda pendiente de recuperacion.');
+  }
 }
 
 function logCall(id) {
@@ -869,7 +882,7 @@ function updateLeadStatusViaPipeline(leadId, stageName) {
   if (lead && lead.status !== fullStatus) showToast('Estado actualizado ✓ (No olvides Guardar)');
 }
 
-function updateLeadStatusViaPipelineSaved(leadId, stageName) {
+async function updateLeadStatusViaPipelineSaved(leadId, stageName) {
   const fullStatus = STAGE_MAPPING[stageName];
   if (!fullStatus) return;
   const input = document.getElementById('detail-status');
@@ -882,16 +895,20 @@ function updateLeadStatusViaPipelineSaved(leadId, stageName) {
   lead.status = fullStatus;
   lead.status_date = new Date().toISOString();
   addActivityLog(lead.id, `Pipeline: ${oldStatus} -> ${fullStatus}`);
-  saveLeads();
-  renderLeads();
-  renderKanban();
-  if (typeof renderTracking === 'function') renderTracking();
-  if (typeof updateStats === 'function') updateStats();
-  showToast('Estado actualizado y guardado');
+  try {
+    await saveLeads();
+    renderLeads();
+    renderKanban();
+    if (typeof renderTracking === 'function') renderTracking();
+    if (typeof updateStats === 'function') updateStats();
+    showToast('Estado actualizado y guardado');
+  } catch {
+    showToast('No se pudo confirmar el cambio de estado.');
+  }
 }
 updateLeadStatusViaPipeline = updateLeadStatusViaPipelineSaved;
 
-function generateEmail(id) {
+async function generateEmail(id) {
   const lead = leads.find(l => l.id == id);
   if (!lead) return;
   if (!lead.email) { alert('⚠️ Este lead no tiene email. Añádelo primero.'); return; }
@@ -921,18 +938,26 @@ function generateEmail(id) {
   window.location.href = `mailto:${lead.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
   emailHistory.unshift({ id: Date.now(), leadId: lead.id, company: lead.company, email: lead.email, segment: lead.segment, date: new Date().toISOString(), status: 'Enviado', subject, notes: '' });
-  localStorage.setItem('gordi_email_history', JSON.stringify(emailHistory));
+  try {
+    await persistEmailHistory('historial de emails');
+  } catch {
+    showToast('No se pudo confirmar el historial de email. Queda pendiente de recuperacion.');
+    return;
+  }
   // MEJORA 1: Registrar time-to-first-contact
   if (!lead.first_contact_date) {
     lead.first_contact_date = new Date().toISOString();
     lead.ttfc_hours = Math.round((Date.now() - new Date(lead.date)) / 3600000);
   }
   const oldStatus = lead.status;
-  const _applyVisita = () => {
+  const _applyVisita = async () => {
     lead.status = 'Contactado';
     lead.status_date = new Date().toISOString();
     addActivityLog(lead.id, `✉️ Email plantilla enviado: "${subject}"`);
-    saveLeads(); renderAll(); renderTracking(); renderRecentActivity(); updateStreakData();
+    try {
+      await saveLeads();
+      renderAll(); renderTracking(); renderRecentActivity(); updateStreakData();
+    } catch {}
   };
   confirmStatusChange(lead, 'Contactado', _applyVisita);
 }

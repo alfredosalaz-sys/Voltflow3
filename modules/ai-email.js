@@ -517,7 +517,7 @@ function copyWaMessage() {
   copyToClipboard(msg, 'Mensaje copiado');
 }
 
-function registerWaSent() {
+async function registerWaSent() {
   const lead = _waLead; if (!lead) return;
   const msg = document.getElementById('wa-text-editor')?.value || '';
   addActivityLog(lead.id, `💬 WhatsApp enviado a ${lead.whatsapp || lead.phone}`);
@@ -527,12 +527,18 @@ function registerWaSent() {
     date: new Date().toISOString(), status: 'Enviado', subject: 'WhatsApp IA',
     channel: 'whatsapp', body: msg.slice(0, 200)
   });
-  localStorage.setItem('gordi_email_history', JSON.stringify(emailHistory));
+  try {
+    await persistEmailHistory('historial de WhatsApp');
+  } catch {
+    showToast('No se pudo confirmar el historial de WhatsApp.');
+    return;
+  }
   if (!lead.first_contact_date) {
     lead.first_contact_date = new Date().toISOString();
     lead.ttfc_hours = Math.round((Date.now() - new Date(lead.date)) / 3600000);
   }
-  saveLeads(); updateStats();
+  try { await saveLeads(); } catch { return; }
+  updateStats();
   setTimeout(() => closeWaModal(), 800);
 }
 
@@ -1419,12 +1425,17 @@ async function copyHtmlEmail() {
     // Registrar en historial
     const lead = leads.find(l => l.id == aiCurrentLeadId);
     if (lead) {
-      const _doContactado = () => {
+      const _doContactado = async () => {
         lead.status = 'Contactado';
         lead.status_date = new Date().toISOString();
         emailHistory.unshift({ id: Date.now(), company: lead.company, email: lead.email, segment: lead.segment, date: new Date().toISOString(), status: 'Preparado (IA)', notes: `Asunto: ${subject}` });
-      localStorage.setItem('gordi_email_history', JSON.stringify(emailHistory));
-        saveLeads(); renderAll(); renderTracking();
+        try {
+          await persistEmailHistory('historial de emails');
+          await saveLeads();
+          renderAll(); renderTracking();
+        } catch {
+          showToast('No se pudo confirmar el historial de email.');
+        }
       };
       confirmStatusChange(lead, 'Contactado', _doContactado);
     }
@@ -1456,7 +1467,7 @@ function selectAiSubject(el, subject) {
   checkSpam(subject);
 }
 
-function sendAiEmail() {
+async function sendAiEmail() {
   const lead = leads.find(l => l.id == aiCurrentLeadId);
   if (!lead) return;
 
@@ -1468,17 +1479,23 @@ function sendAiEmail() {
   window.location.href = `mailto:${lead.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
   emailHistory.unshift({ id: Date.now(), leadId: lead.id, company: lead.company, email: lead.email, segment: lead.segment, date: new Date().toISOString(), status: 'Enviado (IA)', subject, notes: 'Generado con IA + análisis de reseñas' });
-  localStorage.setItem('gordi_email_history', JSON.stringify(emailHistory));
+  try {
+    await persistEmailHistory('historial de emails');
+  } catch {
+    showToast('No se pudo confirmar el historial de email.');
+    return;
+  }
   // MEJORA 1: Registrar time-to-first-contact
   if (!lead.first_contact_date) {
     lead.first_contact_date = new Date().toISOString();
     lead.ttfc_hours = Math.round((Date.now() - new Date(lead.date)) / 3600000);
   }
   const oldStatus = lead.status;
-  const _doSend = () => {
+  const _doSend = async () => {
     lead.status_date = new Date().toISOString();
     addActivityLog(lead.id, `✉️ Email IA enviado: "${subject}"`);
-    saveLeads(); renderAll(); renderTracking();
+    try { await saveLeads(); } catch { return; }
+    renderAll(); renderTracking();
     updateStreakData();
     closeAiModal();
     showToast('✉️ Email abierto en tu gestor de correo');
@@ -1508,4 +1525,3 @@ function regenerateAiEmail() {
 function retryAiEmail() { regenerateAiEmail(); }
 
 // ══════════════════════════════════════════════════════════════════════════════
-

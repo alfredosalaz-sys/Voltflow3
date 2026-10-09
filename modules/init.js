@@ -1,9 +1,12 @@
 ﻿// ============ INIT ============
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  voltflowPerfMark('startup.begin');
   checkPin();
   populateSegmentDropdowns(); // Poblar dropdowns antes de cargar datos que puedan depender de ellos
   const migrationResult = tryAutoMigrate();
-  loadAllData();
+  const wantsIndexedDB = !!(window.VoltflowStorage && typeof VoltflowStorage.isReadySync === 'function' && VoltflowStorage.isReadySync());
+  const indexedDBLoaded = wantsIndexedDB ? await hydrateVoltiumIndexedDBIfAvailable() : false;
+  if (!wantsIndexedDB || (!indexedDBLoaded && !window.__voltflowStorageBlocked)) loadAllData();
   const autoRescued = autoRestoreCriticalRescueIfNeeded();
   if (autoRescued) loadAllData();
   const recoverySummary = getLocalRecoverySummary();
@@ -22,9 +25,12 @@ document.addEventListener('DOMContentLoaded', () => {
     renderTopLeads();
     renderTodayPanel();
   }, 0);
-  runIdleStartupTask('lists-background', () => renderAllFull(), 500);
+  runIdleStartupTask('visible-view-background', () => {
+    const active = document.querySelector('.view.active')?.id || 'dashboard-view';
+    if (active !== 'dashboard-view') renderActiveView();
+  }, 500);
   runIdleStartupTask('templates-background', () => renderTemplateList(), 900);
-  runIdleStartupTask('campaigns-background', () => renderCampaigns(), 1200);
+  runIdleStartupTask('campaigns-background', () => renderCampaigns({ summaryOnly: true }), 1200);
   runIdleStartupTask('history-background', () => renderSearchHistory(), 1500);
   runIdleStartupTask('storage-background', () => updateStorageInfo(), 1800);
   setTimeout(() => showStartupStorageRecoveryNotice(recoverySummary), 1200);
@@ -105,6 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // MEJORA: Sistema de Actualizaciones AutomÃ¡tico via version.json
   checkUpdates({ migrationResult, recoverySummary });
   window.__gordiBootReady = true;
+  voltflowPerfMark('startup.ready');
 
   // Auto-pull JSONBin al iniciar si estÃ¡ habilitado
   if (localStorage.getItem('gordi_jsonbin_auto') === 'true') {
@@ -114,10 +121,121 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+function voltflowPerfMark(name, data = {}) {
+  try {
+    if (!window.VoltflowDiagnostics) {
+      window.VoltflowDiagnostics = {
+        enabled: localStorage.getItem('voltflow_diagnostics') === '1',
+        marks: [],
+        tasks: [],
+        longTasks: []
+      };
+      if (typeof PerformanceObserver === 'function') {
+        try {
+          const observer = new PerformanceObserver(list => {
+            list.getEntries().forEach(entry => {
+              window.VoltflowDiagnostics.longTasks.push({
+                name: entry.name || 'task',
+                start: Math.round(entry.startTime),
+                duration: Math.round(entry.duration)
+              });
+              if (window.VoltflowDiagnostics.longTasks.length > 80) window.VoltflowDiagnostics.longTasks.shift();
+            });
+          });
+          observer.observe({ entryTypes: ['longtask'] });
+        } catch {}
+      }
+    }
+    window.VoltflowDiagnostics.marks.push({ name, t: Math.round(performance.now()), data });
+    if (window.VoltflowDiagnostics.marks.length > 120) window.VoltflowDiagnostics.marks.shift();
+  } catch {}
+}
+
+function voltflowMeasureTask(name, fn) {
+  const start = performance.now();
+  try {
+    return fn();
+  } finally {
+    try {
+      const duration = Math.round(performance.now() - start);
+      if (!window.VoltflowDiagnostics) voltflowPerfMark('diagnostics.init');
+      window.VoltflowDiagnostics.tasks.push({ name, duration, t: Math.round(performance.now()) });
+      if (window.VoltflowDiagnostics.tasks.length > 120) window.VoltflowDiagnostics.tasks.shift();
+      if (duration > 250) console.warn(`[Voltflow perf] ${name} tardo ${duration}ms`);
+    } catch {}
+  }
+}
+
+function renderActiveView() {
+  const active = document.querySelector('.view.active')?.id || 'dashboard-view';
+  if (active === 'dashboard-view') {
+    updateStats();
+    renderDashboardCharts();
+    renderRecentActivity();
+    renderTopLeads();
+  } else if (active === 'leads-view') {
+    renderLeads();
+  } else if (active === 'kanban-view') {
+    renderKanban();
+  } else if (active === 'tracking-view') {
+    renderTracking();
+  } else if (active === 'campaigns-view') {
+    renderCampaigns();
+  }
+}
+
+async function hydrateVoltiumIndexedDBIfAvailable() {
+  try {
+    if (window.VoltflowStorage && typeof VoltflowStorage.recoverInterruptedMigration === 'function') {
+      const recovery = await VoltflowStorage.recoverInterruptedMigration();
+      if (recovery && recovery.recovered === false) {
+        console.warn('IndexedDB no se activara hasta completar o repetir la migracion:', recovery.reason);
+        window.__voltflowIndexedDBRecovery = recovery;
+        return false;
+      }
+    }
+    if (!window.VoltflowStorage || !(await VoltflowStorage.isReady())) return false;
+    const data = await VoltflowStorage.loadAll();
+    if (!data) return false;
+    leads = Array.isArray(data.leads) ? data.leads.map(normalizeLoadedLead).filter(Boolean) : leads;
+    emailHistory = Array.isArray(data.emailHistory) ? data.emailHistory : emailHistory;
+    campaigns = Array.isArray(data.campaigns) ? data.campaigns : campaigns;
+    searchHistoryList = Array.isArray(data.searchHistoryList) ? data.searchHistoryList : searchHistoryList;
+    if (data.objectives && typeof data.objectives === 'object') objectives = data.objectives;
+    if (data.templates && typeof data.templates === 'object') emailTemplates = { ...defaultTemplates, ...data.templates };
+    window.__voltflowLoadDiagnostics = {
+      ...(window.__voltflowLoadDiagnostics || {}),
+      storage: 'indexeddb',
+      loadedLeads: leads.length,
+      loadedEmails: emailHistory.length,
+      loadedAt: new Date().toISOString()
+    };
+    voltflowPerfMark('storage.indexeddb.loaded', { leads: leads.length, emails: emailHistory.length });
+    return true;
+  } catch (err) {
+    console.error('Error cargando IndexedDB:', err);
+    if (window.VoltflowStorage && VoltflowStorage.isReadySync()) {
+      window.__voltflowStorageBlocked = {
+        reason: 'indexeddb_authoritative_unavailable',
+        message: err && err.message ? err.message : String(err),
+        at: new Date().toISOString()
+      };
+      showToast('IndexedDB esta activo pero no se pudo abrir. No se usaran datos locales antiguos como guardado confirmado.');
+    }
+    try {
+      localStorage.setItem('_voltflow_last_idb_load_error', JSON.stringify({
+        date: new Date().toISOString(),
+        message: err && err.message ? err.message : String(err)
+      }));
+    } catch {}
+    return false;
+  }
+}
+
 function runStartupTask(name, fn, delay) {
   setTimeout(() => {
     try {
-      fn();
+      voltflowMeasureTask(`startup:${name}`, fn);
     } catch (err) {
       console.error(`Error en arranque diferido (${name}):`, err);
       try {
@@ -131,7 +249,7 @@ function runIdleStartupTask(name, fn, delay) {
   runStartupTask(name, () => {
     const run = () => {
       try {
-        fn();
+        voltflowMeasureTask(`startup-idle:${name}`, fn);
       } catch (err) {
         console.error(`Error en arranque idle (${name}):`, err);
         try {
@@ -279,6 +397,99 @@ function exportDataSnapshot(options = {}) {
   return snapshot;
 }
 
+async function exportCurrentDataSnapshot(options = {}) {
+  if (window.VoltflowStorage && typeof VoltflowStorage.waitForIdle === 'function') {
+    await VoltflowStorage.waitForIdle();
+  }
+  const fallback = exportDataSnapshot(options);
+  if (window.VoltflowStorage && typeof VoltflowStorage.isReadySync === 'function' && VoltflowStorage.isReadySync()) {
+    try {
+      const idbSnapshot = await VoltflowStorage.exportSnapshot();
+      if (idbSnapshot) return { ...fallback, ...idbSnapshot };
+      throw new Error('IndexedDB activo no devolvio snapshot consistente');
+    } catch (err) {
+      console.error('Error exportando snapshot desde IndexedDB:', err);
+      throw err;
+    }
+  }
+  return fallback;
+}
+
+function updatePersistenceIndicator(state, detail = {}) {
+  try {
+    const msg = state === 'pending'
+      ? `Guardando ${detail.label || detail.key || 'datos'}...`
+      : state === 'confirmed'
+        ? `${detail.label || detail.key || 'Datos'} guardado`
+        : `Error guardando ${detail.label || detail.key || 'datos'}`;
+    window.__voltflowPersistenceLast = { state, detail, at: new Date().toISOString() };
+    if (state === 'failed' && typeof showToast === 'function') {
+      showToast(`${msg}. El cambio queda pendiente de recuperacion.`);
+    }
+  } catch {}
+}
+
+window.addEventListener('voltflow:persistence', event => {
+  const detail = event.detail || {};
+  updatePersistenceIndicator(detail.state, detail);
+});
+
+async function persistCriticalData(key, value, options = {}) {
+  const label = options.label || key;
+  updatePersistenceIndicator('pending', { key, label });
+  try {
+    if (window.VoltflowStorage && typeof VoltflowStorage.persistCriticalData === 'function') {
+      const result = await VoltflowStorage.persistCriticalData(key, value, { label });
+      updatePersistenceIndicator('confirmed', { key, label, result });
+      return result;
+    }
+    const raw = typeof value === 'string' ? value : JSON.stringify(value);
+    localStorage.setItem(key, raw);
+    updatePersistenceIndicator('confirmed', { key, label, storage: 'localStorage' });
+    return { ok: true, key, storage: 'localStorage' };
+  } catch (err) {
+    const storageStatus = window.VoltflowStorage && typeof VoltflowStorage.getPersistenceStatus === 'function'
+      ? VoltflowStorage.getPersistenceStatus()
+      : null;
+    updatePersistenceIndicator('failed', {
+      key,
+      label,
+      message: err && err.message ? err.message : String(err),
+      recoveryDurable: storageStatus?.last?.key === key ? storageStatus.last.recoveryDurable : undefined
+    });
+    throw err;
+  }
+}
+
+async function persistBusinessState(parts = {}, options = {}) {
+  const writes = [];
+  if (parts.leads !== undefined) writes.push(persistCriticalData('gordi_leads', parts.leads, { label: options.label || 'leads' }));
+  if (parts.emailHistory !== undefined) writes.push(persistCriticalData('gordi_email_history', parts.emailHistory, { label: options.label || 'emails' }));
+  if (parts.campaigns !== undefined) writes.push(persistCriticalData('gordi_campaigns', parts.campaigns, { label: options.label || 'campanas' }));
+  if (parts.searchHistoryList !== undefined) writes.push(persistCriticalData('gordi_search_history', parts.searchHistoryList, { label: options.label || 'historial' }));
+  if (parts.savedSearches !== undefined) writes.push(persistCriticalData('gordi_saved_searches', parts.savedSearches, { label: options.label || 'busquedas guardadas' }));
+  if (parts.objectives !== undefined) writes.push(persistCriticalData('gordi_objectives', parts.objectives, { label: options.label || 'objetivos' }));
+  if (parts.templates !== undefined) writes.push(persistCriticalData('gordi_templates', parts.templates, { label: options.label || 'plantillas' }));
+  if (parts.commercialMemory !== undefined) writes.push(persistCriticalData('gordi_commercial_memory', parts.commercialMemory, { label: options.label || 'memoria comercial' }));
+  return Promise.all(writes);
+}
+
+async function persistEmailHistory(label = 'emails') {
+  return persistCriticalData('gordi_email_history', emailHistory, { label });
+}
+
+async function persistCampaigns(label = 'campanas') {
+  return persistCriticalData('gordi_campaigns', campaigns, { label });
+}
+
+async function persistTemplates(label = 'plantillas') {
+  return persistCriticalData('gordi_templates', emailTemplates, { label });
+}
+
+async function persistObjectives(label = 'objetivos') {
+  return persistCriticalData('gordi_objectives', objectives, { label });
+}
+
 function parseSnapshotArray(snapshot, key) {
   try {
     const value = JSON.parse(snapshot && snapshot[key] ? snapshot[key] : '[]');
@@ -305,6 +516,47 @@ function getSnapshotSummary(snapshot = exportDataSnapshot()) {
 
 function getCurrentDataSummary() {
   return getSnapshotSummary(exportDataSnapshot());
+}
+
+function estimateStoredSnapshotBytes(includeCaches = false) {
+  let bytes = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || VOLTFLOW_SNAPSHOT_EXCLUDED_KEYS.has(key)) continue;
+      const isDataKey = VOLTFLOW_DATA_KEYS.includes(key) || key.startsWith('gordi_') || key.startsWith('voltium_');
+      const isCacheKey = key.startsWith('gordi_ecache_');
+      if (!isDataKey && !(includeCaches && isCacheKey)) continue;
+      const value = localStorage.getItem(key);
+      bytes += (String(key).length + String(value == null ? '' : value).length) * 2;
+    }
+  } catch {}
+  return bytes;
+}
+
+function getFastDataSummary() {
+  let gordiKeys = 0;
+  let scrapeMemory = 0;
+  let enrichCache = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      if (key.startsWith('gordi_')) gordiKeys++;
+      if (key.startsWith('gordi_scrape_memory_')) scrapeMemory++;
+      if (key.startsWith('gordi_ecache_')) enrichCache++;
+    }
+  } catch {}
+  return {
+    leads: Array.isArray(leads) ? leads.length : parseStoredArray('gordi_leads').length,
+    emails: Array.isArray(emailHistory) ? emailHistory.length : parseStoredArray('gordi_email_history').length,
+    campaigns: Array.isArray(campaigns) ? campaigns.length : parseStoredArray('gordi_campaigns').length,
+    searches: Array.isArray(searchHistoryList) ? searchHistoryList.length : parseStoredArray('gordi_search_history').length,
+    scrapeMemory,
+    enrichCache,
+    keys: gordiKeys,
+    bytes: estimateStoredSnapshotBytes(false)
+  };
 }
 
 function validateDataSnapshot(snapshot, baselineSummary = null) {
@@ -370,10 +622,21 @@ function writeSafetySnapshots(items) {
 
 function createSafetySnapshot(reason = 'manual', options = {}) {
   try {
+    const maxBytes = options.maxBytes || 1200000;
+    const estimatedBytes = estimateStoredSnapshotBytes(false);
+    if (!options.download && estimatedBytes > maxBytes) {
+      localStorage.setItem('_voltflow_last_large_snapshot_skip', JSON.stringify({
+        date: new Date().toISOString(),
+        reason,
+        bytes: estimatedBytes,
+        maxBytes,
+        type: 'safety'
+      }));
+      return null;
+    }
     const snapshot = exportDataSnapshot();
     const summary = getSnapshotSummary(snapshot);
     if (!summary.keys) return null;
-    const maxBytes = options.maxBytes || 1200000;
     const storeSnapshot = options.download || summary.bytes <= maxBytes;
 
     const item = {
@@ -428,18 +691,19 @@ function createCriticalRescueSnapshot(reason = 'auto', options = {}) {
       return items[0];
     }
 
-    const snapshot = exportDataSnapshot();
-    const summary = getSnapshotSummary(snapshot);
     const maxBytes = options.maxBytes || 1200000;
-    if (summary.bytes > maxBytes) {
+    const estimatedBytes = estimateStoredSnapshotBytes(false);
+    if (estimatedBytes > maxBytes) {
       localStorage.setItem('_voltflow_last_large_snapshot_skip', JSON.stringify({
         date: new Date(now).toISOString(),
         reason,
-        bytes: summary.bytes,
+        bytes: estimatedBytes,
         maxBytes
       }));
       return null;
     }
+    const snapshot = exportDataSnapshot();
+    const summary = getSnapshotSummary(snapshot);
     const hasApiKeys = ['gordi_api_key','gordi_hunter_key','gordi_apollo_key','gordi_gemini_key','gordi_claude_key','gordi_groq_key','gordi_openrouter_key']
       .some(key => !!snapshot[key]);
     if (!summary.keys || (!summary.leads && !summary.emails && !summary.campaigns && !summary.searches && !hasApiKeys)) return null;
@@ -550,7 +814,7 @@ function showCriticalRescueDiagnostics() {
   );
 }
 
-function restoreSafetySnapshot(id) {
+async function restoreSafetySnapshot(id) {
   const item = readSafetySnapshots().find(s => s.id === id);
   if (!item || !item.snapshot) {
     alert('Snapshot no encontrado.');
@@ -559,9 +823,13 @@ function restoreSafetySnapshot(id) {
   const summary = item.summary || getSnapshotSummary(item.snapshot);
   const label = new Date(item.date).toLocaleString('es-ES');
   if (!confirm(`Restaurar snapshot del ${label}?\nSe cargaran ${summary.leads} leads y ${summary.keys} claves.\nAntes de restaurar se creara otro snapshot de seguridad.`)) return;
-  importDataSnapshot(item.snapshot, true, { reason: 'before_restore_safety_snapshot' });
-  reloadDataFromStorage();
-  if (typeof showToast === 'function') showToast(`Snapshot restaurado: ${summary.leads} leads`);
+  try {
+    await importDataSnapshotAsync(item.snapshot, true, { reason: 'before_restore_safety_snapshot' });
+    reloadDataFromStorage();
+    if (typeof showToast === 'function') showToast(`Snapshot restaurado: ${summary.leads} leads`);
+  } catch {
+    if (typeof showToast === 'function') showToast('No se pudo confirmar la restauracion del snapshot.');
+  }
 }
 
 function reloadDataFromStorage() {
@@ -587,6 +855,41 @@ function importDataSnapshot(snapshot, overwrite = false, options = {}) {
     if (VOLTFLOW_SNAPSHOT_EXCLUDED_KEYS.has(key)) continue;
     if (!overwrite && localStorage.getItem(key) !== null) continue;
     localStorage.setItem(key, val);
+    imported++;
+  }
+  return imported;
+}
+
+async function importDataSnapshotAsync(snapshot, overwrite = false, options = {}) {
+  const validation = validateDataSnapshot(snapshot, overwrite ? getCurrentDataSummary() : null);
+  if (!validation.ok) {
+    throw new Error('Snapshot invalido: ' + validation.errors.join(' '));
+  }
+  if (overwrite) createSafetySnapshot(options.reason || 'before_snapshot_import');
+
+  const critical = {
+    gordi_leads: 'leads',
+    gordi_email_history: 'emails',
+    gordi_campaigns: 'campanas',
+    gordi_search_history: 'historial',
+    gordi_saved_searches: 'busquedas guardadas',
+    gordi_objectives: 'objetivos',
+    gordi_templates: 'plantillas',
+    gordi_commercial_memory: 'memoria comercial'
+  };
+  let imported = 0;
+  for (const [key, val] of Object.entries(snapshot)) {
+    if (key.startsWith('_')) continue;
+    if (VOLTFLOW_SNAPSHOT_EXCLUDED_KEYS.has(key)) continue;
+    if (!overwrite && localStorage.getItem(key) !== null) continue;
+    if (critical[key] && typeof persistCriticalData === 'function') {
+      const parsed = ['gordi_leads','gordi_email_history','gordi_campaigns','gordi_search_history','gordi_saved_searches'].includes(key)
+        ? parseSnapshotArray(snapshot, key)
+        : JSON.parse(val || '{}');
+      await persistCriticalData(key, parsed, { label: critical[key] });
+    } else {
+      localStorage.setItem(key, val);
+    }
     imported++;
   }
   return imported;
@@ -1026,7 +1329,7 @@ async function saveJsonBinConfig() {
 // --  Crear bin nuevo ---------------------------------------------------------
 async function jsonbinCreateBin(key) {
   try {
-    const snapshot = exportDataSnapshot();
+    const snapshot = await exportCurrentDataSnapshot();
     const res = await fetch(`${JSONBIN_API}/b`, {
       method: 'POST',
       headers: {
@@ -1067,7 +1370,7 @@ async function jsonbinPush(showFeedback = true) {
   if (showFeedback) jsonbinSetStatus(' Subiendo datos...', 'var(--text-dim)');
 
   try {
-    const snapshot = exportDataSnapshot();
+    const snapshot = await exportCurrentDataSnapshot();
     const res = await fetch(`${JSONBIN_API}/b/${binId}`, {
       method: 'PUT',
       headers: {

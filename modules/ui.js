@@ -98,11 +98,19 @@ function renderTodayPanel() {
   const today = new Date(); today.setHours(0,0,0,0);
   if (label) label.textContent = today.toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' });
 
-  const dueToday = leads.filter(l => !l.archived && l.next_contact && new Date(l.next_contact) <= today);
-  const urgent   = leads.filter(l => !l.archived && l.score >= 75 && l.status === 'Pendiente');
   const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); weekStart.setHours(0,0,0,0);
-  const leadsThisWeek = leads.filter(l => l.date && new Date(l.date) >= weekStart).length;
-  const emailsThisWeek = emailHistory.filter(e => e.date && new Date(e.date) >= weekStart).length;
+  const dueToday = [];
+  const urgent = [];
+  let leadsThisWeek = 0;
+  let emailsThisWeek = 0;
+  for (const lead of leads) {
+    if (!lead.archived && lead.next_contact && new Date(lead.next_contact) <= today) dueToday.push(lead);
+    if (!lead.archived && lead.score >= 75 && lead.status === 'Pendiente') urgent.push(lead);
+    if (lead.date && new Date(lead.date) >= weekStart) leadsThisWeek++;
+  }
+  for (const email of emailHistory) {
+    if (email.date && new Date(email.date) >= weekStart) emailsThisWeek++;
+  }
 
   const cards = [];
 
@@ -184,13 +192,28 @@ function todayPostpone(leadId) {
 function renderFunnelChart() {
   const el = document.getElementById('funnel-chart');
   if (!el) return;
-  const total = leads.filter(l => !l.archived).length || 1;
+  let totalCount = 0;
+  let contactedCount = 0;
+  let emailedCount = 0;
+  let respondedCount = 0;
+  let closedCount = 0;
+  const contactedStatuses = new Set(['Contactado','Respuesta del cliente','Visita','Entrega de presupuesto','Cerrado']);
+  const emailedStatuses = new Set(['Visita','Respuesta del cliente','Entrega de presupuesto','Cerrado']);
+  const respondedStatuses = new Set(['Respuesta del cliente','Visita','Entrega de presupuesto','Cerrado']);
+  for (const lead of leads) {
+    if (!lead.archived) totalCount++;
+    if (contactedStatuses.has(lead.status)) contactedCount++;
+    if (emailedStatuses.has(lead.status)) emailedCount++;
+    if (respondedStatuses.has(lead.status)) respondedCount++;
+    if (lead.status === 'Cerrado') closedCount++;
+  }
+  const total = totalCount || 1;
   const steps = [
-    { label: 'Total leads',    count: leads.filter(l=>!l.archived).length,    color: '#0A84FF' },
-    { label: 'Contactados',    count: leads.filter(l=>['Contactado','Respuesta del cliente','Visita','Entrega de presupuesto','Cerrado'].includes(l.status)).length, color: '#5E5CE6' },
-    { label: 'Emails enviados',count: leads.filter(l=>['Visita','Respuesta del cliente','Entrega de presupuesto','Cerrado'].includes(l.status)).length, color: '#f59e0b' },
-    { label: 'Respondidos',    count: leads.filter(l=>['Respuesta del cliente','Visita','Entrega de presupuesto','Cerrado'].includes(l.status)).length, color: '#10d97c' },
-    { label: 'Cerrados',       count: leads.filter(l=>l.status==='Cerrado').length, color: '#34d399' },
+    { label: 'Total leads',    count: totalCount,    color: '#0A84FF' },
+    { label: 'Contactados',    count: contactedCount, color: '#5E5CE6' },
+    { label: 'Emails enviados',count: emailedCount, color: '#f59e0b' },
+    { label: 'Respondidos',    count: respondedCount, color: '#10d97c' },
+    { label: 'Cerrados',       count: closedCount, color: '#34d399' },
   ];
   el.innerHTML = steps.map(s => `
     <div class="funnel-step" onclick="showView('leads')">
@@ -204,12 +227,21 @@ function renderFunnelChart() {
 function renderPipelineValue() {
   const el = document.getElementById('pipeline-value-panel');
   if (!el) return;
-  const active = leads.filter(l => !l.archived && l.status !== 'Cerrado' && l.status !== 'No interesa' && l.budget > 0);
-  const total  = active.reduce((s,l) => s + (l.budget || 0), 0);
-  const closed = leads.filter(l => l.status === 'Cerrado' && l.budget > 0).reduce((s,l) => s + (l.budget||0), 0);
+  let activeCount = 0;
+  let total = 0;
+  let closed = 0;
+  for (const lead of leads) {
+    const budget = Number(lead.budget) || 0;
+    if (!budget) continue;
+    if (!lead.archived && lead.status !== 'Cerrado' && lead.status !== 'No interesa') {
+      activeCount++;
+      total += budget;
+    }
+    if (lead.status === 'Cerrado') closed += budget;
+  }
   el.innerHTML = `
     <div class="pipeline-value">${total.toLocaleString('es-ES')}â‚¬</div>
-    <div style="font-size:.75rem;color:var(--text-muted);margin-top:.25rem">${active.length} leads con presupuesto Â· ${total > 0 ? Math.round(total/active.length).toLocaleString('es-ES')+'â‚¬ media' : 'â€”'}</div>
+    <div style="font-size:.75rem;color:var(--text-muted);margin-top:.25rem">${activeCount} leads con presupuesto Â· ${total > 0 ? Math.round(total/activeCount).toLocaleString('es-ES')+'â‚¬ media' : 'â€”'}</div>
     ${closed > 0 ? `<div style="font-size:.78rem;color:var(--success);margin-top:.4rem">âœ… ${closed.toLocaleString('es-ES')}â‚¬ cerrados</div>` : ''}
     <div style="font-size:.7rem;color:var(--text-dim);margin-top:.5rem">AÃ±ade presupuesto estimado en cada lead para ver el valor del pipeline</div>`;
 }
@@ -266,24 +298,35 @@ function openObjectivesModal() {
   document.getElementById('objectives-modal').style.display = 'flex';
 }
 function closeObjectivesModal() { document.getElementById('objectives-modal').style.display = 'none'; }
-function saveObjectives() {
+async function saveObjectives() {
   objectives = {
     leads: parseInt(document.getElementById('obj-leads').value) || 20,
     emails: parseInt(document.getElementById('obj-emails').value) || 10,
     replies: parseInt(document.getElementById('obj-replies').value) || 3
   };
-  localStorage.setItem('gordi_objectives', JSON.stringify(objectives));
-  closeObjectivesModal();
-  renderObjectivesPanel();
-  showToast('Objetivos guardados âœ“');
+  try {
+    await persistCriticalData('gordi_objectives', objectives, { label: 'objetivos' });
+    closeObjectivesModal();
+    renderObjectivesPanel();
+    showToast('Objetivos guardados âœ“');
+  } catch {
+    showToast('No se pudieron confirmar los objetivos. Quedan pendientes de recuperacion.');
+  }
 }
 function renderObjectivesPanel() {
   const el = document.getElementById('objectives-panel');
   if (!el) return;
   const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); weekStart.setHours(0,0,0,0);
-  const leadsW  = leads.filter(l => l.date && new Date(l.date) >= weekStart).length;
-  const emailsW = emailHistory.filter(e => e.date && new Date(e.date) >= weekStart).length;
-  const repliesW = leads.filter(l => l.status_date && new Date(l.status_date) >= weekStart && l.status === 'Respuesta del cliente').length;
+  let leadsW = 0;
+  let emailsW = 0;
+  let repliesW = 0;
+  for (const lead of leads) {
+    if (lead.date && new Date(lead.date) >= weekStart) leadsW++;
+    if (lead.status === 'Respuesta del cliente' && lead.status_date && new Date(lead.status_date) >= weekStart) repliesW++;
+  }
+  for (const email of emailHistory) {
+    if (email.date && new Date(email.date) >= weekStart) emailsW++;
+  }
   const items = [
     { label:'Leads nuevos', val:leadsW, target:objectives.leads, icon:'ðŸ‘¥' },
     { label:'Emails enviados', val:emailsW, target:objectives.emails, icon:'âœ‰ï¸' },
@@ -306,16 +349,24 @@ function renderObjectivesPanel() {
 function saveSearchHistory(segment, location) {
   const key = `${segment} â€” ${location}`;
   searchHistoryList = [key, ...searchHistoryList.filter(k => k !== key)].slice(0,5);
-  localStorage.setItem('gordi_search_history', JSON.stringify(searchHistoryList));
+  if (typeof persistCriticalData === 'function') {
+    persistCriticalData('gordi_search_history', searchHistoryList, { label: 'historial de busquedas' }).catch(() => {});
+  } else {
+    localStorage.setItem('gordi_search_history', JSON.stringify(searchHistoryList));
+  }
   renderSearchHistory();
 }
 function renderSearchHistory() {
   const el = document.getElementById('search-history-bar');
   if (!el || !searchHistoryList.length) return;
   el.innerHTML = '<span style="font-size:.68rem;color:var(--text-dim);margin-right:.25rem">Recientes:</span>' +
-    searchHistoryList.map(k => {
-      const [seg, loc] = k.split(' â€” ');
-      return `<span class="sh-pill" onclick="applySearchHistory('${encodeURIComponent(seg)}','${encodeURIComponent(loc)}')">${k}</span>`;
+    searchHistoryList.map(item => {
+      const label = typeof item === 'string'
+        ? item
+        : [item.segment || item.sector || item.query || 'Busqueda', item.location || ''].filter(Boolean).join(' - ');
+      const rawSeg = typeof item === 'string' ? label.split(' â€” ')[0] : (item.segment || item.sector || item.query || '');
+      const rawLoc = typeof item === 'string' ? (label.split(' â€” ')[1] || '') : (item.location || '');
+      return `<span class="sh-pill" onclick="applySearchHistory('${encodeURIComponent(rawSeg)}','${encodeURIComponent(rawLoc)}')">${cleanVisibleText(label)}</span>`;
     }).join('');
 }
 function applySearchHistory(seg, loc) {
@@ -355,7 +406,7 @@ async function regenerateSubjectOnly() {
   btn.textContent = 'ðŸ”„ Nuevo asunto'; btn.disabled = false;
 }
 
-function saveAiEmailAsTemplate() {
+async function saveAiEmailAsTemplate() {
   const lead = leads.find(l => l.id == aiCurrentLeadId);
   if (!lead) return;
   const subject = document.getElementById('ai-subject-out').value;
@@ -364,8 +415,12 @@ function saveAiEmailAsTemplate() {
   if (!emailTemplates[key]) emailTemplates[key] = {};
   emailTemplates[key].subjectA = subject;
   emailTemplates[key].body = body;
-  localStorage.setItem('gordi_templates', JSON.stringify(emailTemplates));
-  showToast(`Plantilla guardada para sector ${key} âœ“`);
+  try {
+    await persistTemplates('plantillas');
+    showToast(`Plantilla guardada para sector ${key} âœ“`);
+  } catch {
+    showToast('No se pudo confirmar la plantilla.');
+  }
 }
 
 function checkSpam(subject) {
@@ -668,7 +723,7 @@ function openImportFromLocalStorage() {
     </div>`;
 }
 
-function executeLocalImport(mode) {
+async function executeLocalImport(mode) {
   const normN = n => (n||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,25);
   const CONFIG_KEYS = ['gordi_api_key','gordi_gemini_key','gordi_hunter_key','gordi_apollo_key',
     'gordi_user_name','gordi_user_email','gordi_user_company','gordi_user_phone','gordi_user_web',
@@ -703,9 +758,7 @@ function executeLocalImport(mode) {
     // CampaÃ±as: aÃ±adir las nuevas
     const exCampIds = new Set(campaigns.map(c => c.id));
     campaigns = [...campaigns, ...campsData.filter(c => !exCampIds.has(c.id))];
-    saveLeads();
-    localStorage.setItem('gordi_email_history', JSON.stringify(emailHistory));
-    localStorage.setItem('gordi_campaigns', JSON.stringify(campaigns));
+    await persistBusinessState({ leads, emailHistory, campaigns }, { label: 'importacion local' });
     renderAll(); renderDashboardCharts(); renderTracking(); renderCampaigns();
     closeImportModal();
     showToast(`âœ… Combinado: +${added} leads nuevos importados`);
@@ -714,9 +767,7 @@ function executeLocalImport(mode) {
     leads = leadsData;
     emailHistory = histData;
     campaigns = campsData;
-    saveLeads();
-    localStorage.setItem('gordi_email_history', JSON.stringify(emailHistory));
-    localStorage.setItem('gordi_campaigns', JSON.stringify(campaigns));
+    await persistBusinessState({ leads, emailHistory, campaigns }, { label: 'importacion local' });
     renderAll(); renderDashboardCharts(); renderTracking(); renderCampaigns();
     closeImportModal();
     showToast(`âœ… ${leads.length} leads cargados desde el storage`);
@@ -847,8 +898,16 @@ function showMigrationBanner(log) {
   }, 8000);
 }
 
-function exportFullBackup() {
-  const portableSnapshot = typeof exportDataSnapshot === 'function' ? exportDataSnapshot() : null;
+async function exportFullBackup() {
+  let portableSnapshot = null;
+  try {
+    portableSnapshot = typeof exportCurrentDataSnapshot === 'function'
+      ? await exportCurrentDataSnapshot()
+      : (typeof exportDataSnapshot === 'function' ? exportDataSnapshot() : null);
+  } catch {
+    showToast('No se puede exportar una copia consistente: hay escrituras pendientes o fallo de IndexedDB.');
+    return;
+  }
   const integrity = portableSnapshot && typeof validateDataSnapshot === 'function'
     ? validateDataSnapshot(portableSnapshot).summary
     : null;
@@ -911,7 +970,7 @@ function restoreBackup(event) {
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = async e => {
     try {
       const data = JSON.parse(e.target.result);
 
@@ -931,8 +990,8 @@ function restoreBackup(event) {
           : 'fecha desconocida';
         const warnings = validation.warnings && validation.warnings.length ? `\n\nAvisos:\n- ${validation.warnings.join('\n- ')}` : '';
         if (!confirm(`Restaurar backup del ${dateStr}?\nSe cargaran ${data.leads.length} leads.\nSe creara un snapshot de seguridad antes de reemplazar los datos actuales.${warnings}`)) return;
-        if (data.portableSnapshot && typeof importDataSnapshot === 'function') {
-          importDataSnapshot(data.portableSnapshot, true, { reason: 'before_restore_full_backup' });
+        if (data.portableSnapshot && typeof importDataSnapshotAsync === 'function') {
+          await importDataSnapshotAsync(data.portableSnapshot, true, { reason: 'before_restore_full_backup' });
           if (typeof reloadDataFromStorage === 'function') reloadDataFromStorage();
           showToast(`âœ… Backup completo restaurado: ${validation.summary.leads} leads`);
           return;
@@ -947,11 +1006,7 @@ function restoreBackup(event) {
           const base = (typeof defaultTemplates !== 'undefined') ? defaultTemplates : {};
           emailTemplates = { ...base, ...data.templates };
         }
-        saveLeads();
-        localStorage.setItem('gordi_email_history', JSON.stringify(emailHistory));
-        localStorage.setItem('gordi_campaigns',     JSON.stringify(campaigns));
-        localStorage.setItem('gordi_objectives',    JSON.stringify(objectives));
-        localStorage.setItem('gordi_templates',     JSON.stringify(emailTemplates));
+        await persistBusinessState({ leads, emailHistory, campaigns, objectives, templates: emailTemplates }, { label: 'restauracion de backup' });
         renderAll(); renderDashboardCharts();
         if (typeof renderTracking     === 'function') renderTracking();
         if (typeof renderCampaigns    === 'function') renderCampaigns();
@@ -1053,6 +1108,7 @@ function cleanObsoleteLeads() {
 function updateStorageInfo() {
   const el = document.getElementById('storage-info-text');
   const fill = document.getElementById('storage-fill');
+  const idbEl = document.getElementById('indexeddb-status');
   if (typeof renderDiskBackupStatus === 'function') renderDiskBackupStatus();
   if (!el) return;
   let total = 0;
@@ -1060,9 +1116,37 @@ function updateStorageInfo() {
   const kb = Math.round(total / 1024);
   const maxKb = 5120;
   const pct = Math.min(Math.round(kb / maxKb * 100), 100);
-  el.textContent = `Espacio usado: ${kb} KB de ${maxKb} KB (${leads.length} leads Â· ${emailHistory.length} emails)`;
+  const idbReady = window.VoltflowStorage && VoltflowStorage.isReadySync();
+  el.textContent = `Espacio localStorage usado: ${kb} KB de ${maxKb} KB (${leads.length} leads · ${emailHistory.length} emails)`;
+  if (idbEl) {
+    idbEl.innerHTML = idbReady
+      ? `<strong style="color:var(--success)">IndexedDB activo</strong> · datos grandes en almacenamiento escalable · localStorage original conservado`
+      : `<strong style="color:var(--warning)">IndexedDB no activado</strong> · localStorage sigue siendo la fuente principal`;
+  }
   if (fill) fill.style.width = pct + '%';
   if (fill) fill.style.background = pct > 80 ? 'var(--danger)' : pct > 60 ? 'var(--warning)' : '';
+}
+
+async function migrateStorageToIndexedDB() {
+  if (!window.VoltflowStorage) {
+    showToast('IndexedDB no esta disponible en este navegador');
+    return;
+  }
+  const summary = typeof getCurrentDataSummary === 'function' ? getCurrentDataSummary() : { leads: leads.length, emails: emailHistory.length };
+  const msg = `Activar almacenamiento grande?\n\nSe copiaran a IndexedDB:\n- ${summary.leads || 0} leads\n- ${summary.emails || 0} emails\n- ${summary.searches || 0} busquedas\n\nNo se borrara localStorage. Tras verificar la copia, el CRM cargara desde IndexedDB.`;
+  if (!confirm(msg)) return;
+  try {
+    showToast('Copiando datos a IndexedDB...');
+    const manifest = await VoltflowStorage.migrateFromLocalStorage({ source: 'settings-manual' });
+    await hydrateVoltiumIndexedDBIfAvailable();
+    renderActiveView();
+    updateStorageInfo();
+    const counts = manifest.expected || {};
+    showToast(`IndexedDB activado: ${counts.leads?.count || 0} leads verificados`);
+  } catch (err) {
+    console.error('Migracion IndexedDB fallida:', err);
+    showToast('No se pudo activar IndexedDB. No se han borrado datos.');
+  }
 }
 
 // ============ API ERROR LOG ============
@@ -1121,22 +1205,25 @@ const _origImportSearch = importSelectedSearch;
 
 // ============ RENDER DASHBOARD OVERRIDE ============
 function renderDashboardCharts() {
-  renderSegmentChart();
-  renderTopLeads();
-  renderConversionMetrics();
-  renderSectorPerformance();
-  renderIntelPanel();
-  renderSmartAlert();
-  renderFunnelChart();
-  renderPipelineValue();
-  renderStreakPanel();
-  renderHeatmap();
-  renderObjectivesPanel();
-  renderTodayPanel();
-  renderApiLog();
-  updateStorageInfo();
-  renderDailyStats();
-  sanitizeDashboardMarkup();
+  const measure = typeof voltflowMeasureTask === 'function'
+    ? voltflowMeasureTask
+    : (_name, fn) => fn();
+  measure('dashboard:segment-chart', renderSegmentChart);
+  measure('dashboard:top-leads', renderTopLeads);
+  measure('dashboard:conversion-metrics', renderConversionMetrics);
+  measure('dashboard:sector-performance', renderSectorPerformance);
+  measure('dashboard:intel-panel', renderIntelPanel);
+  measure('dashboard:smart-alert', renderSmartAlert);
+  measure('dashboard:funnel-chart', renderFunnelChart);
+  measure('dashboard:pipeline-value', renderPipelineValue);
+  measure('dashboard:streak-panel', renderStreakPanel);
+  measure('dashboard:heatmap', renderHeatmap);
+  measure('dashboard:objectives-panel', renderObjectivesPanel);
+  measure('dashboard:today-panel', renderTodayPanel);
+  measure('dashboard:api-log', renderApiLog);
+  measure('dashboard:storage-info', updateStorageInfo);
+  measure('dashboard:daily-stats', renderDailyStats);
+  measure('dashboard:sanitize-markup', sanitizeDashboardMarkup);
 }
 
 function renderDailyStats() {
@@ -1312,48 +1399,96 @@ function applyLightMode(on) {
 }
 
 
-function normalizeVisibleTextNodes(root = document.body) {
-  if (!root) return;
+const VISIBLE_TEXT_MOJIBAKE_RE = /[\u00c3\u00c2\u00e2\u00f0\u00c5\u0192]/;
+const TEXT_NORMALIZE_BATCH_MS = 8;
+const TEXT_NORMALIZE_MAX_QUEUE = 200;
+let _textNormalizeQueue = [];
+let _textNormalizeQueued = new WeakSet();
+let _textNormalizeScheduled = false;
+let _textNormalizeObserver = null;
+
+function rootMayNeedTextNormalization(root) {
+  if (!root) return false;
+  if (root.nodeType === Node.TEXT_NODE) return VISIBLE_TEXT_MOJIBAKE_RE.test(root.nodeValue || '');
+  if (root.nodeType !== Node.ELEMENT_NODE && root !== document.body) return false;
+  if (VISIBLE_TEXT_MOJIBAKE_RE.test(root.textContent || '')) return true;
+  if (!root.querySelectorAll) return false;
+  const attrNodes = [];
+  if (root.matches?.('[title], [aria-label], [placeholder], [alt], [data-tooltip]')) attrNodes.push(root);
+  root.querySelectorAll('[title], [aria-label], [placeholder], [alt], [data-tooltip]').forEach(el => attrNodes.push(el));
+  return attrNodes.some(el => ['title', 'aria-label', 'placeholder', 'alt', 'data-tooltip']
+    .some(attr => el.hasAttribute(attr) && VISIBLE_TEXT_MOJIBAKE_RE.test(el.getAttribute(attr) || '')));
+}
+
+function normalizeVisibleTextNodes(root = document.body, deadline = null) {
+  if (!root || !rootMayNeedTextNormalization(root)) return;
   const scope = root.nodeType === Node.TEXT_NODE ? root.parentElement : root;
   if (!scope) return;
-  const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
+  const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const parent = node.parentElement;
+      if (!parent || ['SCRIPT','STYLE','TEXTAREA','INPUT','CODE','PRE'].includes(parent.tagName)) return NodeFilter.FILTER_REJECT;
+      return VISIBLE_TEXT_MOJIBAKE_RE.test(node.nodeValue || '') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+    }
+  });
   let node;
   while ((node = walker.nextNode())) {
-    const parent = node.parentElement;
-    if (!parent) continue;
-    if (['SCRIPT','STYLE','TEXTAREA','INPUT','CODE','PRE'].includes(parent.tagName)) continue;
     const cleaned = cleanVisibleText(node.nodeValue);
     if (cleaned !== node.nodeValue) node.nodeValue = cleaned;
+    if (deadline && performance.now() > deadline.time) {
+      scheduleVisibleTextNormalization(scope);
+      return;
+    }
   }
 
   if (!scope.querySelectorAll) return;
-  const attrSelector = '[title], [aria-label], [placeholder], [alt], [data-tooltip]';
-  scope.querySelectorAll(attrSelector).forEach(el => {
+  const attrNodes = [];
+  if (scope.matches?.('[title], [aria-label], [placeholder], [alt], [data-tooltip]')) attrNodes.push(scope);
+  scope.querySelectorAll('[title], [aria-label], [placeholder], [alt], [data-tooltip]').forEach(el => attrNodes.push(el));
+  attrNodes.forEach(el => {
     ['title', 'aria-label', 'placeholder', 'alt', 'data-tooltip'].forEach(attr => {
       if (!el.hasAttribute(attr)) return;
       const value = el.getAttribute(attr);
+      if (!VISIBLE_TEXT_MOJIBAKE_RE.test(value || '')) return;
       const cleaned = cleanVisibleText(value);
       if (cleaned !== value) el.setAttribute(attr, cleaned);
     });
   });
 }
 
-let _textNormalizeTimer = null;
-let _textNormalizeQueue = new Set();
+function scheduleTextNormalizeDrain() {
+  if (_textNormalizeScheduled) return;
+  _textNormalizeScheduled = true;
+  const run = () => {
+    _textNormalizeScheduled = false;
+    const deadline = { time: performance.now() + TEXT_NORMALIZE_BATCH_MS };
+    while (_textNormalizeQueue.length && performance.now() <= deadline.time) {
+      const root = _textNormalizeQueue.shift();
+      if (root && root.nodeType === Node.ELEMENT_NODE) _textNormalizeQueued.delete(root);
+      normalizeVisibleTextNodes(root, deadline);
+    }
+    if (_textNormalizeQueue.length) scheduleTextNormalizeDrain();
+  };
+  if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 600 });
+  else setTimeout(run, 60);
+}
+
 function scheduleVisibleTextNormalization(root = document.body) {
-  if (root) _textNormalizeQueue.add(root);
-  clearTimeout(_textNormalizeTimer);
-  _textNormalizeTimer = setTimeout(() => {
-    const roots = [..._textNormalizeQueue].slice(0, 24);
-    _textNormalizeQueue.clear();
-    roots.forEach(item => normalizeVisibleTextNodes(item));
-  }, 50);
+  if (!root || !rootMayNeedTextNormalization(root)) return;
+  if (root.nodeType === Node.ELEMENT_NODE && _textNormalizeQueued.has(root)) return;
+  if (root.nodeType === Node.ELEMENT_NODE) _textNormalizeQueued.add(root);
+  _textNormalizeQueue.push(root);
+  if (_textNormalizeQueue.length > TEXT_NORMALIZE_MAX_QUEUE) {
+    _textNormalizeQueue = [document.body];
+    _textNormalizeQueued = new WeakSet();
+  }
+  scheduleTextNormalizeDrain();
 }
 
 function initVisibleTextNormalization() {
   scheduleVisibleTextNormalization();
-  if (typeof MutationObserver === 'function') {
-    const observer = new MutationObserver(records => {
+  if (typeof MutationObserver === 'function' && !_textNormalizeObserver) {
+    _textNormalizeObserver = new MutationObserver(records => {
       records.forEach(record => {
         record.addedNodes.forEach(node => {
           if (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE) {
@@ -1362,7 +1497,7 @@ function initVisibleTextNormalization() {
         });
       });
     });
-    observer.observe(document.body, { childList: true, subtree: true });
+    _textNormalizeObserver.observe(document.body, { childList: true, subtree: true });
   }
 }
 
@@ -1404,6 +1539,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function cleanVisibleText(value) {
   let text = String(value ?? '');
+  if (!VISIBLE_TEXT_MOJIBAKE_RE.test(text)) return text;
   const hasMojibake = str => /[\u00c3\u00c2\u00e2\u00f0\u00c5\u0192]/.test(str);
   const cp1252Bytes = {
     '\u20ac': 0x80, '\u201a': 0x82, '\u0192': 0x83, '\u201e': 0x84,

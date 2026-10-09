@@ -167,10 +167,21 @@ ${raw.slice(0, 1500)}`;
     notes: cleanBody.slice(0, 200),
     direction: 'inbound',
   });
-  localStorage.setItem('gordi_email_history', JSON.stringify(emailHistory));
+  try {
+    await persistEmailHistory('historial de emails');
+  } catch {
+    showToast('No se pudo confirmar el historial de email. Queda pendiente de recuperacion.');
+    if (btn) { btn.textContent = '✅ Registrar respuesta'; btn.disabled = false; }
+    return;
+  }
 
   lead.score = recalculateLeadScore(lead);
-  saveLeads(); renderAll(); renderTracking();
+  try {
+    await saveLeads();
+  } catch {
+    return;
+  }
+  renderAll(); renderTracking();
   updateFollowupBadge();
 
   // Visual feedback and refresh drawer
@@ -402,7 +413,7 @@ function renderInboxResults() {
   panel.style.display = 'block';
 }
 
-function applyInboxMatch(emailAddr, leadId, subject, body, date) {
+async function applyInboxMatch(emailAddr, leadId, subject, body, date) {
   const lead = leads.find(l => l.id == leadId);
   if (!lead) return;
 
@@ -446,30 +457,40 @@ function applyInboxMatch(emailAddr, leadId, subject, body, date) {
     notes: body ? body.slice(0,200) : '',
     direction: 'inbound',
   });
-  localStorage.setItem('gordi_email_history', JSON.stringify(emailHistory));
+  await persistEmailHistory('historial de emails');
 
   lead.score = recalculateLeadScore(lead);
-  saveLeads(); renderAll(); renderTracking();
+  await saveLeads();
+  renderAll(); renderTracking();
   updateFollowupBadge();
 }
 
-function applySingleMatch(idx) {
+async function applySingleMatch(idx) {
   const em = _inboxMatched[idx];
   if (!em?.lead) return;
-  applyInboxMatch(em.email, em.lead.id, em.subject, em.body, em.date);
-  _inboxApplied.add(em.email);
-  showToast(`âœ… ${em.lead.company} -> Respuesta del cliente`);
-  renderInboxResults();
+  try {
+    await applyInboxMatch(em.email, em.lead.id, em.subject, em.body, em.date);
+    _inboxApplied.add(em.email);
+    showToast(`âœ… ${em.lead.company} -> Respuesta del cliente`);
+    renderInboxResults();
+  } catch {
+    showToast('No se pudo confirmar la respuesta del inbox.');
+  }
 }
 
-function applyInboxMatches() {
+async function applyInboxMatches() {
   const matched = _inboxMatched.filter(e => e.lead && !_inboxApplied.has(e.email));
   if (!matched.length) { showToast('Nada nuevo que aplicar'); return; }
-  matched.forEach(em => {
-    applyInboxMatch(em.email, em.lead.id, em.subject, em.body, em.date);
-    _inboxApplied.add(em.email);
-  });
-  showToast(`ðŸ“¬ ${matched.length} lead${matched.length>1?'s':''} actualizados como "Respuesta del cliente"`);
+  for (const em of matched) {
+    try {
+      await applyInboxMatch(em.email, em.lead.id, em.subject, em.body, em.date);
+      _inboxApplied.add(em.email);
+    } catch {
+      showToast('No se pudo confirmar una respuesta del inbox.');
+      break;
+    }
+  }
+  showToast(`ðŸ“¬ ${_inboxApplied.size} lead${_inboxApplied.size>1?'s':''} actualizados como "Respuesta del cliente"`);
   renderInboxResults();
 }
 

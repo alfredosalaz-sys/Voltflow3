@@ -662,7 +662,7 @@ function renderDrawer() {
   }, 50);
 }
 
-function saveDrawerLead(id) {
+async function saveDrawerLead(id) {
   const lead = leads.find(l => l.id == id);
   if (!lead) return;
   const oldStatus = lead.status;
@@ -681,8 +681,13 @@ function saveDrawerLead(id) {
     applySequenceRule(lead, lead.status); // MEJORA 2
   }
   lead.score = recalculateLeadScore(lead);
-  saveLeads(); renderAll();
-  showToast('Lead guardado ✓');
+  try {
+    await saveLeads();
+    renderAll();
+    showToast('Lead guardado ✓');
+  } catch {
+    showToast('No se pudo confirmar el guardado del lead.');
+  }
   updateFollowupBadge();
 }
 
@@ -1299,7 +1304,7 @@ function downloadQR() {
 }
 
 // ── AUTO-ACTIVACIÓN al escanear el QR ─────────────────────────────────────
-(function detectAndApplySync() {
+(async function detectAndApplySync() {
   // Soporte legacy: parámetro ?vfsync= en URL (app en servidor)
   const params = new URLSearchParams(location.search);
   const raw = params.get('vfsync');
@@ -1354,7 +1359,11 @@ function downloadQR() {
     }
 
     if (payload.templates) {
-      try { localStorage.setItem('gordi_templates', payload.templates); applied.push('✉ plantillas'); } catch {}
+      try {
+        const parsed = JSON.parse(payload.templates);
+        await persistCriticalData('gordi_templates', parsed, { label: 'plantillas' });
+        applied.push('✉ plantillas');
+      } catch {}
     }
 
     // Show success banner + auto-launch Sheets OAuth if cid present

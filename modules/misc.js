@@ -1040,7 +1040,7 @@ function processScannedQRData(data) {
   }
 }
 
-function applyVoltflowPayload(payload) {
+async function applyVoltflowPayload(payload) {
   let applied = [];
 
   if (payload.keys) {
@@ -1059,7 +1059,11 @@ function applyVoltflowPayload(payload) {
     applied.push('📊 Sheets');
   }
   if (payload.templates) {
-    try { localStorage.setItem('gordi_templates', payload.templates); applied.push('✉ plantillas'); } catch {}
+    try {
+      const parsed = JSON.parse(payload.templates);
+      await persistCriticalData('gordi_templates', parsed, { label: 'plantillas' });
+      applied.push('✉ plantillas');
+    } catch {}
   }
 
   showToast('✅ Configuración importada: ' + applied.join(', '));

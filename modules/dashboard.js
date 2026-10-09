@@ -1,13 +1,28 @@
 ﻿// ============ STATS ============
 function updateStats() {
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
-  set('stat-total', leads.filter(l => !l.archived).length);
-  set('stat-high', leads.filter(l => !l.archived && l.score >= 70).length);
-  set('stat-pending', leads.filter(l => !l.archived && l.status === 'Pendiente').length);
+  let total = 0;
+  let high = 0;
+  let pending = 0;
+  for (const lead of leads) {
+    if (lead.archived) continue;
+    total++;
+    if (lead.score >= 70) high++;
+    if (lead.status === 'Pendiente') pending++;
+  }
   set('stat-sent', emailHistory.length);
   set('stat-sent2', emailHistory.length);
-  set('stat-contacted', [...new Set(emailHistory.map(h => h.email.toLowerCase()))].length);
-  set('stat-waiting', emailHistory.filter(h => h.status === 'Visita').length);
+  const contacted = new Set();
+  let waiting = 0;
+  for (const item of emailHistory) {
+    if (item.email) contacted.add(String(item.email).toLowerCase());
+    if (item.status === 'Visita') waiting++;
+  }
+  set('stat-total', total);
+  set('stat-high', high);
+  set('stat-pending', pending);
+  set('stat-contacted', contacted.size);
+  set('stat-waiting', waiting);
 }
 
 // 🏛️ ARQUITECTURA: Escuchar cambios globales
@@ -44,15 +59,16 @@ function renderTopLeads() {
   const container = document.getElementById('top-leads-list');
   if (!container) return;
 
-  // Recalcular scores con datos reales antes de ordenar
-  // NOTA: no llamar saveLeads() aquí — este es un render, no una mutación persistida.
-  // El recálculo masivo se hace en saveLeadDetail/saveLead donde ya hay un saveLeads().
-  leads.forEach(l => { l.score = recalculateLeadScore(l); });
-
-  const top = [...leads]
-    .filter(l => l.status === 'Pendiente' || l.status === 'Contactado')
-    .sort((a,b) => b.score - a.score)
-    .slice(0, 6);
+  const top = [];
+  for (const lead of leads) {
+    if (lead.status !== 'Pendiente' && lead.status !== 'Contactado') continue;
+    if (!Number.isFinite(Number(lead.score)) && typeof recalculateLeadScore === 'function') {
+      lead.score = recalculateLeadScore(lead);
+    }
+    top.push(lead);
+    top.sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+    if (top.length > 6) top.length = 6;
+  }
 
   if (!top.length) {
     container.innerHTML = '<p style="color:var(--text-muted);font-size:.83rem;margin-top:.5rem">No hay leads pendientes</p>';
@@ -87,23 +103,37 @@ function renderConversionMetrics() {
   if (!el) return;
 
   const total = leads.length;
-  const contacted = leads.filter(l => ['Contactado','Respuesta del cliente','Visita','Entrega de presupuesto','Cerrado'].includes(l.status)).length;
-  const responded = leads.filter(l => ['Respuesta del cliente','Visita','Entrega de presupuesto','Cerrado'].includes(l.status)).length;
-  const closed = leads.filter(l => l.status === 'Cerrado').length;
+  const contactedStatuses = new Set(['Contactado','Respuesta del cliente','Visita','Entrega de presupuesto','Cerrado']);
+  const respondedStatuses = new Set(['Respuesta del cliente','Visita','Entrega de presupuesto','Cerrado']);
+  let contacted = 0;
+  let responded = 0;
+  let closed = 0;
+  let scoreSum = 0;
+  let sentLeads = 0;
+  let sentDays = 0;
+  let ttfcLeadsCount = 0;
+  let ttfcTotal = 0;
+  const now = Date.now();
+  for (const lead of leads) {
+    if (contactedStatuses.has(lead.status)) contacted++;
+    if (respondedStatuses.has(lead.status)) responded++;
+    if (lead.status === 'Cerrado') closed++;
+    scoreSum += Number(lead.score) || 0;
+    if (lead.status !== 'Pendiente' && lead.date) {
+      sentLeads++;
+      sentDays += Math.floor((now - new Date(lead.date)) / (1000 * 86400));
+    }
+    if (lead.ttfc_hours != null) {
+      ttfcLeadsCount++;
+      ttfcTotal += Number(lead.ttfc_hours) || 0;
+    }
+  }
   const convRate = contacted ? Math.min(Math.round(responded/contacted*100), 100) : 0;
   const closeRate = responded ? Math.round(closed/responded*100) : 0;
-  const avgScore = total ? Math.round(leads.reduce((s,l)=>s+l.score,0)/total) : 0;
-
-  // Tiempo medio de respuesta
-  const sentLeads = leads.filter(l => l.status !== 'Pendiente' && l.date);
-  const avgDays = sentLeads.length
-    ? Math.round(sentLeads.reduce((s,l) => s + Math.floor((Date.now()-new Date(l.date))/(1000*86400)),0) / sentLeads.length)
-    : 0;
-
-  // MEJORA 1: Time-to-first-contact
-  const ttfcLeads = leads.filter(l => l.ttfc_hours != null);
-  const avgTtfc = ttfcLeads.length
-    ? Math.round(ttfcLeads.reduce((s,l) => s + l.ttfc_hours, 0) / ttfcLeads.length)
+  const avgScore = total ? Math.round(scoreSum/total) : 0;
+  const avgDays = sentLeads ? Math.round(sentDays / sentLeads) : 0;
+  const avgTtfc = ttfcLeadsCount
+    ? Math.round(ttfcTotal / ttfcLeadsCount)
     : null;
   const ttfcVal = avgTtfc != null ? (avgTtfc < 24 ? avgTtfc+'h' : Math.round(avgTtfc/24)+'d') : '—';
   const ttfcColor = avgTtfc == null ? 'var(--text-dim)' : avgTtfc <= 24 ? 'var(--success)' : avgTtfc <= 72 ? 'var(--warning)' : 'var(--danger)';
@@ -113,7 +143,7 @@ function renderConversionMetrics() {
     { label:'Tasa de cierre', value: closeRate+'%', sub: `${closed} proyectos cerrados`, color: closeRate>30?'var(--success)':closeRate>10?'var(--warning)':'var(--danger)', icon:'🏆' },
     { label:'Score medio', value: avgScore, sub: 'de 100 puntos posibles', color: avgScore>60?'var(--success)':avgScore>40?'var(--warning)':'var(--danger)', icon:'⚡' },
     { label:'Días medio en pipeline', value: avgDays+'d', sub: 'desde creación del lead', color:'var(--primary)', icon:'⏱️' },
-    { label:'Tiempo hasta 1er contacto', value: ttfcVal, sub: avgTtfc != null ? `${ttfcLeads.length} leads con dato · <24h = óptimo` : 'Sin emails enviados aún', color: ttfcColor, icon:'⚡' },
+    { label:'Tiempo hasta 1er contacto', value: ttfcVal, sub: avgTtfc != null ? `${ttfcLeadsCount} leads con dato · <24h = óptimo` : 'Sin emails enviados aún', color: ttfcColor, icon:'⚡' },
   ];
 
   el.innerHTML = metrics.map(m => `
@@ -295,6 +325,9 @@ function renderRecentActivity() {
 }
 
 // ============ KANBAN ============
+const KANBAN_COLUMN_RENDER_STEP = 120;
+let kanbanColumnLimits = {};
+
 function renderKanban() {
   const cols = ['Pendiente','Contactado','Respuesta del cliente','Visita','Entrega de presupuesto','Cerrado'];
   cols.forEach(status => {
@@ -353,8 +386,12 @@ function renderKanban() {
 
     const today = new Date(); today.setHours(0,0,0,0);
 
+    const limit = kanbanColumnLimits[status] || KANBAN_COLUMN_RENDER_STEP;
+    const visibleItems = items.slice(0, limit);
+    const hiddenCount = Math.max(0, items.length - visibleItems.length);
+
     container.innerHTML = items.length
-      ? items.map(l => {
+      ? visibleItems.map(l => {
           const daysInStatus = l.status_date ? Math.floor((Date.now() - new Date(l.status_date)) / 86400000) : 0;
           const daysBadge = daysInStatus >= 7 ? `<span style="font-size:.6rem;background:rgba(239,68,68,.2);color:#ef4444;padding:1px 5px;border-radius:4px;margin-left:3px">${daysInStatus}d</span>` :
                             daysInStatus >= 3 ? `<span style="font-size:.6rem;background:rgba(245,158,11,.15);color:#f59e0b;padding:1px 5px;border-radius:4px;margin-left:3px">${daysInStatus}d</span>` : '';
@@ -388,7 +425,8 @@ function renderKanban() {
               </div>
             </div>
           </div>`;
-        }).join('')
+        }).join('') +
+        (hiddenCount ? `<button class="btn-outline btn-sm" style="width:100%;margin-top:.5rem" onclick="kanbanShowMore('${status.replace(/'/g, "\\'")}')">Mostrar ${Math.min(KANBAN_COLUMN_RENDER_STEP, hiddenCount)} mas (${hiddenCount} pendientes)</button>` : '')
       : `<div style="text-align:center;padding:1.5rem;color:var(--text-dim);font-size:.78rem">Arrastra aquí</div>`;
   });
 
@@ -409,6 +447,11 @@ function renderKanban() {
   }
 }
 
+function kanbanShowMore(status) {
+  kanbanColumnLimits[status] = (kanbanColumnLimits[status] || KANBAN_COLUMN_RENDER_STEP) + KANBAN_COLUMN_RENDER_STEP;
+  renderKanban();
+}
+
 function resetKanbanFilters() {
   ['kanban-search','kanban-filter-seg','kanban-filter-score','kanban-sort'].forEach(id => {
     const el = document.getElementById(id);
@@ -416,6 +459,7 @@ function resetKanbanFilters() {
   });
   const ov = document.getElementById('kanban-filter-overdue');
   if (ov) ov.checked = false;
+  kanbanColumnLimits = {};
   renderKanban();
 }
 
@@ -448,6 +492,9 @@ function dropLead(e, newStatus) {
 }
 
 // ============ TRACKING ============
+const TRACKING_PAGE_SIZE = 100;
+let trackingPage = 0;
+
 function renderTracking() {
   const tbody = document.getElementById('tracking-body');
   const empty = document.getElementById('tracking-empty');
@@ -502,7 +549,29 @@ function renderTracking() {
 
   if (!list.length) { if (empty) empty.style.display = 'flex'; return; }
 
-  list.forEach(e => {
+  const totalPages = Math.ceil(list.length / TRACKING_PAGE_SIZE);
+  if (trackingPage >= totalPages) trackingPage = Math.max(0, totalPages - 1);
+  const pageStart = trackingPage * TRACKING_PAGE_SIZE;
+  const pageItems = list.slice(pageStart, pageStart + TRACKING_PAGE_SIZE);
+
+  let pager = document.getElementById('tracking-pagination');
+  if (!pager) {
+    pager = document.createElement('div');
+    pager.id = 'tracking-pagination';
+    pager.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:.75rem;margin-top:1rem;flex-wrap:wrap';
+    tbody.closest('.glass-panel')?.appendChild(pager);
+  }
+  if (totalPages > 1) {
+    pager.style.display = 'flex';
+    pager.innerHTML = `
+      <button class="btn-outline btn-sm" onclick="if(trackingPage>0){trackingPage--;renderTracking()}" ${trackingPage===0?'disabled':''}><- Ant.</button>
+      <span style="font-size:.78rem;color:var(--text-dim)">Pagina ${trackingPage + 1} de ${totalPages} · ${list.length} emails</span>
+      <button class="btn-outline btn-sm" onclick="if(trackingPage<${totalPages - 1}){trackingPage++;renderTracking()}" ${trackingPage===totalPages-1?'disabled':''}>Sig. -></button>`;
+  } else {
+    pager.style.display = 'none';
+  }
+
+  pageItems.forEach(e => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="font-size:.78rem">${new Date(e.date).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'})}</td>
@@ -520,6 +589,7 @@ function resetTrackingFilters() {
     const el = document.getElementById(id);
     if (el) el.value = id === 'tracking-sort' ? 'date_desc' : '';
   });
+  trackingPage = 0;
   renderTracking();
 }
 
@@ -551,7 +621,7 @@ function loadTemplate(key) {
   document.getElementById('template-preview-box').style.display = 'none';
 }
 
-function saveTemplate() {
+async function saveTemplate() {
   const key = document.getElementById('tpl-current-key').value;
   if (!key) { alert('Selecciona un segmento primero.'); return; }
   emailTemplates[key] = {
@@ -561,11 +631,15 @@ function saveTemplate() {
   };
   const saved = {};
   Object.entries(emailTemplates).forEach(([k,v]) => { if (JSON.stringify(v) !== JSON.stringify(defaultTemplates[k])) saved[k] = v; });
-  localStorage.setItem('gordi_templates', JSON.stringify(emailTemplates));
-  if (localStorage.getItem('gordi_jsonbin_auto') === 'true') {
-    if (typeof jsonbinPush === 'function') jsonbinPush(false);
+  try {
+    await persistCriticalData('gordi_templates', emailTemplates, { label: 'plantillas' });
+    if (localStorage.getItem('gordi_jsonbin_auto') === 'true') {
+      if (typeof jsonbinPush === 'function') jsonbinPush(false);
+    }
+    showToast('Plantilla guardada ✓');
+  } catch {
+    showToast('No se pudo confirmar la plantilla. Queda pendiente de recuperacion.');
   }
-  showToast('Plantilla guardada ✓');
 }
 
 function previewTemplate() {
@@ -614,7 +688,7 @@ function switchImportTab(tab, btn) {
 function openCampaignModal() { document.getElementById('campaign-modal').style.display = 'flex'; }
 function closeCampaignModal() { document.getElementById('campaign-modal').style.display = 'none'; }
 
-function saveCampaign() {
+async function saveCampaign() {
   const name = document.getElementById('camp-name').value.trim();
   if (!name) { alert('Ponle nombre a la campaña.'); return; }
   const seg = document.getElementById('camp-segment').value;
@@ -622,13 +696,17 @@ function saveCampaign() {
   const desc = document.getElementById('camp-desc').value.trim();
   const filtered = seg === 'Todos' ? leads : leads.filter(l => l.segment === seg);
   campaigns.push({ id: Date.now(), name, segment: seg, sequence: seq, desc, leadCount: filtered.length, sent: 0, date: new Date().toISOString(), active: true });
-  localStorage.setItem('gordi_campaigns', JSON.stringify(campaigns));
-  if (localStorage.getItem('gordi_jsonbin_auto') === 'true') {
-    if (typeof jsonbinPush === 'function') jsonbinPush(false);
+  try {
+    await persistCriticalData('gordi_campaigns', campaigns, { label: 'campanas' });
+    if (localStorage.getItem('gordi_jsonbin_auto') === 'true') {
+      if (typeof jsonbinPush === 'function') jsonbinPush(false);
+    }
+    closeCampaignModal();
+    renderCampaigns();
+    showToast('Campaña creada ✓');
+  } catch {
+    showToast('No se pudo confirmar la campana. Queda pendiente de recuperacion.');
   }
-  closeCampaignModal();
-  renderCampaigns();
-  showToast('Campaña creada ✓');
 }
 
 function getCampaignLeadList(c) {
@@ -754,7 +832,7 @@ function openCampaignLeads(id) {
   renderLeads();
 }
 
-function deleteCampaign(id) {
+async function deleteCampaign(id) {
   const c = campaigns.find(x => x.id === id);
   if (!c) return;
   const seg = c.segment === 'Todos' ? leads.length : leads.filter(l => l.segment === c.segment).length;
@@ -762,18 +840,27 @@ function deleteCampaign(id) {
   const summary = `Campaña: ${c.name}\nLeads: ${seg} · Emails enviados: ${sent}`;
   if (!confirm('¿Eliminar esta campaña?\n\n' + summary)) return;
   campaigns = campaigns.filter(x => x.id !== id);
-  localStorage.setItem('gordi_campaigns', JSON.stringify(campaigns));
-  renderCampaigns();
+  try {
+    await persistCriticalData('gordi_campaigns', campaigns, { label: 'campanas' });
+    renderCampaigns();
+    showToast('Campaña eliminada');
+  } catch {
+    showToast('No se pudo confirmar la eliminacion de la campana.');
+  }
 }
 
-function duplicateCampaign(id) {
+async function duplicateCampaign(id) {
   const c = campaigns.find(x => x.id === id);
   if (!c) return;
   const copy = { ...c, id: Date.now(), name: c.name + ' (copia)', date: new Date().toISOString() };
   campaigns.push(copy);
-  localStorage.setItem('gordi_campaigns', JSON.stringify(campaigns));
-  renderCampaigns();
-  showToast('Campaña duplicada ✓');
+  try {
+    await persistCriticalData('gordi_campaigns', campaigns, { label: 'campanas' });
+    renderCampaigns();
+    showToast('Campaña duplicada ✓');
+  } catch {
+    showToast('No se pudo confirmar la copia de la campana.');
+  }
 }
 
 // ============ EXPORT ============

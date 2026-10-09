@@ -88,8 +88,10 @@
     }
   }
 
-  function buildBackupPayload() {
-    const snapshot = typeof exportDataSnapshot === 'function' ? exportDataSnapshot() : {};
+  async function buildBackupPayload() {
+    const snapshot = typeof exportCurrentDataSnapshot === 'function'
+      ? await exportCurrentDataSnapshot()
+      : (typeof exportDataSnapshot === 'function' ? exportDataSnapshot() : {});
     const summary = typeof getSnapshotSummary === 'function'
       ? getSnapshotSummary(snapshot)
       : { keys: Object.keys(snapshot || {}).length };
@@ -164,7 +166,7 @@
         return true;
       }
 
-      const payload = buildBackupPayload();
+      const payload = await buildBackupPayload();
       await writeBackupFile(dirHandle, fileName, payload);
       localStorage.setItem(ENABLED_KEY, 'true');
       localStorage.setItem(LAST_DATE_KEY, date);

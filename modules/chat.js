@@ -1732,7 +1732,9 @@ async function githubPush(showFeedback) {
   if (showFeedback) setGithubStatus('⬆ Subiendo...', 'var(--text-muted)');
 
   try {
-    const snapshot = exportDataSnapshot();
+    const snapshot = typeof exportCurrentDataSnapshot === 'function'
+      ? await exportCurrentDataSnapshot()
+      : exportDataSnapshot();
     // Never store the GitHub token in the repo — strip it before upload
     const safeSnapshot = Object.assign({}, snapshot);
     delete safeSnapshot['gordi_gh_token'];
@@ -2183,7 +2185,7 @@ function copyChatHistoryItem(index) {
   copyToClipboard(item.text || item.html || '', 'Respuesta del chat copiada');
 }
 
-function saveChatHistoryItemAsNote(index) {
+async function saveChatHistoryItemAsNote(index) {
   const item = getChatStoredMessages()[index];
   if (!item) return;
   const leadId = typeof aiCurrentLeadId !== 'undefined' && aiCurrentLeadId
@@ -2194,9 +2196,13 @@ function saveChatHistoryItemAsNote(index) {
   const stamp = new Date().toLocaleDateString('es-ES');
   lead.notes = `${lead.notes || ''}\n[${stamp}] Nota del asistente: ${item.text || ''}`.trim();
   addActivityLog(lead.id, 'Nota guardada desde el chat');
-  saveLeads();
-  renderAll();
-  showToast('Nota del chat guardada en ' + lead.company);
+  try {
+    await saveLeads();
+    renderAll();
+    showToast('Nota del chat guardada en ' + lead.company);
+  } catch {
+    showToast('No se pudo confirmar la nota del chat.');
+  }
 }
 
 function toggleChat() {
@@ -2708,6 +2714,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function initLeadFormDatePicker() {
   const el = document.getElementById('lead-next-contact');
   if (!el || el._flatpickr) return;
+  if (typeof flatpickr !== 'function') return;
   flatpickr(el, {
     locale: 'es',
     dateFormat: 'Y-m-d',
@@ -2723,6 +2730,7 @@ function initLeadFormDatePicker() {
 function initDetailDatePicker() {
   const el = document.getElementById('detail-next-contact');
   if (!el) return;
+  if (typeof flatpickr !== 'function') return;
   if (el._flatpickr) el._flatpickr.destroy();
   flatpickr(el, {
     locale: 'es',
@@ -2902,7 +2910,7 @@ function closeQuickNoteOutside(e) {
   }
 }
 
-function closeQuickNote(discard = false) {
+async function closeQuickNote(discard = false) {
   if (!knPopupEl) return;
   // Auto-guardar si hay cambios y no se pide descartar explícitamente
   if (!discard) {
@@ -2914,9 +2922,13 @@ function closeQuickNote(discard = false) {
       if (lead && newNote !== (lead.notes || '').trim()) {
         lead.notes = newNote;
         addActivityLog(leadIdAttr, `📝 Nota actualizada`);
-        saveLeads();
-        renderKanban();
-        showToast('Nota guardada ✓');
+        try {
+          await saveLeads();
+          renderKanban();
+          showToast('Nota guardada ✓');
+        } catch {
+          showToast('No se pudo confirmar la nota.');
+        }
       }
     }
   }
@@ -2925,7 +2937,7 @@ function closeQuickNote(discard = false) {
   document.removeEventListener('click', closeQuickNoteOutside);
 }
 
-function saveQuickNote(leadId) {
+async function saveQuickNote(leadId) {
   const lead = leads.find(l => l.id == leadId);
   const ta = document.getElementById('kn-text');
   if (!lead || !ta) return;
@@ -2933,9 +2945,13 @@ function saveQuickNote(leadId) {
   if (newNote !== lead.notes) {
     addActivityLog(leadId, `📝 Nota actualizada`);
     lead.notes = newNote;
-    saveLeads();
-    showToast('Nota guardada ✓');
-    renderKanban();
+    try {
+      await saveLeads();
+      showToast('Nota guardada ✓');
+      renderKanban();
+    } catch {
+      showToast('No se pudo confirmar la nota.');
+    }
   }
   closeQuickNote();
 }

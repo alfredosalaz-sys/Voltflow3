@@ -4367,7 +4367,11 @@ function loadCommercialMemory() {
 }
 
 function saveCommercialMemory(memory) {
+  if (typeof persistCriticalData === 'function') {
+    return persistCriticalData('gordi_commercial_memory', memory, { label: 'memoria comercial' }).catch(() => null);
+  }
   localStorage.setItem('gordi_commercial_memory', JSON.stringify(memory));
+  return Promise.resolve();
 }
 
 function getLeadMemory(c) {
@@ -4391,7 +4395,7 @@ function recordLeadMemory(c, event, extra = {}) {
   saveCommercialMemory(memory);
 }
 
-function recordLeadMemoryBulk(items, event, extraFn = () => ({})) {
+async function recordLeadMemoryBulk(items, event, extraFn = () => ({})) {
   if (!Array.isArray(items) || !items.length) return;
   const memory = loadCommercialMemory();
   const now = new Date().toISOString();
@@ -5221,7 +5225,7 @@ function buildLeadFromSearchCompany(c, segment, location, campaignName = '') {
   };
 }
 
-function createProspectingCampaignFromSearch() {
+async function createProspectingCampaignFromSearch() {
   if (!Array.isArray(tempSearchResults) || !tempSearchResults.length) {
     showToast('No hay resultados scrapeados para crear campana');
     return;
@@ -5264,9 +5268,13 @@ function createProspectingCampaignFromSearch() {
     date: new Date().toISOString(),
     active: true
   });
-  saveLeads();
-  localStorage.setItem('gordi_campaigns', JSON.stringify(campaigns));
-  recordLeadMemoryBulk(candidates, 'campaign_created', c => ({ segment, location, score: c.opportunityScore || 0 }));
+  try {
+    await persistBusinessState({ leads, campaigns }, { label: 'campana desde scraping' });
+    await recordLeadMemoryBulk(candidates, 'campaign_created', c => ({ segment, location, score: c.opportunityScore || 0 }));
+  } catch {
+    showToast('No se pudo confirmar la campana de scraping.');
+    return;
+  }
   renderAll();
   renderDashboardCharts();
   if (typeof renderCampaigns === 'function') renderCampaigns();
