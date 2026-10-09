@@ -1338,6 +1338,19 @@ function populateSegmentDropdowns() {
       segments.map(seg => `<option value="${seg}">${SEGMENT_LABELS[seg]}</option>`).join('');
     if (cur && (cur === 'Todos' || segments.includes(cur))) campSel.value = cur;
   }
+
+  [
+    { id: 'kanban-filter-seg', empty: 'Todos los sectores' },
+    { id: 'tracking-filter-seg', empty: 'Todos los sectores' },
+    { id: 'campaigns-filter-seg', empty: 'Todos los sectores', extra: '<option value="Todos">Todos</option>' },
+  ].forEach(cfg => {
+    const sel = document.getElementById(cfg.id);
+    if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = `<option value="">${cfg.empty}</option>${cfg.extra || ''}` +
+      segments.map(seg => `<option value="${seg}">${SEGMENT_LABELS[seg]}</option>`).join('');
+    if (cur && (cur === 'Todos' || segments.includes(cur))) sel.value = cur;
+  });
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•

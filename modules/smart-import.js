@@ -72,7 +72,17 @@ function _detectSegment(companyName) {
     return 'Industrial';
   if (/LOGISTIC|TRANSPORT|ALMACEN|DISTRIBU|NAVE\s|NAVES\s|CARGA|FLETE|MUDANZ/.test(n))
     return 'Industrial';
-  if (/OFICIN|CONSULT|ASESORI|GESTORI|ABOGAD|NOTARI|SEGURO|FINANC|CONTABL|AUDIT|ASESOR|JURIDIC|MEDIACI/.test(n))
+  if (/ADMINISTRADOR.*FINCA|ADMINISTRACI[OÓ]N.*FINCA|COMUNIDAD.*PROPIETARIO|GESTI[OÓ]N.*COMUNIDAD/.test(n))
+    return 'AdministradoresFincas';
+  if (/INMOBILIARI|REAL.ESTATE|AGENCIA.*PROPIEDAD|COMPRAVENTA|ALQUILER.*VIVIENDA|SERVICIO.*INMOBILIARIO/.test(n))
+    return 'Inmobiliarias';
+  if (/APAREJADOR|ARQUITECT[OA].T[EÉ]CNIC|ARQUITECTURA.T[EÉ]CNICA|DIRECCI[OÓ]N.*EJECUCI[OÓ]N.*OBRA|EDIFICACI[OÓ]N/.test(n))
+    return 'Aparejadores';
+  if (/ESTUDIO.*ARQUITECTURA|DESPACHO.*ARQUITECT|ARQUITECT[OA]S?|ARCHITECTURE.STUDIO/.test(n))
+    return 'Arquitectos';
+  if (/GESTORI|ASESORI.*(FISCAL|LABORAL|CONTABL|TRIBUTARI)|GESTOR.ADMINISTRATIVO|GRADUADO.SOCIAL/.test(n))
+    return 'Gestorias';
+  if (/OFICIN|CONSULT|ABOGAD|NOTARI|SEGURO|FINANC|AUDIT|JURIDIC|MEDIACI/.test(n))
     return 'Oficinas';
   if (/TIENDA|RETAIL|COMERCI|BAZAR|FERRET|MUEBLE|DECOR|MODAS|ROPA|CALZAD|JOYERI|OPTICA|FARMAC/.test(n))
     return 'Retail';
@@ -504,7 +514,10 @@ function _renderSmartImportPreview(mappedWithDups) {
         <span style="font-size:.68rem;background:${segColor};padding:2px 7px;border-radius:8px">
           <select class="imp-seg-sel" data-idx="${i}"
             style="background:transparent;border:none;font-size:.68rem;color:var(--text);cursor:pointer;outline:none;max-width:110px">
-            ${['Industrial','Retail','Oficinas','Hoteles','Deportivo','Educativo','Cultural','Comercial']
+            ${Object.keys(typeof SEGMENT_LABELS !== 'undefined' ? SEGMENT_LABELS : {
+              Industrial:1,Retail:1,Oficinas:1,Gestorias:1,Arquitectos:1,Aparejadores:1,
+              AdministradoresFincas:1,Inmobiliarias:1,Hoteles:1,Deportivo:1,Educativo:1,Cultural:1,Comercial:1
+            })
               .map(s => `<option value="${s}"${s===lead.segment?' selected':''}>${s}</option>`).join('')}
           </select>
         </span>

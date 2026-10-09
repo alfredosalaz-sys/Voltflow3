@@ -1145,9 +1145,9 @@ function buildLocationBias(lat, lng, radiusM) {
 function formatPlacesLocationLabel(location = '') {
   const value = String(location || '').trim();
   if (!value) return '';
-  if (/espaÃ±a|spain/i.test(value)) return value;
-  if (/^\d{5}$/.test(value)) return `${value}, EspaÃ±a`;
-  return `${value}, EspaÃ±a`;
+  if (/espa(?:ñ|n)a|spain/i.test(value)) return value;
+  if (/^\d{5}$/.test(value)) return `${value}, España`;
+  return `${value}, España`;
 }
 
 function buildPlacesTextQueries(query, point, location) {
@@ -1174,7 +1174,7 @@ async function diagnosePlacesZeroResults(Place, searchedLocation) {
   logEnrich(`Diagnostico Places: comprobando si la API responde desde ${origin}...`, 'warn');
   try {
     const res = await Place.searchByText({
-      textQuery: 'clinica dental en Madrid, EspaÃ±a',
+      textQuery: 'clinica dental en Madrid, España',
       fields: ['displayName', 'id', 'location'],
       language: 'es',
       region: 'es',
@@ -1226,6 +1226,132 @@ function getLocationKind(locationStr = '') {
 
 function uniqueList(items = []) {
   return [...new Set(items.map(x => String(x || '').trim()).filter(Boolean))];
+}
+
+const B2B_PROSPECTING_SEGMENTS = [
+  'Gestorias',
+  'Arquitectos',
+  'Aparejadores',
+  'AdministradoresFincas',
+  'Inmobiliarias',
+];
+
+const BUSINESS_RELEVANCE_RULES = {
+  Gestorias: {
+    strong: [
+      /\bgestor(i|í)a\b/, /\bgestor administrativo\b/, /\basesor(i|í)a\s+(fiscal|laboral|contable|tributaria)\b/,
+      /\bdespacho\s+de\s+gestor(i|í)a\b/, /\bgraduado social\b/, /\bcontabilidad\s+y\s+fiscal/i,
+    ],
+    probable: [/\basesor(es|ía|ia)?\b/, /\bfiscal\b/, /\blaboral\b/, /\bcontable\b/, /\btributari[ao]\b/],
+    negative: [/\bgesti(o|ó)n\s+(de\s+residuos|ambiental|hotelera|documental|inmobiliaria|deportiva|cultural)\b/, /\badministraci(o|ó)n\s+de\s+fincas\b/, /\binmobiliaria\b/],
+  },
+  Arquitectos: {
+    strong: [
+      /\bestudio\s+de\s+arquitectura\b/, /\bdespacho\s+de\s+arquitectos?\b/, /\barquitectos?\s+colegiados?\b/,
+      /\bfirma\s+de\s+arquitectura\b/, /\barchitecture studio\b/, /\bproyectos?\s+de\s+arquitectura\b/,
+    ],
+    probable: [/\barquitect[ao]s?\b/, /\barquitectura\b/, /\bdiseño arquitect(o|ó)nico\b/],
+    negative: [/\bconstructora\b/, /\breformas?\b/, /\bdecoraci(o|ó)n\b/, /\binteriorismo\b/, /\bmuebles?\b/, /\btienda\b/],
+  },
+  Aparejadores: {
+    strong: [
+      /\baparejador(es)?\b/, /\barquitect[oa]\s+t(e|é)cnic[oa]\b/, /\barquitectura\s+t(e|é)cnica\b/,
+      /\bdirecci(o|ó)n\s+de\s+ejecuci(o|ó)n\s+de\s+obra\b/, /\bestudio\s+t(e|é)cnico\s+de\s+edificaci(o|ó)n\b/,
+      /\btechnical architect\b/,
+    ],
+    probable: [/\bdirecci(o|ó)n\s+facultativa\b/, /\bcoordinaci(o|ó)n\s+de\s+seguridad\b/, /\bedificaci(o|ó)n\b/],
+    negative: [/\bestudio\s+de\s+arquitectura\b/, /\barquitectos?\b(?!\s+t(e|é)cnic)/, /\bconstructora\b/, /\breformas?\b/],
+  },
+  AdministradoresFincas: {
+    strong: [
+      /\badministrador(es)?\s+de\s+fincas\b/, /\badministraci(o|ó)n\s+de\s+fincas\b/,
+      /\badministraci(o|ó)n\s+de\s+comunidades\b/, /\bcomunidades\s+de\s+propietarios\b/,
+      /\bgesti(o|ó)n\s+de\s+comunidades\b/, /\badministrador(es)?\s+de\s+comunidades\b/,
+    ],
+    probable: [/\bfincas\s+urbanas\b/, /\bproperty management\b/, /\bcomunidades\b/, /\bpropietarios\b/],
+    negative: [/\bagencia\s+inmobiliaria\b/, /\binmobiliaria\b/, /\bcompraventa\b/, /\balquiler\s+de\s+viviendas\b/, /\bportal inmobiliario\b/],
+  },
+  Inmobiliarias: {
+    strong: [
+      /\bagencia\s+inmobiliaria\b/, /\binmobiliaria\b/, /\breal estate agency\b/, /\bagencia\s+de\s+propiedades\b/,
+      /\bintermediaci(o|ó)n\s+inmobiliaria\b/, /\bservicios\s+inmobiliarios\b/,
+    ],
+    probable: [/\bcompraventa\b/, /\balquiler(es)?\b/, /\bventa\s+de\s+(pisos|viviendas|casas|locales)\b/, /\bpropiedades\b/],
+    negative: [/\bconstructora\b/, /\bpromotora\b/, /\breformas?\b/, /\bportal\b/, /\badministraci(o|ó)n\s+de\s+fincas\b/, /\bcomunidades\s+de\s+propietarios\b/],
+  },
+};
+
+function normalizeEvidenceText(value = '') {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9@./+\- ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function buildBusinessEvidenceText(company = {}) {
+  return normalizeEvidenceText([
+    company.name,
+    company.company,
+    company.description,
+    company.types,
+    company.website,
+    company.address,
+    ...(company.signals || []),
+    ...(company.enrichSource || []),
+    ...(company.scrapeSignals || []).map(s => `${s.key || ''} ${s.label || ''}`),
+  ].filter(Boolean).join(' '));
+}
+
+function classifyBusinessForSegment(company = {}, segment = '') {
+  const rules = BUSINESS_RELEVANCE_RULES[segment];
+  if (!rules) return { segment, relevance: 'probable', evidences: ['sector sin reglas especificas'], negativeEvidences: [] };
+  const text = buildBusinessEvidenceText(company);
+  const hit = list => (list || []).filter(rx => rx.test(text)).map(rx => String(rx).replace(/^\/|\/[a-z]*$/g, ''));
+  const strong = hit(rules.strong);
+  const probable = hit(rules.probable);
+  const negative = hit(rules.negative);
+  let relevance = 'none';
+  if (strong.length >= 1 && negative.length === 0) relevance = 'strong';
+  else if (strong.length >= 1 && probable.length >= 1) relevance = 'probable';
+  else if (probable.length >= 2 && negative.length === 0) relevance = 'probable';
+  else if (strong.length >= 1 || probable.length >= 1) relevance = 'doubtful';
+  return { segment, relevance, evidences: [...strong, ...probable], negativeEvidences: negative };
+}
+
+function applySectorClassification(company = {}, requestedSegment = '') {
+  const requested = requestedSegment || company.sourceSector || company.segment || '';
+  const checks = uniqueList([requested, ...B2B_PROSPECTING_SEGMENTS]).filter(Boolean);
+  const classifications = {};
+  const matched = new Set(company.matchedSectors || []);
+  let requestedResult = null;
+  checks.forEach(seg => {
+    const result = classifyBusinessForSegment(company, seg);
+    classifications[seg] = result;
+    if (seg === requested) requestedResult = result;
+    if (['strong', 'probable'].includes(result.relevance)) matched.add(seg);
+  });
+  if (requestedResult && requestedResult.relevance === 'doubtful') matched.add(requested);
+  company.sectorClassifications = { ...(company.sectorClassifications || {}), ...classifications };
+  company.sectorRelevance = requestedResult?.relevance || company.sectorRelevance || 'probable';
+  company.sectorEvidence = requestedResult?.evidences || company.sectorEvidence || [];
+  company.sectorNegativeEvidence = requestedResult?.negativeEvidences || company.sectorNegativeEvidence || [];
+  company.requiresSectorReview = company.sectorRelevance === 'doubtful';
+  company.matchedSectors = uniqueList([...matched]);
+  if (!company.sourceSector) company.sourceSector = requested;
+  if (!company.segment) company.segment = requested;
+  return company;
+}
+
+function isRelevantForRequestedSegment(company = {}, segment = '') {
+  if (!B2B_PROSPECTING_SEGMENTS.includes(segment)) return true;
+  const result = classifyBusinessForSegment(company, segment);
+  company.sectorRelevance = result.relevance;
+  company.sectorEvidence = result.evidences;
+  company.sectorNegativeEvidence = result.negativeEvidences;
+  company.requiresSectorReview = result.relevance === 'doubtful';
+  return result.relevance !== 'none';
 }
 
 async function buildSearchPlan(segment, location, maxResults, opts = {}) {
@@ -1438,12 +1564,16 @@ async function fetchPlaces(segment, location, maxResults, opts = {}) {
             seenIds.add(p.id);
             const normalized = normalizePlaceResult(p);
             normalized.querySource = query;
+            normalized.sourceSector = segment;
+            normalized.segment = segment;
             normalized.queryBatch = batch.name;
             normalized.searchPoint = point.label || location;
             normalized.searchPointSource = point.source || '';
             normalized.radiusUsed = point.radiusKm || plan.requestedRadiusKm;
             normalized.searchPlanKind = plan.kind;
             normalized.searchPlanSummary = plan.summary;
+            if (!isRelevantForRequestedSegment(normalized, segment)) continue;
+            applySectorClassification(normalized, segment);
             allPlaces.push(normalizeSearchCompany(normalized));
             newInThisQuery++;
             if (!exhaustive && allPlaces.length >= effectiveMax) break;
@@ -2685,6 +2815,10 @@ function deduplicateResults(results) {
     merged.scrapeSignals = [...(existing.scrapeSignals || []), ...(incoming.scrapeSignals || [])]
       .reduce((acc, s) => acc.some(x => x.key === s.key || x.label === s.label) ? acc : [...acc, s], []);
     merged.matchedSectors = uniqueList([...(existing.matchedSectors || []), existing.sourceSector, existing.segment, ...(incoming.matchedSectors || []), incoming.sourceSector, incoming.segment]);
+    merged.sectorClassifications = { ...(existing.sectorClassifications || {}), ...(incoming.sectorClassifications || {}) };
+    merged.sectorEvidence = uniqueList([...(existing.sectorEvidence || []), ...(incoming.sectorEvidence || [])]);
+    merged.sectorNegativeEvidence = uniqueList([...(existing.sectorNegativeEvidence || []), ...(incoming.sectorNegativeEvidence || [])]);
+    merged.requiresSectorReview = !!(existing.requiresSectorReview || incoming.requiresSectorReview);
     merged.duplicateCount = (existing.duplicateCount || 0) + (incoming.duplicateCount || 0) + 1;
     merged.duplicateReasons = uniqueList([...(existing.duplicateReasons || []), ...(incoming.duplicateReasons || []), ...getReasons(existing, incoming)]);
     decorateContactQuality(merged);
@@ -3577,13 +3711,11 @@ async function searchBusinessesMultiSector(sectors, location) {
     let completedSectors = 0;
     const multiSectorConcurrency = sectors.length > 6 ? 2 : Math.min(3, sectors.length);
     await runLimitedBatches(sectors.map((seg, i) => ({ seg, i })), multiSectorConcurrency, async ({ seg, i }) => {
-      const planSel = document.getElementById('plan-segment');
-      if (planSel) planSel.value = seg;
       setMultiSectorProgress(seg, 'buscando', 12, i, sectors.length);
       try {
         const places = await searchSectorPlacesOnly(seg, location, maxRes);
         const sectorResults = places.map(c => ({
-          ...normalizeSearchCompany(c),
+          ...normalizeSearchCompany(applySectorClassification(c, seg)),
           segment: seg,
           sourceSector: seg,
           matchedSectors: [...new Set([...(c.matchedSectors || []), seg])],
@@ -3753,6 +3885,7 @@ async function enrichMultiSectorMergedResults(location, enrichMode = 'all') {
 
   tempSearchResults = deduplicateResults(tempSearchResults);
   tempSearchResults.forEach(c => {
+    applySectorClassification(c, c.sourceSector || c.segment);
     normalizeSearchCompany(c);
     decorateOpportunity(c);
     if (!c.logo && c.website) c.logo = getClearbitLogo(c.website);
@@ -3778,10 +3911,10 @@ async function searchSectorPlacesOnly(segment, location, maxRes) {
     try {
       const cached = _enrichCache.get(c.id);
       const hydrated = cached ? annotateIncrementalScrape({ ...c, ...cached, fromCache: true }) : annotateIncrementalScrape(c);
-      return normalizeSearchCompany(hydrated);
+      return normalizeSearchCompany(applySectorClassification(hydrated, segment));
     } catch (err) {
       console.warn('Postprocesado multisector omitido:', c?.name, err);
-      return normalizeSearchCompany(c);
+      return normalizeSearchCompany(applySectorClassification(c, segment));
     }
   });
   places = deduplicateResults(places);
@@ -3870,8 +4003,7 @@ async function searchBusinessesSingle(options = {}) {
     return;
   }
 
-  tempSearchResults = places;
-  tempSearchResults.forEach(normalizeSearchCompany);
+  tempSearchResults = places.map(c => normalizeSearchCompany(applySectorClassification(c, segment)));
 
   // Renderizar resultado rÃ¡pido de Places mientras enriquecemos
   renderSearchCards();
@@ -3979,7 +4111,7 @@ async function searchBusinessesSingle(options = {}) {
 
     // DEDUP FINAL post-scraping (Places no detecta cadenas que comparten misma web)
     const originalLen = tempSearchResults.length;
-    tempSearchResults = deduplicateResults(tempSearchResults);
+    tempSearchResults = deduplicateResults(tempSearchResults).map(c => normalizeSearchCompany(applySectorClassification(c, segment)));
     if (tempSearchResults.length < originalLen) {
       logEnrich(`âœ¨ DeduplicaciÃ³n inteligente: eliminadas ${originalLen - tempSearchResults.length} sucursales duplicadas detectadas por web/email`, 'ok');
       renderSearchCards();
@@ -4163,7 +4295,7 @@ async function searchBusinessesSingle(options = {}) {
 
   // â”€â”€ DeduplicaciÃ³n final por nombre similar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const before = tempSearchResults.length;
-  tempSearchResults = deduplicateResults(tempSearchResults);
+  tempSearchResults = deduplicateResults(tempSearchResults).map(c => normalizeSearchCompany(applySectorClassification(c, segment)));
   const removed = before - tempSearchResults.length;
   if (removed > 0) logEnrich(`ðŸ” ${removed} duplicados eliminados por nombre similar`, 'warn');
 
@@ -5146,6 +5278,7 @@ function getProspectingMinScore() {
 }
 
 function buildLeadFromSearchCompany(c, segment, location, campaignName = '') {
+  applySectorClassification(c, segment);
   decorateOpportunity(c);
   const signalParts = [
     c.address ? `Ubicacion: ${c.address}` : '',
@@ -5166,6 +5299,12 @@ function buildLeadFromSearchCompany(c, segment, location, campaignName = '') {
     email: c.email || '',
     phone: c.phone || '',
     segment,
+    sourceSector: c.sourceSector || segment,
+    matchedSectors: uniqueList([...(c.matchedSectors || []), segment]),
+    sectorRelevance: c.sectorRelevance || '',
+    sectorEvidence: c.sectorEvidence || [],
+    sectorNegativeEvidence: c.sectorNegativeEvidence || [],
+    requiresSectorReview: !!c.requiresSectorReview,
     website: c.website || '',
     signal: signalParts.join('. ') || `Encontrado en ${location}`,
     score: calculateScore(c.decision_maker ? 'manager' : 'otros', 'mediano', signalParts.join(' '), {

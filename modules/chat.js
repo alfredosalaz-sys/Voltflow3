@@ -3120,7 +3120,7 @@ function runGlobalSearch(query) {
     return;
   }
 
-  const COLORS = { 'Oficinas':'#0A84FF','Retail':'#5E5CE6','Industrial':'#f59e0b','Hoteles':'#10d97c','Cultural':'#f87171','Deportivo':'#34d399','Comercial':'#a78bfa','Educativo':'#60a5fa', 'Dental':'#facc15', 'Medico':'#6366f1', 'Estetico':'#f472b6' };
+  const COLORS = { 'Oficinas':'#0A84FF','Gestorias':'#14b8a6','Arquitectos':'#6366f1','Aparejadores':'#64748b','AdministradoresFincas':'#22c55e','Inmobiliarias':'#f97316','Retail':'#5E5CE6','Industrial':'#f59e0b','Hoteles':'#10d97c','Cultural':'#f87171','Deportivo':'#34d399','Comercial':'#a78bfa','Educativo':'#60a5fa', 'Dental':'#facc15', 'Medico':'#6366f1', 'Estetico':'#f472b6' };
 
   gsActiveIndex = -1;
   container.innerHTML = [

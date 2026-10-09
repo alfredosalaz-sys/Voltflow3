@@ -745,7 +745,7 @@ async function analyzeScanImage() {
 Extrae y responde SOLO en JSON vÃ¡lido:
 {
   "name": "nombre del negocio",
-  "segment": "uno de: Industrial/Retail/Oficinas/Hoteles/Educativo/Deportivo/Cultural/Comercial",
+  "segment": "uno de: Industrial/Retail/Oficinas/Gestorias/Arquitectos/Aparejadores/AdministradoresFincas/Inmobiliarias/Hoteles/Educativo/Deportivo/Cultural/Comercial",
   "phone": "telÃ©fono si visible o null",
   "address": "direcciÃ³n si visible o null",
   "signal": "observaciÃ³n breve sobre estado de instalaciones/fachada (1-2 frases)",

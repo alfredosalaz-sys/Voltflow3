@@ -27,6 +27,96 @@ Si le parece, podemos hablar 15 minutos esta semana. Sin compromiso. Solo para v
 {{FIRMA}}`
   },
 
+  "Gestorias": {
+    subjectA: "Una pregunta rápida sobre las oficinas de {{Company}}",
+    subjectB: "{{Company}}: imagen, orden y eficiencia en el despacho",
+    body: `{{SALUDO}},
+
+Le escribo porque en despachos profesionales como {{Company}} el espacio transmite confianza antes incluso de empezar una reunión.
+
+En gestorías y asesorías, una oficina bien organizada, cómoda y actualizada ayuda a reforzar una imagen de rigor ante clientes que confían documentación fiscal, laboral y contable sensible.
+
+En Voltium Madrid trabajamos reformas e instalaciones para empresas que no pueden parar su actividad: planificación por fases, horarios compatibles con la atención al cliente, presupuesto cerrado y un único interlocutor técnico.
+
+Puede ver algunos proyectos en: https://www.voltiummadrid.es/galer%c3%Ada
+
+¿Tiene sentido una llamada breve para ver si las instalaciones de {{Company}} necesitan alguna mejora este año?
+
+{{FIRMA}}`
+  },
+
+  "Arquitectos": {
+    subjectA: "{{Company}}: una cuestión sobre vuestro estudio",
+    subjectB: "Instalaciones y reforma para estudios como {{Company}}",
+    body: `{{SALUDO}},
+
+Trabajo con Voltium Madrid y quería contactar con {{Company}} porque los estudios de arquitectura tienen una necesidad muy concreta: espacios que funcionen bien para el equipo y que además transmitan criterio cuando reciben clientes.
+
+Nos encargamos de reformas, instalaciones, iluminación, eficiencia energética y adecuación de espacios con una ejecución ordenada, documentación clara y un único responsable técnico.
+
+Podemos trabajar por fases para no interrumpir la actividad del estudio y mantener presupuesto y plazos cerrados desde el principio.
+
+Puede ver algunos trabajos aquí: https://www.voltiummadrid.es/galer%c3%Ada
+
+¿Le encajaría una llamada de 10 minutos para valorar si podemos ayudar en alguna actuación próxima?
+
+{{FIRMA}}`
+  },
+
+  "Aparejadores": {
+    subjectA: "{{Company}}: colaboración técnica para obras e instalaciones",
+    subjectB: "Una propuesta para estudios técnicos como {{Company}}",
+    body: `{{SALUDO}},
+
+Le escribo porque en Voltium Madrid colaboramos en reformas, instalaciones y adecuaciones técnicas donde la coordinación de obra es crítica.
+
+Para estudios de arquitectura técnica y aparejadores, aportamos ejecución ordenada, documentación clara, cumplimiento de plazos y un interlocutor técnico único durante todo el proceso.
+
+Trabajamos en reformas integrales, instalaciones eléctricas, aislamientos, impermeabilizaciones y mejoras de eficiencia energética, siempre con planificación previa para reducir incidencias en obra.
+
+Puede ver algunos proyectos en: https://www.voltiummadrid.es/galer%c3%Ada
+
+¿Tiene sentido que hablemos brevemente por si surge una colaboración en próximos proyectos?
+
+{{FIRMA}}`
+  },
+
+  "AdministradoresFincas": {
+    subjectA: "{{Company}}: mantenimiento y reformas en comunidades",
+    subjectB: "Una propuesta para comunidades gestionadas por {{Company}}",
+    body: `{{SALUDO}},
+
+Le escribo porque los administradores de fincas necesitan proveedores que resuelvan obras e incidencias sin multiplicar problemas con vecinos, juntas y presupuestos.
+
+En Voltium Madrid trabajamos reformas, instalaciones, impermeabilizaciones, eficiencia energética y mantenimiento para edificios y comunidades, con presupuestos claros, documentación ordenada y un único interlocutor técnico.
+
+La clave es reducir fricción: explicar bien la actuación, cumplir plazos y dejar trazabilidad para que la comunidad pueda decidir con seguridad.
+
+Puede ver algunos proyectos aquí: https://www.voltiummadrid.es/galer%c3%Ada
+
+¿Le parece bien una llamada breve para ver si podemos ayudar a alguna comunidad gestionada por {{Company}}?
+
+{{FIRMA}}`
+  },
+
+  "Inmobiliarias": {
+    subjectA: "{{Company}}: reforma y puesta a punto de inmuebles",
+    subjectB: "Una propuesta para activos gestionados por {{Company}}",
+    body: `{{SALUDO}},
+
+Le escribo porque en inmobiliarias como {{Company}} el estado del inmueble influye directamente en el precio, el tiempo de venta o alquiler y la percepción del comprador.
+
+En Voltium Madrid ayudamos con reformas, instalaciones, puesta a punto, eficiencia energética y adecuación de espacios antes de comercializar o reposicionar un activo.
+
+Trabajamos con presupuesto cerrado, plazos claros y documentación ordenada para que la operación comercial no se bloquee por la obra.
+
+Puede ver algunos trabajos en: https://www.voltiummadrid.es/galer%c3%Ada
+
+¿Tiene sentido una llamada de 10 minutos para ver si podemos ayudar en algún inmueble o cartera activa?
+
+{{FIRMA}}`
+  },
+
   // ── HOTELES ──────────────────────────────────────────────────────────────────
   // Pain: bajar la nota media destruye el RevPAR. Hook: la reforma es inversión, no gasto.
   "Hoteles": {
@@ -326,6 +416,41 @@ const segmentQueries = {
     "despacho profesional empresa", "consultora agencia empresa",
     "gestoría asesoría despacho", "empresa servicios profesionales"
   ],
+  "Gestorias": [
+    "gestoría administrativa", "gestoría fiscal y laboral",
+    "gestoría contable", "asesoría fiscal empresas",
+    "asesoría laboral", "despacho de gestoría",
+    "gestor administrativo colegiado", "asesoría contable y tributaria",
+    "asesoría fiscal laboral contable", "gestoría para empresas"
+  ],
+  "Arquitectos": [
+    "estudio de arquitectura", "despacho de arquitectos",
+    "arquitecto profesional", "firma de arquitectura",
+    "proyectos de arquitectura", "estudio de arquitectura residencial",
+    "arquitectura comercial", "architecture studio",
+    "arquitectos colegiados", "diseño arquitectónico estudio"
+  ],
+  "Aparejadores": [
+    "aparejador", "arquitecto técnico",
+    "estudio de arquitectura técnica", "dirección de ejecución de obra",
+    "aparejador dirección de obra", "arquitecto técnico profesional",
+    "estudio técnico de edificación", "technical architect Spain",
+    "coordinación seguridad obra aparejador", "dirección facultativa aparejador"
+  ],
+  "AdministradoresFincas": [
+    "administrador de fincas", "administración de fincas",
+    "administración de comunidades", "despacho administración de fincas",
+    "gestión de comunidades de propietarios", "administrador de comunidades",
+    "property management comunidades", "colegio administrador de fincas",
+    "administración fincas urbanas", "gestión fincas comunidades"
+  ],
+  "Inmobiliarias": [
+    "agencia inmobiliaria", "inmobiliaria compraventa",
+    "agencia de propiedades", "intermediación inmobiliaria",
+    "servicios inmobiliarios", "inmobiliaria alquiler",
+    "real estate agency", "agencia inmobiliaria local",
+    "inmobiliaria venta alquiler", "consultora inmobiliaria local"
+  ],
   "Hoteles": [
     "hotel boutique", "hotel negocio",
     "hostal pensión alojamiento", "apartahotel turismo",
@@ -394,6 +519,11 @@ function getSegmentQueries(segment) {
 
 const SEGMENT_COLORS = {
   "Oficinas": "#0A84FF",
+  "Gestorias": "#14b8a6",
+  "Arquitectos": "#6366f1",
+  "Aparejadores": "#64748b",
+  "AdministradoresFincas": "#22c55e",
+  "Inmobiliarias": "#f97316",
   "Retail": "#f59e0b",
   "Industrial": "#a78bfa",
   "Hoteles": "#f472b6",
@@ -412,6 +542,11 @@ const SEGMENT_LABELS = {
   "Industrial": "🏭 Industrial / Naves",
   "Retail": "🛍️ Retail / Tiendas",
   "Oficinas": "🏢 Oficinas / Consultoras",
+  "Gestorias": "📊 Gestorías / Asesorías",
+  "Arquitectos": "📐 Arquitectos",
+  "Aparejadores": "📏 Aparejadores / Arquitectos técnicos",
+  "AdministradoresFincas": "🏘️ Administradores de fincas",
+  "Inmobiliarias": "🏠 Inmobiliarias",
   "Hoteles": "🏨 Hoteles / Hostelería",
   "Dental": "🦷 Clínicas Dentales",
   "Medico": "🏥 Centros Médicos",
@@ -442,6 +577,36 @@ const SEGMENT_TONE = {
     pain: "oficinas obsoletas aumentan la rotación de empleados y dañan la imagen en reuniones con clientes. El coste energético de instalaciones antiguas es mensurable.",
     angle: "reforma que se amortiza en X meses por ahorro energético + mejora de productividad demostrable.",
     forbidden: "no ser demasiado informal. Este sector valora la seriedad y los datos concretos."
+  },
+  "Gestorias": {
+    tone: "profesional, claro y orientado a confianza. Habla de despacho, clientes, documentación, orden, privacidad e imagen. El decisor suele ser socio, gerente o responsable de oficina.",
+    pain: "un despacho obsoleto o poco cómodo debilita la percepción de rigor y afecta a la atención presencial de clientes.",
+    angle: "reforma por fases sin interrumpir campañas fiscales, atención al cliente ni operativa diaria.",
+    forbidden: "no confundir gestoría con cualquier empresa de gestión. Evitar lenguaje frívolo."
+  },
+  "Arquitectos": {
+    tone: "técnico, respetuoso y colaborativo. Habla de estudio, proyectos, clientes, iluminación, funcionalidad y ejecución cuidada.",
+    pain: "un estudio que no refleja su propio criterio proyectual pierde fuerza ante clientes y colaboradores.",
+    angle: "Voltium como ejecutor técnico fiable para reformar el propio estudio o colaborar en instalaciones y obras.",
+    forbidden: "no sonar como si se diera una lección de diseño a un arquitecto."
+  },
+  "Aparejadores": {
+    tone: "técnico, directo y orientado a obra. Habla de coordinación, dirección de ejecución, documentación, plazos y control de incidencias.",
+    pain: "las obras mal coordinadas consumen tiempo técnico y generan fricción con propiedad, vecinos y contratistas.",
+    angle: "equipo ejecutor con interlocutor único, documentación ordenada y capacidad de trabajar bajo dirección técnica.",
+    forbidden: "no clasificar automáticamente como aparejador a cualquier constructora o arquitecto."
+  },
+  "AdministradoresFincas": {
+    tone: "resolutivo y orientado a comunidades. Habla de juntas, vecinos, incidencias, presupuestos claros, trazabilidad y mantenimiento.",
+    pain: "cada obra mal explicada o mal ejecutada multiplica llamadas, quejas y bloqueos en comunidades.",
+    angle: "proveedor único para reformas, instalaciones, impermeabilizaciones y eficiencia energética con documentación para comunidades.",
+    forbidden: "no tratarlos como agencia inmobiliaria de compraventa."
+  },
+  "Inmobiliarias": {
+    tone: "comercial y orientado a valor de activo. Habla de venta, alquiler, puesta a punto, plazo de comercialización, percepción y eficiencia.",
+    pain: "un inmueble con instalaciones obsoletas tarda más en venderse o alquilarse y pierde capacidad de negociación.",
+    angle: "puesta a punto y reforma rápida para mejorar valor percibido antes de comercializar.",
+    forbidden: "no confundir inmobiliaria con constructora o portal publicitario."
   },
   "Industrial": {
     tone: "técnico y enfocado en eficiencia. Habla de 'producción', 'cumplimiento normativo', 'coste eléctrico', 'seguridad laboral', 'eficiencia', 'continuidad operativa', 'mantenimiento preventivo'. El decisor es el director de planta, gerente o propietario.",
@@ -505,6 +670,4 @@ const SEGMENT_TONE = {
     forbidden: "frases genéricas que podrían enviarse a cualquier empresa."
   }
 };
-
-
 

@@ -15,6 +15,17 @@ const SECTOR_WEIGHTS = {
   'hospital':      { multiplier: 2.0, newsBonus: 12, hasReservationsBonus: 10 },
   'oficina':       { multiplier: 1.5, newsBonus: 10, hasReservationsBonus: 5  },
   'coworking':     { multiplier: 1.6, newsBonus: 12, hasReservationsBonus: 6  },
+  'gestoria':      { multiplier: 1.25, newsBonus: 8,  hasReservationsBonus: 3  },
+  'gestorias':     { multiplier: 1.25, newsBonus: 8,  hasReservationsBonus: 3  },
+  'asesoria':      { multiplier: 1.25, newsBonus: 8,  hasReservationsBonus: 3  },
+  'arquitecto':    { multiplier: 1.3, newsBonus: 9,  hasReservationsBonus: 3  },
+  'arquitectos':   { multiplier: 1.3, newsBonus: 9,  hasReservationsBonus: 3  },
+  'aparejador':    { multiplier: 1.25, newsBonus: 8,  hasReservationsBonus: 3  },
+  'aparejadores':  { multiplier: 1.25, newsBonus: 8,  hasReservationsBonus: 3  },
+  'administradoresfincas': { multiplier: 1.45, newsBonus: 10, hasReservationsBonus: 4 },
+  'fincas':        { multiplier: 1.45, newsBonus: 10, hasReservationsBonus: 4 },
+  'inmobiliarias': { multiplier: 1.35, newsBonus: 9,  hasReservationsBonus: 4  },
+  'inmobiliaria':  { multiplier: 1.35, newsBonus: 9,  hasReservationsBonus: 4  },
   'supermercado':  { multiplier: 1.9, newsBonus: 8,  hasReservationsBonus: 3  },
   'almacen':       { multiplier: 1.7, newsBonus: 8,  hasReservationsBonus: 3  },
   'fabrica':       { multiplier: 1.8, newsBonus: 10, hasReservationsBonus: 3  },
@@ -134,7 +145,8 @@ function recalculateLeadScore(lead) {
       ratingCount: lead.ratingCount,
       email: lead.email,
       phone: lead.phone,
-      decision_maker: lead.decision_maker || lead.name
+      decision_maker: lead.decision_maker || lead.name,
+      segment: lead.segment
     }
   );
 }
