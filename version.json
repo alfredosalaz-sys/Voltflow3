@@ -1,8 +1,12 @@
 {
-    "version":  "2.8.0",
-    "build":  "2026.09.23.0100",
-    "date":  "2026-09-23",
+    "version":  "2.9.0",
+    "build":  "2026.10.09.0100",
+    "date":  "2026-10-09",
     "changelog":  [
+                      {
+                          "title":  "Prospeccion B2B ampliada",
+                          "desc":  "Se incorporan Gestorias, Arquitectos, Aparejadores, Administradores de fincas e Inmobiliarias al buscador, multi-sector, clasificacion, deduplicacion, campañas y filtros."
+                      },
                       {
                           "title":  "Arranque estable y diagnostico de Google Places",
                           "desc":  "Se evita que el normalizador de textos bloquee la pagina durante el modal de novedades y se endurece la carga de Google Maps/Places para mostrar errores claros de key, cuota, facturacion o restricciones."
@@ -97,6 +101,13 @@
                       }
                   ],
     "history":  [
+                    {
+                        "version":  "2.9.0",
+                        "build":  "2026.10.09.0100",
+                        "date":  "2026-10-09",
+                        "title":  "Prospeccion B2B ampliada",
+                        "description":  "Nuevas categorias B2B con consultas especificas, clasificacion determinista, deduplicacion multisectorial y cache busting de entrega."
+                    },
                     {
                         "version":  "2.8.0",
                         "build":  "2026.09.23.0100",
