@@ -1764,6 +1764,7 @@ Y cruzarÃ¡ los remitentes con tus leads para actualizar el CRM."
         <button class="btn-outline" onclick="showStorageDiagnostics()" title="Muestra la URL y los datos visibles para este navegador">Diagnosticar almacenamiento</button>
         <button class="btn-outline" onclick="showCriticalRescueDiagnostics()" title="Muestra las copias crÃ­ticas automÃ¡ticas disponibles">Ver rescates crÃ­ticos</button>
         <button class="btn-outline" onclick="exportLatestCriticalRescue()" title="Descarga la mejor copia crÃ­tica automÃ¡tica">Exportar rescate crÃ­tico</button>
+        <button class="btn-primary" onclick="migrateStorageToIndexedDB()" title="Copia los datos actuales a IndexedDB sin borrar localStorage. Recomendado antes de crecer mucho.">Activar almacenamiento grande</button>
         <button class="btn-outline" onclick="openPasteRecoveryModal()" title="Pega un JSON exportado desde otra versiÃ³n o URL">Pegar backup JSON</button>
         <input type="file" id="import-portable-file" accept=".json" style="display:none" onchange="restoreBackup(event)">
         <button class="btn-primary" onclick="openImportFromLocalStorage()" title="Lee los datos de Voltflow2 guardados en este navegador" style="display:flex;align-items:center;gap:.4rem">Importar desde versiÃ³n anterior</button>
@@ -1775,6 +1776,7 @@ Y cruzarÃ¡ los remitentes con tus leads para actualizar el CRM."
       <!-- Storage info -->
       <div style="margin-top:1.25rem">
         <div id="disk-backup-status" style="margin-bottom:.9rem;padding:.8rem 1rem;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,.035);font-size:.8rem;color:var(--text-muted)">Comprobando backup automatico en disco...</div>
+        <div id="indexeddb-status" style="margin-bottom:.9rem;padding:.8rem 1rem;border:1px solid var(--glass-border);border-radius:10px;background:rgba(255,255,255,.035);font-size:.8rem;color:var(--text-muted)">IndexedDB: comprobando...</div>
         <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:.4rem" id="storage-info-text">Calculando espacio...</div>
         <div class="storage-bar"><div class="storage-fill" id="storage-fill" style="width:0%"></div></div>
       </div>
@@ -2395,6 +2397,7 @@ Y cruzarÃ¡ los remitentes con tus leads para actualizar el CRM."
   })();
 </script>
 <script defer src="modules/state.js?v=2026.09.23.0100" charset="UTF-8"></script>
+<script defer src="modules/storage.js?v=2026.09.23.0100" charset="UTF-8"></script>
 <script defer src="modules/email-templates.js?v=2026.09.23.0100" charset="UTF-8"></script>
 <script defer src="modules/scoring.js?v=2026.09.23.0100" charset="UTF-8"></script>
 <script defer src="modules/init.js?v=2026.09.23.0100" charset="UTF-8"></script>
