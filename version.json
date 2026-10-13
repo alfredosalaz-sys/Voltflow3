@@ -1,11 +1,19 @@
 {
-    "version":  "2.9.0",
-    "build":  "2026.10.09.0100",
-    "date":  "2026-10-09",
+    "version":  "2.9.2",
+    "build":  "2026.10.13.0100",
+    "date":  "2026-10-13",
     "changelog":  [
                       {
+                          "title":  "Estabilidad en equipos lentos",
+                          "desc":  "Se aplazan tareas no criticas de arranque como tours, copiloto diario, snapshots y backups automaticos para evitar bloqueos en procesadores de dos nucleos."
+                      },
+                      {
+                          "title":  "Auditoria B2B verificada",
+                          "desc":  "Se corrige la fusion de sectores en deduplicacion para no arrastrar categorias descartadas durante busquedas solapadas."
+                      },
+                      {
                           "title":  "Prospeccion B2B ampliada",
-                          "desc":  "Se incorporan Gestorias, Arquitectos, Aparejadores, Administradores de fincas e Inmobiliarias al buscador, multi-sector, clasificacion, deduplicacion, campañas y filtros."
+                          "desc":  "Se incorporan Gestorias, Arquitectos, Aparejadores, Administradores de fincas e Inmobiliarias al buscador, multi-sector, clasificacion, deduplicacion, campaÃ±as y filtros."
                       },
                       {
                           "title":  "Arranque estable y diagnostico de Google Places",
@@ -77,7 +85,7 @@
                       },
                       {
                           "title":  "Cobertura simplificada",
-                          "desc":  "La pestaÃ±a prioriza la matriz CP x sector, buscador y filtros esenciales; objetivos, embudo y filtros completos quedan en opciones avanzadas."
+                          "desc":  "La pestaÃƒÂ±a prioriza la matriz CP x sector, buscador y filtros esenciales; objetivos, embudo y filtros completos quedan en opciones avanzadas."
                       },
                       {
                           "title":  "Ayuda contextual en toda la app",
@@ -101,6 +109,20 @@
                       }
                   ],
     "history":  [
+                    {
+                        "version":  "2.9.2",
+                        "build":  "2026.10.13.0100",
+                        "date":  "2026-10-13",
+                        "title":  "Estabilidad post-arranque",
+                        "description":  "Se reducen tareas automáticas en los primeros 120 segundos y se evita que lecturas de cobertura escriban localStorage sin cambios."
+                    },
+                    {
+                        "version":  "2.9.1",
+                        "build":  "2026.10.09.0200",
+                        "date":  "2026-10-09",
+                        "title":  "Auditoria B2B verificada",
+                        "description":  "Correccion de deduplicacion multisectorial tras auditoria local de calidad."
+                    },
                     {
                         "version":  "2.9.0",
                         "build":  "2026.10.09.0100",
