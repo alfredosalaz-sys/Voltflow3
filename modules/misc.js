@@ -1490,9 +1490,13 @@ async function enhanceDailyCopilotWithAI() {
 
 document.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => {
-    const last = localStorage.getItem('gordi_daily_copilot_last_run');
-    const saved = dcLoadAgenda();
-    if (last !== dcDateKey() || !saved) runDailyCopilot(false);
-    else renderDailyCopilotPanel(saved);
-  }, 1200);
+    const run = () => {
+      const last = localStorage.getItem('gordi_daily_copilot_last_run');
+      const saved = dcLoadAgenda();
+      if (last !== dcDateKey() || !saved) runDailyCopilot(false);
+      else renderDailyCopilotPanel(saved);
+    };
+    if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 15000 });
+    else setTimeout(run, 120);
+  }, 150000);
 });

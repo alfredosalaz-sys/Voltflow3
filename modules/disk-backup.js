@@ -274,9 +274,9 @@
   function scheduleDailyDiskBackup() {
     const run = () => maybeCreateDailyDiskBackup();
     if ('requestIdleCallback' in window) {
-      setTimeout(() => requestIdleCallback(run, { timeout: 60000 }), 30000);
+      setTimeout(() => requestIdleCallback(run, { timeout: 120000 }), 300000);
     } else {
-      setTimeout(run, 45000);
+      setTimeout(run, 300000);
     }
   }
 

@@ -1,9 +1,9 @@
-﻿// ============ WORKFLOW OPERATIVO ============
+// ============ WORKFLOW OPERATIVO ============
 // Capa de integracion no destructiva entre scraping, leads, cobertura, mapa y backups.
 (function () {
   'use strict';
 
-  const BUILD = '2026.10.09.0100';
+  const BUILD = '2026.10.13.0100';
   const RESTORE_KEY = 'gordi_workflow_restore_points';
   const AUDIT_KEY = 'gordi_workflow_audit_log';
   const MAX_RESTORE_POINTS = 8;
@@ -800,4 +800,5 @@
     bootWorkflow();
   }
 })();
+
 

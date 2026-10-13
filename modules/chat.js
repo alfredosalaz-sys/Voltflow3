@@ -1444,7 +1444,9 @@ let _schedulerInterval = null;
 function initScheduler() {
   if (_schedulerInterval) clearInterval(_schedulerInterval);
   _schedulerInterval = setInterval(runScheduler, 5 * 60 * 1000);
-  setTimeout(runScheduler, 4000);
+  if (localStorage.getItem('gordi_gmail_enabled') === 'true') {
+    setTimeout(runScheduler, 45000);
+  }
 }
 
 async function runScheduler() {
@@ -2702,7 +2704,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Update cloud sync pill
   updateCloudPill();
   // Proactive check (Mejora 4) — run after app is fully loaded
-  setTimeout(() => runProactiveCheck(), 10000);
+  setTimeout(() => {
+    const run = () => runProactiveCheck();
+    if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 20000 });
+    else setTimeout(run, 120);
+  }, 90000);
   initTTS();
   initScheduler();
   initGithubSync();

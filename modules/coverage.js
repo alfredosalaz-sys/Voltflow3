@@ -14,6 +14,8 @@ let coverageSmartFilter = coverageSafeJson(COVERAGE_FILTER_KEY, 'all');
 let coverageViewMode = coverageSafeJson(COVERAGE_VIEW_KEY, 'cp');
 let coverageBypassRepeatWarning = false;
 let _coverageLeadIndexCache = null;
+let _coverageEntriesCache = null;
+let _coverageLastSavedRaw = null;
 
 function coverageSafeJson(key, fallback) {
   try {
@@ -26,6 +28,10 @@ function coverageSafeJson(key, fallback) {
 
 function coverageSaveJson(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+
+function invalidateCoverageEntriesCache() {
+  _coverageEntriesCache = null;
 }
 
 function normalizeCoverageLocation(value = '') {
@@ -67,6 +73,7 @@ function saveCoverageTargets(targets) {
     sectors: [...new Set((targets.sectors || []).filter(Boolean))],
   };
   coverageSaveJson(COVERAGE_TARGETS_KEY, clean);
+  invalidateCoverageEntriesCache();
   return clean;
 }
 
@@ -75,7 +82,18 @@ function getCoverageRawEntries() {
 }
 
 function saveCoverageRawEntries(entries) {
-  coverageSaveJson(COVERAGE_KEY, entries.slice(-500));
+  const capped = entries.slice(-500);
+  try {
+    const raw = JSON.stringify(capped);
+    if (_coverageLastSavedRaw === raw || localStorage.getItem(COVERAGE_KEY) === raw) {
+      _coverageLastSavedRaw = raw;
+      return capped;
+    }
+    localStorage.setItem(COVERAGE_KEY, raw);
+    _coverageLastSavedRaw = raw;
+  } catch {}
+  invalidateCoverageEntriesCache();
+  return capped;
 }
 
 function getCoverageEvents() {
@@ -319,7 +337,12 @@ function recordSearchCoverage({ location, sectors, mode = 'single', status = 'co
   if (typeof renderCoverage === 'function') renderCoverage();
 }
 
-function rebuildCoverageFromSavedSearches() {
+function getCachedCoverageEntries() {
+  const rawCoverage = localStorage.getItem(COVERAGE_KEY) || '[]';
+  const rawSavedSearches = localStorage.getItem('gordi_saved_searches') || '[]';
+  const signature = `${rawCoverage.length}:${rawSavedSearches.length}:${rawCoverage}:${rawSavedSearches}`;
+  if (_coverageEntriesCache?.signature === signature) return _coverageEntriesCache.entries;
+
   const searches = typeof getSavedSearches === 'function' ? getSavedSearches() : [];
   const entries = new Map(getCoverageRawEntries().map(e => [e.key, e]));
   searches.forEach(s => {
@@ -351,12 +374,17 @@ function rebuildCoverageFromSavedSearches() {
       });
     });
   });
-  saveCoverageRawEntries([...entries.values()]);
-  return [...entries.values()];
+  const nextEntries = [...entries.values()];
+  saveCoverageRawEntries(nextEntries);
+  _coverageEntriesCache = {
+    signature: `${(localStorage.getItem(COVERAGE_KEY) || '[]').length}:${rawSavedSearches.length}:${localStorage.getItem(COVERAGE_KEY) || '[]'}:${rawSavedSearches}`,
+    entries: nextEntries
+  };
+  return nextEntries;
 }
 
 function getCoverageEntries() {
-  return rebuildCoverageFromSavedSearches();
+  return getCachedCoverageEntries();
 }
 
 function getCoverageCellStatus(entry, isTarget) {

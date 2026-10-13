@@ -795,8 +795,8 @@ MANUAL OPERATIVO ACTUAL DE LA APP, BUILD ${HELP_BUILD}:
   function bootHelp() {
     scheduleHelpRender(1400);
     setTimeout(installHelpObserver, 5000);
-    setTimeout(maybeStartUpdateTour, 7000);
-    setTimeout(maybeStartCoverageTour, 10000);
+    setTimeout(maybeStartUpdateTour, 180000);
+    setTimeout(maybeStartCoverageTour, 240000);
     setInterval(() => {
       if (!document.hidden && document.getElementById('help-popover')) scheduleHelpRender(0);
     }, 60000);

@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       throttleMs: 12 * 60 * 60 * 1000,
       maxBytes: 1200000
     });
-  }, 9000);
+  }, 180000);
 
   updateDate();
   runStartupTask('dashboard-visible', () => {
@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (scale) setFontSize(scale, true);
 
   // Auto backup weekly
-  runIdleStartupTask('weekly-backup', () => autoWeeklyBackup(), 12000);
+  runIdleStartupTask('weekly-backup', () => autoWeeklyBackup(), 210000);
 
   // Purgar cachÃ©s de enriquecimiento caducadas (>7 dÃ­as)
   runIdleStartupTask('purge-stale-caches', () => purgeStaleCaches(), 3200);

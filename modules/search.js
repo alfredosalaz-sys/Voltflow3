@@ -1228,6 +1228,12 @@ function uniqueList(items = []) {
   return [...new Set(items.map(x => String(x || '').trim()).filter(Boolean))];
 }
 
+function getMergeableSectors(item = {}) {
+  if (Array.isArray(item.matchedSectors)) return item.matchedSectors.filter(Boolean);
+  if (item.sectorRelevance === 'none') return [];
+  return [item.sourceSector, item.segment].filter(Boolean);
+}
+
 const B2B_PROSPECTING_SEGMENTS = [
   'Gestorias',
   'Arquitectos',
@@ -2814,7 +2820,7 @@ function deduplicateResults(results) {
     merged.scrapeDiagnostics = uniqueList([...(existing.scrapeDiagnostics || []), ...(incoming.scrapeDiagnostics || [])]);
     merged.scrapeSignals = [...(existing.scrapeSignals || []), ...(incoming.scrapeSignals || [])]
       .reduce((acc, s) => acc.some(x => x.key === s.key || x.label === s.label) ? acc : [...acc, s], []);
-    merged.matchedSectors = uniqueList([...(existing.matchedSectors || []), existing.sourceSector, existing.segment, ...(incoming.matchedSectors || []), incoming.sourceSector, incoming.segment]);
+    merged.matchedSectors = uniqueList([...getMergeableSectors(existing), ...getMergeableSectors(incoming)]);
     merged.sectorClassifications = { ...(existing.sectorClassifications || {}), ...(incoming.sectorClassifications || {}) };
     merged.sectorEvidence = uniqueList([...(existing.sectorEvidence || []), ...(incoming.sectorEvidence || [])]);
     merged.sectorNegativeEvidence = uniqueList([...(existing.sectorNegativeEvidence || []), ...(incoming.sectorNegativeEvidence || [])]);
